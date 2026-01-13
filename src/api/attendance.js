@@ -1,13 +1,27 @@
-import { api } from "./client";
+// src/api/attendance.js
+import { apiFetch } from "./client";
 
-export const attendanceApi = {
-  open: () => api("/api/Attendance/open"),
-  me: () => api("/api/Attendance/me"),
-  checkIn: (note) =>
-    api("/api/Attendance/checkin", { method: "POST", body: { note } }),
-  checkOut: () => api("/api/Attendance/checkout", { method: "POST", body: {} }),
+export async function checkIn(note) {
+  return apiFetch("/api/Attendance/checkin", {
+    method: "POST",
+    body: { note: note || "" },
+  });
+}
 
-  // Admin helpers (only if your token is Admin)
-  all: () => api("/api/Attendance/all"),
-  byEmployee: (employeeId) => api(`/api/Attendance/employee/${employeeId}`),
-};
+export async function checkOut() {
+  return apiFetch("/api/Attendance/checkout", {
+    method: "POST",
+    body: {},
+  });
+}
+
+export async function myOpen() {
+  return apiFetch("/api/Attendance/open");
+}
+
+export async function myHistory() {
+  return apiFetch("/api/Attendance/me");
+}
+
+// ✅ Backward-compatible object export (if screens import attendanceApi)
+export const attendanceApi = { checkIn, checkOut, myOpen, myHistory };

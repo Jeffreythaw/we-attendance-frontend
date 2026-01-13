@@ -4,7 +4,7 @@ import { Login } from "./screens/Login";
 import { ClockScreen } from "./screens/ClockScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
-import { AdminScreen } from "./screens/AdminScreen";
+import { AdminEmployees } from "./screens/AdminEmployees";
 import { Tabs } from "./components/Tabs";
 
 export default function App() {
@@ -59,7 +59,7 @@ export default function App() {
 
         {tab === "clock" && <ClockScreen onAuthError={onAuthError} />}
         {tab === "history" && <HistoryScreen onAuthError={onAuthError} />}
-        {tab === "admin" && showAdmin && <AdminScreen onAuthError={onAuthError} />}
+        {tab === "admin" && showAdmin && <AdminEmployees onAuthError={onAuthError} />}
         {tab === "settings" && <SettingsScreen user={user} onLogout={logout} />}
       </div>
 

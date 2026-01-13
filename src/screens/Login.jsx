@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Card } from "../components/Card";
-import { apiBase } from "../api/client";
+import { apiBase } from "../api/client"; // ✅ apiBase is a string
 
 export function Login({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -54,7 +54,17 @@ export function Login({ onLogin }) {
             </div>
 
             {err ? (
-              <div style={{ color: "#be123c", fontWeight: 800, fontSize: 13, background: "#ffe4e6", border: "1px solid #fecdd3", padding: 10, borderRadius: 14 }}>
+              <div
+                style={{
+                  color: "#be123c",
+                  fontWeight: 800,
+                  fontSize: 13,
+                  background: "#ffe4e6",
+                  border: "1px solid #fecdd3",
+                  padding: 10,
+                  borderRadius: 14,
+                }}
+              >
                 {err}
               </div>
             ) : null}
@@ -77,7 +87,8 @@ export function Login({ onLogin }) {
               {loading ? "Signing in…" : "Sign in"}
             </button>
 
-            <div style={{ fontSize: 12, color: "#64748b" }}>API: {apiBase()}</div>
+            {/* ✅ apiBase is a STRING, so use apiBase (no brackets) */}
+            <div style={{ fontSize: 12, color: "#64748b" }}>API: {apiBase}</div>
           </form>
         </Card>
       </div>
