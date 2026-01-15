@@ -1,27 +1,27 @@
-// src/api/attendance.js
 import { apiFetch } from "./client";
 
-export async function checkIn(note) {
-  return apiFetch("/api/Attendance/checkin", {
-    method: "POST",
-    body: { note: note || "" },
-  });
-}
+export const attendanceApi = {
+  open() {
+    return apiFetch("/api/Attendance/open", { method: "GET" });
+  },
 
-export async function checkOut() {
-  return apiFetch("/api/Attendance/checkout", {
-    method: "POST",
-    body: {},
-  });
-}
+  me() {
+    return apiFetch("/api/Attendance/me", { method: "GET" });
+  },
 
-export async function myOpen() {
-  return apiFetch("/api/Attendance/open");
-}
+  // note + location
+  checkIn(note, location) {
+    return apiFetch("/api/Attendance/checkin", {
+      method: "POST",
+      body: { note: (note || "").trim(), location: location ?? null },
+    });
+  },
 
-export async function myHistory() {
-  return apiFetch("/api/Attendance/me");
-}
-
-// ✅ Backward-compatible object export (if screens import attendanceApi)
-export const attendanceApi = { checkIn, checkOut, myOpen, myHistory };
+  // location only
+  checkOut(location) {
+    return apiFetch("/api/Attendance/checkout", {
+      method: "POST",
+      body: { location: location ?? null },
+    });
+  },
+};

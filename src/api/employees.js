@@ -1,19 +1,32 @@
 // src/api/employees.js
 import { apiFetch } from "./client";
 
-export async function listEmployees() {
-  return apiFetch("/api/Employees", { method: "GET" });
+function normalizeEmployee(r) {
+  if (!r) return r;
+
+  return {
+    id: r.id ?? r.Id,
+    name: r.name ?? r.Name,
+    department: r.department ?? r.Department,
+    active: r.active ?? r.Active,
+    createdAt: r.createdAt ?? r.CreatedAt,
+  };
 }
 
-export async function createEmployee({ name, department, active = true }) {
-  return apiFetch("/api/Employees", {
+export async function listEmployees(includeInactive = false) {
+  const qs = includeInactive ? "?includeInactive=true" : "";
+  const data = await apiFetch(`/api/Employees${qs}`, { auth: true });
+
+  if (!Array.isArray(data)) return [];
+  return data.map(normalizeEmployee);
+}
+
+export async function createEmployee({ name, department }) {
+  const data = await apiFetch("/api/Employees", {
     method: "POST",
-    body: { name, department, active },
+    auth: true,
+    body: { name, department },
   });
-}
 
-export async function deactivateEmployee(id) {
-  // If your backend supports PUT/PATCH, adjust this path.
-  // If not, tell me your EmployeesController endpoints and I’ll match it.
-  return apiFetch(`/api/Employees/${id}/deactivate`, { method: "POST" });
+  return normalizeEmployee(data);
 }

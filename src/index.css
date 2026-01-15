@@ -1,68 +1,113 @@
+/* src/index.css */
+
+/* ---------- Theme tokens ---------- */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  --bg0: #0b1220;
+  --text: #e5e7eb;
+  --muted: rgba(226,232,240,.72);
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --glass: rgba(255,255,255,.08);
+  --glassBorder: rgba(255,255,255,.16);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --inputBg: rgba(15,23,42,.35);
+  --inputBorder: rgba(255,255,255,.12);
+
+  --shadow: 0 30px 80px rgba(0,0,0,.35);
+
+  --gradA: rgba(99,102,241,1);
+  --gradB: rgba(236,72,153,1);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* ---------- App base ---------- */
+html, body {
+  height: 100%;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  background: var(--bg0);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+#root {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* ---------- Shared UI primitives ---------- */
+.we-glass-card{
+  background: var(--glass);
+  border: 1px solid var(--glassBorder);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.we-input{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 12px;
+  border-radius:14px;
+  background: var(--inputBg);
+  border:1px solid var(--inputBorder);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.we-input input, .we-input select{
+  width:100%;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:#fff;
+  font-size:14px;
 }
+
+.we-input input::placeholder{ color: rgba(226,232,240,.55); }
+.we-icon{ opacity:.85; font-size:16px; }
+
+.we-btn{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  padding:12px 14px;
+  background: linear-gradient(135deg, var(--gradA), var(--gradB));
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+  cursor:pointer;
+  box-shadow: 0 14px 34px rgba(0,0,0,.35);
+  transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+}
+
+.we-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+.we-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+.we-btn-soft{
+  width:100%;
+  border-radius:14px;
+  padding:12px 14px;
+  background: rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.14);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+  transition: background .12s ease, opacity .12s ease;
+}
+.we-btn-soft:hover{ background: rgba(255,255,255,.14); }
+.we-btn-soft:disabled{ opacity:.55; cursor:not-allowed; }
+
+.we-error{
+  background: rgba(244,63,94,.14);
+  border:1px solid rgba(244,63,94,.28);
+  color:#fecdd3;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:800;
+  word-break: break-word;
+}
+
+.we-muted{ color: var(--muted); }

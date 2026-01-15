@@ -1,121 +1,1075 @@
-import { useEffect, useState } from "react";
+// src/pages/AdminEmployees.jsx
+import { useEffect, useMemo, useState } from "react";
 import { createEmployee, listEmployees } from "../api/employees";
+import { createUser } from "../api/users";
+import { apiFetch } from "../api/client";
 
-export default function AdminEmployees() {
+/**
+ * Adjust these to match your backend routes if needed.
+ * (Put all endpoints here so it’s easy to change.)
+ */
+const ENDPOINTS = {
+  holidays: "/api/Holidays", // GET, POST, DELETE /{id}
+  leaveTypes: "/api/LeaveTypes", // GET, POST, PUT/PATCH /{id}
+  leaveRequests: "/api/LeaveRequests", // GET (pending), approve/reject endpoints might differ
+  approveLeave: (id) => `/api/LeaveRequests/${id}/approve`,
+  rejectLeave: (id) => `/api/LeaveRequests/${id}/reject`,
+};
+
+function fmtDateTime(v) {
+  if (!v) return "—";
+  try {
+    return new Date(v).toLocaleString();
+  } catch {
+    return String(v);
+  }
+}
+
+function fmtDateOnly(v) {
+  if (!v) return "—";
+  // DateOnly often comes like "2026-01-14"
+  return String(v);
+}
+
+export default function AdminEmployees({ onAuthError }) {
+  // -----------------------
+  // Tabs
+  // -----------------------
+  const [tab, setTab] = useState("employees"); // employees | holidays | leaveTypes | approvals
+
+  // -----------------------
+  // Common UI state
+  // -----------------------
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  function handleErr(e, fallback) {
+    const m = e?.message || fallback || "Request failed";
+    setMsg(m);
+    if (String(m).includes("401") || String(m).includes("403")) onAuthError?.();
+  }
+
+  const isSuccess = msg.startsWith("✅");
+
+  // ============================================================
+  // 1) EMPLOYEES (existing)
+  // ============================================================
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
   const [active, setActive] = useState(true);
 
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
-  async function refresh() {
+  const [rows, setRows] = useState([]);
+  const [q, setQ] = useState("");
+
+  async function refreshEmployees() {
     setLoading(true);
     setMsg("");
     try {
-      const data = await listEmployees();
+      const data = await listEmployees(); // GET /api/Employees
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
-      setMsg(e.message || "Failed to load employees");
+      handleErr(e, "Failed to load employees");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    refresh();
+    refreshEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function onCreate(e) {
+  const filteredRows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter((e) => {
+      const n = String(e?.name || "").toLowerCase();
+      const d = String(e?.department || "").toLowerCase();
+      const id = String(e?.id ?? "");
+      const st = e?.active ? "active" : "inactive";
+      return n.includes(s) || d.includes(s) || id.includes(s) || st.includes(s);
+    });
+  }, [rows, q]);
+
+  async function onCreateEmployee(e) {
     e.preventDefault();
     setMsg("");
 
-    if (!name.trim()) return setMsg("Name is required");
-    if (!department.trim()) return setMsg("Department is required");
+    const n = name.trim();
+    const d = department.trim();
+    if (!n) return setMsg("Name is required");
+    if (!d) return setMsg("Department is required");
 
     setLoading(true);
     try {
-      await createEmployee({ name: name.trim(), department: department.trim(), active });
+      await createEmployee({ name: n, department: d, active });
       setName("");
       setDepartment("");
       setActive(true);
-      await refresh();
+      await refreshEmployees();
       setMsg("✅ Employee created");
-    } catch (e) {
-      setMsg(e.message || "Create failed");
+    } catch (e2) {
+      handleErr(e2, "Create employee failed");
     } finally {
       setLoading(false);
     }
   }
 
+  async function onCreateLogin(e) {
+    e.preventDefault();
+    setMsg("");
+
+    const empIdNum = Number(selectedEmployeeId);
+    if (!empIdNum || empIdNum <= 0) return setMsg("Select an employee");
+    if (!newUsername.trim()) return setMsg("Username is required");
+    if (!newPassword) return setMsg("Password is required");
+
+    setLoading(true);
+    try {
+      await createUser({
+        employeeId: empIdNum,
+        username: newUsername.trim(),
+        password: newPassword,
+      });
+
+      setSelectedEmployeeId("");
+      setNewUsername("");
+      setNewPassword("");
+      setMsg("✅ Login user created");
+    } catch (e2) {
+      handleErr(e2, "Create user failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ============================================================
+  // 2) HOLIDAYS
+  // ============================================================
+  const [holidays, setHolidays] = useState([]);
+  const [holidayDate, setHolidayDate] = useState(""); // yyyy-mm-dd
+  const [holidayName, setHolidayName] = useState("");
+
+  async function loadHolidays() {
+    setLoading(true);
+    setMsg("");
+    try {
+      const data = await apiFetch(ENDPOINTS.holidays, { method: "GET" });
+      setHolidays(Array.isArray(data) ? data : []);
+    } catch (e) {
+      handleErr(e, "Failed to load holidays");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addHoliday(e) {
+    e.preventDefault();
+    setMsg("");
+
+    if (!holidayDate) return setMsg("Holiday date is required");
+    if (!holidayName.trim()) return setMsg("Holiday name is required");
+
+    setLoading(true);
+    try {
+      await apiFetch(ENDPOINTS.holidays, {
+        method: "POST",
+        body: { date: holidayDate, name: holidayName.trim() },
+      });
+      setHolidayDate("");
+      setHolidayName("");
+      await loadHolidays();
+      setMsg("✅ Holiday added");
+    } catch (e2) {
+      handleErr(e2, "Add holiday failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteHoliday(id) {
+    if (!id) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      await apiFetch(`${ENDPOINTS.holidays}/${id}`, { method: "DELETE" });
+      await loadHolidays();
+      setMsg("✅ Holiday deleted");
+    } catch (e) {
+      handleErr(e, "Delete holiday failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ============================================================
+  // 3) LEAVE TYPES
+  // ============================================================
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [ltCode, setLtCode] = useState("AL");
+  const [ltName, setLtName] = useState("Annual Leave");
+  const [ltPaid, setLtPaid] = useState(true);
+  const [ltActive, setLtActive] = useState(true);
+
+  async function loadLeaveTypes() {
+    setLoading(true);
+    setMsg("");
+    try {
+      const data = await apiFetch(ENDPOINTS.leaveTypes, { method: "GET" });
+      setLeaveTypes(Array.isArray(data) ? data : []);
+    } catch (e) {
+      handleErr(e, "Failed to load leave types");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addLeaveType(e) {
+    e.preventDefault();
+    setMsg("");
+
+    if (!ltCode.trim()) return setMsg("Code is required (e.g. AL, MC)");
+    if (!ltName.trim()) return setMsg("Name is required");
+
+    setLoading(true);
+    try {
+      await apiFetch(ENDPOINTS.leaveTypes, {
+        method: "POST",
+        body: {
+          code: ltCode.trim().toUpperCase(),
+          name: ltName.trim(),
+          paid: !!ltPaid,
+          active: !!ltActive,
+        },
+      });
+      await loadLeaveTypes();
+      setMsg("✅ Leave type created");
+    } catch (e2) {
+      handleErr(e2, "Create leave type failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleLeaveTypeActive(t) {
+    if (!t?.id) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      // Many APIs use PUT/PATCH. If yours differs, change here.
+      await apiFetch(`${ENDPOINTS.leaveTypes}/${t.id}`, {
+        method: "PUT",
+        body: { ...t, active: !t.active },
+      });
+      await loadLeaveTypes();
+      setMsg("✅ Leave type updated");
+    } catch (e) {
+      handleErr(e, "Update leave type failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ============================================================
+  // 4) LEAVE APPROVALS (Pending)
+  // ============================================================
+  const [pendingLeaves, setPendingLeaves] = useState([]);
+
+  async function loadPendingLeaves() {
+    setLoading(true);
+    setMsg("");
+    try {
+      // If your backend uses /api/Leave/requests?status=Pending change it here
+      const data = await apiFetch(`${ENDPOINTS.leaveRequests}?status=Pending`, {
+        method: "GET",
+      });
+      setPendingLeaves(Array.isArray(data) ? data : []);
+    } catch (e) {
+      handleErr(e, "Failed to load leave requests");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveLeave(id) {
+    if (!id) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      await apiFetch(ENDPOINTS.approveLeave(id), { method: "POST" });
+      await loadPendingLeaves();
+      setMsg("✅ Leave approved");
+    } catch (e) {
+      handleErr(e, "Approve failed (check endpoint)");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rejectLeave(id) {
+    if (!id) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      await apiFetch(ENDPOINTS.rejectLeave(id), { method: "POST" });
+      await loadPendingLeaves();
+      setMsg("✅ Leave rejected");
+    } catch (e) {
+      handleErr(e, "Reject failed (check endpoint)");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // -----------------------
+  // Tab load triggers
+  // -----------------------
+  useEffect(() => {
+    if (tab === "holidays") loadHolidays();
+    if (tab === "leaveTypes") loadLeaveTypes();
+    if (tab === "approvals") loadPendingLeaves();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  // ============================================================
+  // UI
+  // ============================================================
   return (
-    <div style={{ maxWidth: 520, margin: "0 auto", padding: 16 }}>
-      <h2 style={{ marginBottom: 8 }}>Admin • Employees</h2>
-
-      {msg && (
-        <div style={{
-          padding: 10, borderRadius: 10, marginBottom: 12,
-          background: msg.startsWith("✅") ? "#e8fff0" : "#ffecec"
-        }}>
-          {msg}
+    <div className="we-admin-page">
+      {/* Header */}
+      <div className="we-admin-head">
+        <div>
+          <div className="we-admin-kicker">Admin panel</div>
+          <div className="we-admin-title">Admin</div>
+          <div className="we-admin-sub">
+            Manage employees • holidays • leave types • approvals
+          </div>
         </div>
-      )}
-
-      <form onSubmit={onCreate} style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Employee name"
-          style={{ padding: 12, borderRadius: 12, border: "1px solid #ddd" }}
-        />
-        <input
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          placeholder="Department"
-          style={{ padding: 12, borderRadius: 12, border: "1px solid #ddd" }}
-        />
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          Active
-        </label>
 
         <button
-          disabled={loading}
-          style={{
-            padding: 12, borderRadius: 14, border: "none",
-            background: "#0b132b", color: "white", fontWeight: 700
+          className="we-btn-soft we-admin-refresh"
+          onClick={() => {
+            if (tab === "employees") refreshEmployees();
+            if (tab === "holidays") loadHolidays();
+            if (tab === "leaveTypes") loadLeaveTypes();
+            if (tab === "approvals") loadPendingLeaves();
           }}
+          disabled={loading}
         >
-          {loading ? "Saving..." : "Add Employee"}
-        </button>
-      </form>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0 }}>Employees</h3>
-        <button onClick={refresh} disabled={loading} style={{ padding: "8px 12px", borderRadius: 12 }}>
-          Refresh
+          {loading ? (
+            <span className="we-btn-spin">
+              <span className="spinner" />
+              Loading…
+            </span>
+          ) : (
+            "Refresh"
+          )}
         </button>
       </div>
 
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-        {rows.length === 0 && <div style={{ opacity: 0.7 }}>No employees yet.</div>}
+      {/* Tabs */}
+      <div className="we-admin-tabs">
+        <button className={`we-tab ${tab === "employees" ? "on" : ""}`} onClick={() => setTab("employees")}>
+          👷 Employees
+        </button>
+        <button className={`we-tab ${tab === "holidays" ? "on" : ""}`} onClick={() => setTab("holidays")}>
+          🎌 Holidays
+        </button>
+        <button className={`we-tab ${tab === "leaveTypes" ? "on" : ""}`} onClick={() => setTab("leaveTypes")}>
+          🧾 Leave Types
+        </button>
+        <button className={`we-tab ${tab === "approvals" ? "on" : ""}`} onClick={() => setTab("approvals")}>
+          ✅ Leave Approvals
+        </button>
+      </div>
 
-        {rows.map((e) => (
-          <div key={e.id} style={{
-            padding: 12, borderRadius: 14, border: "1px solid #eee",
-            display: "flex", justifyContent: "space-between", gap: 10
-          }}>
-            <div>
-              <div style={{ fontWeight: 800 }}>{e.name}</div>
-              <div style={{ fontSize: 13, opacity: 0.75 }}>{e.department}</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                ID: {e.id} • {e.active ? "Active" : "Inactive"}
-              </div>
+      {/* Message */}
+      {msg ? (
+        <div className={`we-admin-msg ${isSuccess ? "ok" : "bad"}`}>{msg}</div>
+      ) : null}
+
+      {/* ----------------------- */}
+      {/* EMPLOYEES TAB */}
+      {/* ----------------------- */}
+      {tab === "employees" ? (
+        <>
+          <div className="we-admin-grid">
+            {/* Create Login User */}
+            <div className="we-admin-card">
+              <div className="we-admin-cardTitle">Create Login (Username / Password)</div>
+
+              <form onSubmit={onCreateLogin} className="we-admin-form">
+                <label className="we-admin-label">
+                  Employee
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">👤</span>
+                    <select
+                      value={selectedEmployeeId}
+                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                      className="we-admin-select"
+                    >
+                      <option value="">Select employee…</option>
+                      {rows.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} (ID: {emp.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
+                <label className="we-admin-label">
+                  Username
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">⌨️</span>
+                    <input
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      placeholder="Username"
+                    />
+                  </div>
+                </label>
+
+                <label className="we-admin-label">
+                  Password
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🔒</span>
+                    <input
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Password"
+                      type="password"
+                    />
+                  </div>
+                </label>
+
+                <button className="we-btn" disabled={loading}>
+                  {loading ? (
+                    <span className="we-btn-spin">
+                      <span className="spinner" />
+                      Saving…
+                    </span>
+                  ) : (
+                    "Create Login User"
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* Create Employee */}
+            <div className="we-admin-card">
+              <div className="we-admin-cardTitle">Create Employee</div>
+
+              <form onSubmit={onCreateEmployee} className="we-admin-form">
+                <label className="we-admin-label">
+                  Name
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🪪</span>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Employee name" />
+                  </div>
+                </label>
+
+                <label className="we-admin-label">
+                  Department
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🏢</span>
+                    <input
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="Department (e.g. WE Engineering)"
+                    />
+                  </div>
+                </label>
+
+                <label className="we-admin-check">
+                  <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+                  Active
+                </label>
+
+                <button className="we-btn" disabled={loading}>
+                  {loading ? (
+                    <span className="we-btn-spin">
+                      <span className="spinner" />
+                      Saving…
+                    </span>
+                  ) : (
+                    "Add Employee"
+                  )}
+                </button>
+              </form>
             </div>
           </div>
-        ))}
-      </div>
+
+          {/* List */}
+          <div className="we-admin-card">
+            <div className="we-admin-listHead">
+              <div className="we-admin-cardTitle">Employees ({filteredRows.length})</div>
+              <span className="we-admin-hint">Search supports name / dept / id</span>
+            </div>
+
+            <div className="we-admin-searchRow">
+              <div className="we-input">
+                <span className="we-icon" aria-hidden="true">🔎</span>
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name / dept / id" />
+              </div>
+            </div>
+
+            <div className="we-admin-list">
+              {filteredRows.length === 0 ? (
+                <div className="we-admin-empty">{loading ? "Loading…" : "No employees yet."}</div>
+              ) : (
+                filteredRows.map((e) => (
+                  <div key={e.id} className="we-admin-row">
+                    <div className="we-admin-rowTop">
+                      <div className="we-admin-name">{e.name || "(no name)"}</div>
+                      <div className={`we-admin-pill ${e.active ? "ok" : "bad"}`}>
+                        {e.active ? "ACTIVE" : "INACTIVE"}
+                      </div>
+                    </div>
+
+                    <div className="we-admin-meta">
+                      <span className="we-admin-muted">{e.department || "-"}</span>
+                    </div>
+
+                    <div className="we-admin-meta2">
+                      <span>ID: {e.id}</span>
+                      <span className="we-admin-dot">•</span>
+                      <span>Created: {fmtDateTime(e.createdAt)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* ----------------------- */}
+      {/* HOLIDAYS TAB */}
+      {/* ----------------------- */}
+      {tab === "holidays" ? (
+        <>
+          <div className="we-admin-card">
+            <div className="we-admin-cardTitle">Create Public Holiday</div>
+            <form onSubmit={addHoliday} className="we-admin-form">
+              <label className="we-admin-label">
+                Date
+                <div className="we-input">
+                  <span className="we-icon" aria-hidden="true">📅</span>
+                  <input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} />
+                </div>
+              </label>
+
+              <label className="we-admin-label">
+                Name
+                <div className="we-input">
+                  <span className="we-icon" aria-hidden="true">🏷️</span>
+                  <input
+                    value={holidayName}
+                    onChange={(e) => setHolidayName(e.target.value)}
+                    placeholder="e.g. New Year"
+                  />
+                </div>
+              </label>
+
+              <button className="we-btn" disabled={loading}>
+                {loading ? "Saving…" : "Add Holiday"}
+              </button>
+            </form>
+          </div>
+
+          <div className="we-admin-card">
+            <div className="we-admin-listHead">
+              <div className="we-admin-cardTitle">Holidays ({holidays.length})</div>
+              <span className="we-admin-hint">Used to compute PH work / leave</span>
+            </div>
+
+            <div className="we-admin-list">
+              {holidays.length === 0 ? (
+                <div className="we-admin-empty">{loading ? "Loading…" : "No holidays yet."}</div>
+              ) : (
+                holidays
+                  .slice()
+                  .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+                  .map((h) => (
+                    <div key={h.id} className="we-admin-row">
+                      <div className="we-admin-rowTop">
+                        <div className="we-admin-name">{h.name || "(no name)"}</div>
+                        <button className="we-btn-soft" onClick={() => deleteHoliday(h.id)} disabled={loading}>
+                          Delete
+                        </button>
+                      </div>
+                      <div className="we-admin-meta2">
+                        <span>Date: {fmtDateOnly(h.date)}</span>
+                        <span className="we-admin-dot">•</span>
+                        <span>ID: {h.id}</span>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* ----------------------- */}
+      {/* LEAVE TYPES TAB */}
+      {/* ----------------------- */}
+      {tab === "leaveTypes" ? (
+        <>
+          <div className="we-admin-card">
+            <div className="we-admin-cardTitle">Create Leave Type</div>
+
+            <form onSubmit={addLeaveType} className="we-admin-form">
+              <label className="we-admin-label">
+                Code
+                <div className="we-input">
+                  <span className="we-icon" aria-hidden="true">🧾</span>
+                  <input value={ltCode} onChange={(e) => setLtCode(e.target.value)} placeholder="AL / MC / etc" />
+                </div>
+              </label>
+
+              <label className="we-admin-label">
+                Name
+                <div className="we-input">
+                  <span className="we-icon" aria-hidden="true">🏷️</span>
+                  <input value={ltName} onChange={(e) => setLtName(e.target.value)} placeholder="Annual Leave" />
+                </div>
+              </label>
+
+              <label className="we-admin-check">
+                <input type="checkbox" checked={ltPaid} onChange={(e) => setLtPaid(e.target.checked)} />
+                Paid
+              </label>
+
+              <label className="we-admin-check">
+                <input type="checkbox" checked={ltActive} onChange={(e) => setLtActive(e.target.checked)} />
+                Active
+              </label>
+
+              <button className="we-btn" disabled={loading}>
+                {loading ? "Saving…" : "Create Leave Type"}
+              </button>
+            </form>
+          </div>
+
+          <div className="we-admin-card">
+            <div className="we-admin-listHead">
+              <div className="we-admin-cardTitle">Leave Types ({leaveTypes.length})</div>
+              <span className="we-admin-hint">MC / AL / etc</span>
+            </div>
+
+            <div className="we-admin-list">
+              {leaveTypes.length === 0 ? (
+                <div className="we-admin-empty">{loading ? "Loading…" : "No leave types yet."}</div>
+              ) : (
+                leaveTypes.map((t) => (
+                  <div key={t.id} className="we-admin-row">
+                    <div className="we-admin-rowTop">
+                      <div className="we-admin-name">
+                        {t.code} — {t.name}
+                      </div>
+                      <button
+                        className="we-btn-soft"
+                        onClick={() => toggleLeaveTypeActive(t)}
+                        disabled={loading}
+                      >
+                        {t.active ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
+
+                    <div className="we-admin-meta2">
+                      <span>Paid: {t.paid ? "Yes" : "No"}</span>
+                      <span className="we-admin-dot">•</span>
+                      <span>Status: {t.active ? "Active" : "Inactive"}</span>
+                      <span className="we-admin-dot">•</span>
+                      <span>ID: {t.id}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* ----------------------- */}
+      {/* APPROVALS TAB */}
+      {/* ----------------------- */}
+      {tab === "approvals" ? (
+        <div className="we-admin-card">
+          <div className="we-admin-listHead">
+            <div className="we-admin-cardTitle">Pending Leave Requests ({pendingLeaves.length})</div>
+            <span className="we-admin-hint">Approve / Reject</span>
+          </div>
+
+          <div className="we-admin-list">
+            {pendingLeaves.length === 0 ? (
+              <div className="we-admin-empty">{loading ? "Loading…" : "No pending leave."}</div>
+            ) : (
+              pendingLeaves.map((r) => (
+                <div key={r.id} className="we-admin-row">
+                  <div className="we-admin-rowTop">
+                    <div className="we-admin-name">
+                      #{r.id} • {r.employee?.name || `Employee ${r.employeeId}`}
+                    </div>
+
+                    <div className="we-approveBtns">
+                      <button className="we-btn" onClick={() => approveLeave(r.id)} disabled={loading}>
+                        Approve
+                      </button>
+                      <button className="we-btn danger" onClick={() => rejectLeave(r.id)} disabled={loading}>
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="we-admin-meta">
+                    <span className="we-admin-muted">
+                      Type: {r.leaveType?.code || r.leaveTypeCode || r.leaveTypeId}
+                    </span>
+                  </div>
+
+                  <div className="we-admin-meta2">
+                    <span>
+                      {fmtDateOnly(r.startDate)} → {fmtDateOnly(r.endDate)}
+                    </span>
+                    <span className="we-admin-dot">•</span>
+                    <span>Status: {r.status}</span>
+                  </div>
+
+                  {r.reason ? <div className="we-admin-reason">Reason: {r.reason}</div> : null}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="we-admin-note">
+            If Approve/Reject buttons fail: your backend might use different routes.
+            Update these in <span className="mono">ENDPOINTS</span> at the top:
+            <div className="mono">
+              {ENDPOINTS.leaveRequests}
+              {"\n"}
+              {ENDPOINTS.approveLeave(":id")}
+              {"\n"}
+              {ENDPOINTS.rejectLeave(":id")}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <style>{css}</style>
     </div>
   );
 }
+
+const css = `
+.we-admin-page{
+  display:grid;
+  gap:12px;
+  color:#e5e7eb;
+}
+
+/* Header */
+.we-admin-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.we-admin-kicker{ font-size:12px; opacity:.75; }
+.we-admin-title{ margin-top:2px; font-size:24px; font-weight:950; color:#fff; line-height:1.1; }
+.we-admin-sub{ margin-top:6px; font-size:12px; color: rgba(226,232,240,.75); }
+.we-admin-refresh{ width:auto; }
+
+/* Tabs */
+.we-admin-tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+}
+.we-tab{
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+  border-radius:999px;
+  padding:10px 12px;
+  transition: background .12s ease, transform .12s ease, opacity .12s ease;
+}
+.we-tab:hover{ background: rgba(255,255,255,.14); transform: translateY(-1px); }
+.we-tab.on{
+  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
+  border-color: rgba(255,255,255,.18);
+}
+
+/* Message */
+.we-admin-msg{
+  border-radius:16px;
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:900;
+  word-break: break-word;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+}
+.we-admin-msg.ok{
+  border-color: rgba(34,197,94,.28);
+  background: rgba(34,197,94,.14);
+  color:#bbf7d0;
+}
+.we-admin-msg.bad{
+  border-color: rgba(244,63,94,.28);
+  background: rgba(244,63,94,.14);
+  color:#fecdd3;
+}
+
+/* Layout */
+.we-admin-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+
+/* Glass card */
+.we-admin-card{
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:20px;
+  padding:14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 48px rgba(0,0,0,.35);
+}
+.we-admin-cardTitle{
+  font-weight:950;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+/* Form */
+.we-admin-form{
+  display:grid;
+  gap:12px;
+}
+.we-admin-label{
+  font-size:12px;
+  font-weight:800;
+  opacity:.9;
+  display:grid;
+  gap:8px;
+}
+
+/* Inputs */
+.we-input{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 12px;
+  border-radius:14px;
+  background: rgba(15,23,42,.35);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.we-icon{ opacity:.85; font-size:16px; }
+.we-input input{
+  width:100%;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:#fff;
+  font-size:14px;
+}
+.we-input input::placeholder{ color: rgba(226,232,240,.55); }
+
+.we-admin-select{
+  width:100%;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:#fff;
+  font-size:14px;
+  appearance:none;
+}
+.we-admin-select option{ color:#0f172a; }
+
+.we-admin-check{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  opacity:.9;
+  user-select:none;
+}
+.we-admin-check input{
+  width:16px;height:16px;
+  accent-color: #a5b4fc;
+}
+
+/* Buttons */
+.we-btn{
+  border:0;
+  border-radius:14px;
+  padding:12px 14px;
+  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+  cursor:pointer;
+  box-shadow: 0 14px 34px rgba(0,0,0,.35);
+  transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+}
+.we-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+.we-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+.we-btn.danger{
+  background: linear-gradient(135deg, rgba(244,63,94,1), rgba(236,72,153,1));
+}
+
+.we-btn-soft{
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+  transition: background .12s ease, opacity .12s ease;
+  border-radius:14px;
+  padding:10px 12px;
+}
+.we-btn-soft:hover{ background: rgba(255,255,255,.14); }
+.we-btn-soft:disabled{ opacity:.55; cursor:not-allowed; }
+
+.we-btn-spin{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+}
+.spinner{
+  width:16px;height:16px;border-radius:999px;
+  border:2px solid rgba(255,255,255,.5);
+  border-top-color:#fff;
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg);} }
+
+/* List */
+.we-admin-listHead{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.we-admin-hint{
+  font-size:12px;
+  opacity:.75;
+  white-space:nowrap;
+}
+.we-admin-searchRow{ margin-bottom:12px; }
+
+.we-admin-list{ display:grid; gap:10px; }
+.we-admin-empty{ font-size:13px; opacity:.8; }
+
+/* Row */
+.we-admin-row{
+  padding:12px;
+  border-radius:18px;
+  background: rgba(15,23,42,.22);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  display:grid;
+  gap:8px;
+}
+.we-admin-rowTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.we-admin-name{
+  font-weight:950;
+  color:#fff;
+  font-size:14px;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.we-admin-pill{
+  font-size:12px;
+  font-weight:950;
+  padding:6px 10px;
+  border-radius:999px;
+  white-space:nowrap;
+  border:1px solid rgba(255,255,255,.16);
+}
+.we-admin-pill.ok{
+  background: rgba(34,197,94,.16);
+  border-color: rgba(34,197,94,.28);
+  color:#bbf7d0;
+}
+.we-admin-pill.bad{
+  background: rgba(244,63,94,.14);
+  border-color: rgba(244,63,94,.28);
+  color:#fecdd3;
+}
+
+.we-admin-meta{ font-size:12px; color: rgba(226,232,240,.9); }
+.we-admin-muted{ opacity:.9; }
+
+.we-admin-meta2{
+  font-size:12px;
+  color: rgba(226,232,240,.75);
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.we-admin-dot{ opacity:.6; }
+
+.we-approveBtns{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.we-approveBtns .we-btn{ padding:10px 12px; border-radius:12px; font-size:13px; }
+
+.we-admin-reason{
+  font-size:12px;
+  opacity:.85;
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:10px 12px;
+}
+
+.we-admin-note{
+  margin-top:12px;
+  font-size:12px;
+  opacity:.8;
+  background: rgba(15,23,42,.25);
+  border:1px solid rgba(255,255,255,.10);
+  padding:10px 12px;
+  border-radius:14px;
+}
+.mono{
+  margin-top:8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre-wrap;
+  opacity:.9;
+}
+
+/* Mobile */
+@media (max-width: 560px){
+  .we-admin-grid{ grid-template-columns: 1fr; }
+  .we-admin-head{ flex-direction: column; align-items: stretch; }
+  .we-admin-refresh{ width:100%; }
+  .we-admin-hint{ white-space:normal; }
+  .we-approveBtns{ flex-direction: column; align-items: stretch; }
+}
+`;

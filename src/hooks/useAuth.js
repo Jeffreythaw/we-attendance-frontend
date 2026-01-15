@@ -1,7 +1,9 @@
 // src/hooks/useAuth.js
 import { useState } from "react";
 import { login as loginApi } from "../api/auth";
-import { setToken, clearAuth, getToken } from "../api/client";
+import { getToken, setToken } from "../api/client";
+
+const USER_KEY = "we_user";
 
 function lsGet(key) {
   try {
@@ -21,7 +23,7 @@ function lsSet(key, val) {
 
 export function useAuth() {
   const [user, setUser] = useState(() => {
-    const s = lsGet("we_user");
+    const s = lsGet(USER_KEY);
     if (!s) return null;
     try {
       return JSON.parse(s);
@@ -33,15 +35,16 @@ export function useAuth() {
   const isAuthed = !!getToken() && !!user;
 
   async function login(username, password) {
-    const data = await loginApi(username, password); // { token, user }
+    const data = await loginApi(username, password);
     setToken(data.token);
-    lsSet("we_user", JSON.stringify(data.user));
+    lsSet(USER_KEY, JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
   }
 
   function logout() {
-    clearAuth();
+    setToken(null);
+    lsSet(USER_KEY, null);
     setUser(null);
   }
 

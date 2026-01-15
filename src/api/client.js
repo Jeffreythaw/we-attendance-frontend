@@ -1,11 +1,11 @@
-// src/api/client.js
+const API_BASE = import.meta.env.VITE_API_BASE;
 
-const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
-
+// used by UI (Login shows this)
 export function apiBase() {
   return API_BASE;
 }
 
+// token helpers (match useAuth's localStorage key)
 export function getToken() {
   try {
     return localStorage.getItem("we_token");
@@ -32,17 +32,20 @@ export function clearAuth() {
   }
 }
 
-// Main fetch helper
-export async function apiFetch(
-  path,
-  { method = "GET", body, auth = true, headers: extraHeaders } = {}
-) {
-  const headers = {
-    ...(extraHeaders || {}),
-  };
+function joinUrl(base, path) {
+  if (!base) return path;
+  const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${b}${p}`;
+}
 
-  // Only set JSON header when we actually send a body
-  if (body !== undefined) {
+export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
+  const headers = {};
+
+  // Only set JSON content-type if we actually send a body
+  const hasBody = body !== undefined;
+
+  if (hasBody) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -51,37 +54,24 @@ export async function apiFetch(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
-
-  const res = await fetch(url, {
+  const res = await fetch(joinUrl(API_BASE, path), {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: hasBody ? JSON.stringify(body) : undefined,
   });
 
-  // Read body ONCE (fixes "body stream already read")
-  const text = await res.text();
-  const isJson = (res.headers.get("content-type") || "").includes("application/json");
-  const data = text ? (isJson ? safeJsonParse(text) : text) : null;
-
   if (!res.ok) {
-    const msg =
-      (data && typeof data === "object" && (data.message || data.title)) ||
-      (typeof data === "string" ? data : null) ||
-      `HTTP ${res.status}`;
+    const text = await res.text();
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = text ? JSON.parse(text) : null;
+      msg = data?.message || data?.title || msg;
+    } catch {
+      msg = text || msg;
+    }
     throw new Error(msg);
   }
 
-  return data;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
-
-function safeJsonParse(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-// ✅ Backward-compatible alias so old imports "api" still work
-export const api = apiFetch;
