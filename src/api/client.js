@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE;
+// src/api/client.js
+
+// ✅ use VITE_API_BASE_URL (recommended)
+// set this on Vercel to: https://we-attendance-backend.onrender.com
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 // used by UI (Login shows this)
 export function apiBase() {
@@ -33,35 +37,38 @@ export function clearAuth() {
 }
 
 function joinUrl(base, path) {
+  // If path is absolute already, just use it
+  if (typeof path === "string" && /^https?:\/\//i.test(path)) return path;
+
+  // If no base provided, fall back to same-origin (dev proxy etc.)
   if (!base) return path;
-  const b = base.endsWith("/") ? base.slice(0, -1) : base;
+
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
+  return `${base}${p}`;
 }
 
 export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
   const headers = {};
-
-  // Only set JSON content-type if we actually send a body
   const hasBody = body !== undefined;
 
-  if (hasBody) {
-    headers["Content-Type"] = "application/json";
-  }
+  if (hasBody) headers["Content-Type"] = "application/json";
 
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(joinUrl(API_BASE, path), {
+  const url = joinUrl(API_BASE, path);
+
+  const res = await fetch(url, {
     method,
     headers,
     body: hasBody ? JSON.stringify(body) : undefined,
   });
 
+  const text = await res.text();
+
   if (!res.ok) {
-    const text = await res.text();
     let msg = `HTTP ${res.status}`;
     try {
       const data = text ? JSON.parse(text) : null;
@@ -72,6 +79,5 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
     throw new Error(msg);
   }
 
-  const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
