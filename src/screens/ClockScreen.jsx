@@ -3,12 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { attendanceApi } from "../api/attendance";
 import { getCurrentLocation } from "../utils/location";
-
-function fmtDateTime(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
-}
+import { fmtDateTime } from "../utils/datetime";
 
 function hasLatLng(lat, lng) {
   return typeof lat === "number" && typeof lng === "number";

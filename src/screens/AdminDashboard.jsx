@@ -2,28 +2,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { listEmployees } from "../api/employees";
 import { apiFetch } from "../api/client";
+import { fmtDateTime, fmtDateOnly } from "../utils/datetime";
 
-/**
- * Make sure your backend route matches this.
- * If your controller is [Route("api/[controller]")] and named AdminDashboardController
- * and action is Summary -> GET /api/AdminDashboard/summary
- */
 const SUMMARY_ENDPOINT = "/api/AdminDashboard/summary";
-
-/* ---------- format helpers ---------- */
-function fmtDateTime(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
-}
-
-function fmtDateOnly(v) {
-  if (!v) return "—";
-  // DateOnly often comes as "YYYY-MM-DD"
-  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString();
-}
 
 function fmtHours(n) {
   if (n == null || Number.isNaN(Number(n))) return "—";

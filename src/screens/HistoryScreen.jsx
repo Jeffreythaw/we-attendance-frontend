@@ -1,19 +1,13 @@
 // src/screens/HistoryScreen.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { attendanceApi } from "../api/attendance";
-
-function fmt(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
-}
+import { fmtDateTime, parseApiDate } from "../utils/datetime";
 
 function minutesBetween(a, b) {
-  if (!a || !b) return null;
-  const x = new Date(a).getTime();
-  const y = new Date(b).getTime();
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  const mins = Math.round((y - x) / 60000);
+  const da = parseApiDate(a);
+  const db = parseApiDate(b);
+  if (!da || !db) return null;
+  const mins = Math.round((db.getTime() - da.getTime()) / 60000);
   return mins >= 0 ? mins : null;
 }
 
@@ -32,8 +26,13 @@ export function HistoryScreen({ onAuthError }) {
       const data = await attendanceApi.me();
       const list = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
 
-      // newest first
-      list.sort((a, b) => new Date(b.checkInAt || 0) - new Date(a.checkInAt || 0));
+      // newest first (safe parse)
+      list.sort((a, b) => {
+        const ta = parseApiDate(a.checkInAt)?.getTime() ?? 0;
+        const tb = parseApiDate(b.checkInAt)?.getTime() ?? 0;
+        return tb - ta;
+      });
+
       setRows(list);
     } catch (e) {
       const msg = e?.message || "Failed to load history";
@@ -60,8 +59,8 @@ export function HistoryScreen({ onAuthError }) {
 
       const note = (r.note || "").toLowerCase();
       const id = String(r.id || "");
-      const inText = fmt(r.checkInAt).toLowerCase();
-      const outText = fmt(r.checkOutAt).toLowerCase();
+      const inText = fmtDateTime(r.checkInAt).toLowerCase();
+      const outText = fmtDateTime(r.checkOutAt).toLowerCase();
 
       return note.includes(s) || id.includes(s) || inText.includes(s) || outText.includes(s);
     });
@@ -160,11 +159,11 @@ export function HistoryScreen({ onAuthError }) {
                     <div className="we-h-times">
                       <div className="we-h-timeRow">
                         <span className="we-h-timeLabel">In</span>
-                        <span className="we-h-timeVal">{fmt(r.checkInAt)}</span>
+                        <span className="we-h-timeVal">{fmtDateTime(r.checkInAt)}</span>
                       </div>
                       <div className="we-h-timeRow">
                         <span className="we-h-timeLabel">Out</span>
-                        <span className="we-h-timeVal">{fmt(r.checkOutAt)}</span>
+                        <span className="we-h-timeVal">{fmtDateTime(r.checkOutAt)}</span>
                       </div>
                     </div>
 
@@ -184,7 +183,6 @@ export function HistoryScreen({ onAuthError }) {
     </div>
   );
 }
-
 const css = `
 /* ===== Root + background (same language as Clock/Login) ===== */
 .we-h-root{
