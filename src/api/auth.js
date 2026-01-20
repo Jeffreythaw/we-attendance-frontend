@@ -1,3 +1,4 @@
+// src/api/auth.js
 import { apiFetch } from "./client";
 
 export async function login(username, password) {

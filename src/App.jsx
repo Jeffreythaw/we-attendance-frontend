@@ -41,7 +41,6 @@ function AuthedApp({ user, logout }) {
         ];
   }, [isAdmin]);
 
-  // ✅ initial tab depends on role (no useEffect needed)
   const [tab, setTab] = useState(() => (isAdmin ? "dashboard" : "clock"));
 
   function onAuthError() {
@@ -55,7 +54,15 @@ function AuthedApp({ user, logout }) {
 
       <div className="we-container">
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 12,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <div
               style={{
@@ -69,14 +76,20 @@ function AuthedApp({ user, logout }) {
               }}
             />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 950, lineHeight: 1.1, color: "#fff" }}>WE Attendance</div>
+              <div style={{ fontSize: 18, fontWeight: 950, lineHeight: 1.1, color: "#fff" }}>
+                WE Attendance
+              </div>
               <div style={{ fontSize: 12 }} className="we-muted">
                 {user?.username} • {user?.role}
               </div>
             </div>
           </div>
 
-          <button onClick={logout} className="we-btn-soft" style={{ borderRadius: 999, padding: "10px 12px", fontWeight: 950, fontSize: 13 }}>
+          <button
+            onClick={logout}
+            className="we-btn-soft"
+            style={{ borderRadius: 999, padding: "10px 12px", fontWeight: 950, fontSize: 13 }}
+          >
             Logout
           </button>
         </div>
@@ -88,7 +101,9 @@ function AuthedApp({ user, logout }) {
         {isAdmin && tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} />}
         {isAdmin && tab === "employees" && <AdminEmployees onAuthError={onAuthError} />}
 
-        {tab === "settings" && <SettingsScreen user={user} onLogout={logout} isAdmin={isAdmin} />}
+        {tab === "settings" && (
+          <SettingsScreen user={user} onLogout={logout} isAdmin={isAdmin} />
+        )}
       </div>
 
       <Tabs tab={tab} setTab={setTab} items={tabs} />
@@ -101,9 +116,7 @@ export default function App() {
 
   if (!isAuthed) return <Login onLogin={login} />;
 
-  // ✅ remount authed UI when user changes (fixes tab carry-over)
   const sessionKey = `${user?.username || "u"}:${user?.role || "r"}`;
-
   return <AuthedApp key={sessionKey} user={user} logout={logout} />;
 }
 
@@ -117,8 +130,6 @@ const cssBg = `
   margin: 0 auto;
   padding: 16px 14px;
 }
-
-/* blobs */
 .we-app-blob{
   position:absolute;
   width:560px; height:560px;

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { apiBase } from "../api/client";
+import { apiBase, setToken } from "../api/client";
 
 // ✅ Option A (src/assets)
 import weLogo from "../assets/welogo.png";
@@ -20,12 +20,55 @@ export function Login({ onLogin }) {
     return username.trim().length > 0 && password.length > 0 && !loading;
   }, [username, password, loading]);
 
+  function pickToken(result) {
+    if (!result) return null;
+    return (
+      result.token ||
+      result.Token ||
+      result.accessToken ||
+      result.access_token ||
+      null
+    );
+  }
+
+  function pickUser(result) {
+    if (!result) return null;
+    return result.user || result.User || null;
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr("");
     setLoading(true);
+
     try {
-      await onLogin(username.trim(), password);
+      // onLogin might:
+      // 1) return { token, user }
+      // 2) return just token string
+      // 3) return nothing but already stores token internally
+      const result = await onLogin?.(username.trim(), password);
+
+      // If onLogin returns a string token
+      if (typeof result === "string" && result.trim()) {
+        setToken(result.trim());
+      }
+
+      // If onLogin returns an object with token/user
+      if (result && typeof result === "object") {
+        const token = pickToken(result);
+        if (token) setToken(token);
+
+        const user = pickUser(result);
+        if (user) {
+          try {
+            localStorage.setItem("we_user", JSON.stringify(user));
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // If onLogin returns nothing, we assume it already handled token storage.
     } catch (e2) {
       setErr(e2?.message || "Login failed");
     } finally {
@@ -153,7 +196,7 @@ export function Login({ onLogin }) {
 
             <div className="we-footer">
               <span className="we-pill">API</span>
-              <span className="we-api">{apiBase()}</span>
+              <span className="we-api">{apiBase() || "(same-origin)"}</span>
             </div>
           </form>
         </div>
@@ -165,6 +208,7 @@ export function Login({ onLogin }) {
 }
 
 const css = `
+/* (UNCHANGED CSS — your original styles) */
 .we-login-root{
   min-height:100vh;
   display:flex;
@@ -233,7 +277,6 @@ const css = `
 
 .we-login-content{ padding:18px 18px 16px; }
 
-/* ✅ Brand bar */
 .we-brandbar{
   display:flex;
   align-items:center;
@@ -262,7 +305,6 @@ const css = `
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.18));
 }
 
-/* existing header */
 .we-login-header{
   display:flex;
   gap:12px;
@@ -428,7 +470,6 @@ const css = `
   white-space:nowrap;
 }
 
-/* Small screens */
 @media (max-width: 420px){
   .we-brandbar{
     padding:10px;
