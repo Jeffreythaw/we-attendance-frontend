@@ -21,20 +21,11 @@ function getDisplayTz() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-// If you're displaying in Singapore, we can safely assume +08:00 (no DST)
-function getFixedOffsetForTz(tz) {
+// If you display in Singapore time, we can safely interpret "timezone-less" timestamps as +08:00
+function getFixedOffsetForDisplayTz(tz) {
+  // Singapore has no DST => always +08:00
   if (tz === "Asia/Singapore") return "+08:00";
   return null;
-}
-
-// Normalize "YYYY-MM-DDTHH:mm" -> "YYYY-MM-DDTHH:mm:00"
-function ensureSeconds(isoLike) {
-  if (!isoLike) return isoLike;
-  // 2026-01-19T08:00
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(isoLike)) return `${isoLike}:00`;
-  // 2026-01-19 08:00
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(isoLike)) return `${isoLike}:00`;
-  return isoLike;
 }
 
 export function parseApiDate(v) {
@@ -42,43 +33,44 @@ export function parseApiDate(v) {
   if (v instanceof Date) return v;
   if (typeof v === "number") return new Date(v);
 
-  const s0 = String(v).trim();
-  if (!s0) return null;
+  const s = String(v).trim();
+  if (!s) return null;
 
-  const tz = getDisplayTz();
-  const fixedOffset = getFixedOffsetForTz(tz);
-
-  // If already has timezone info => keep as-is
-  // Examples: ...Z, ...+08:00, ...-05:00
-  if (/[zZ]$/.test(s0) || /[+-]\d{2}:\d{2}$/.test(s0)) {
-    const d = new Date(s0);
+  // If string already has timezone info => parse as-is
+  if (/[zZ]$/.test(s) || /[+-]\d{2}:\d{2}$/.test(s)) {
+    const d = new Date(s);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  // DateOnly: "YYYY-MM-DD"
-  // Treat as midnight in display timezone (or browser local if no fixed offset)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s0)) {
-    const iso = fixedOffset ? `${s0}T00:00:00${fixedOffset}` : `${s0}T00:00:00`;
+  const tz = getDisplayTz();
+  const fixedOffset = getFixedOffsetForDisplayTz(tz);
+
+  // Date-only "YYYY-MM-DD"
+  // Interpret as midnight in display TZ if fixed offset exists, otherwise let browser handle it.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const iso = fixedOffset ? `${s}T00:00:00${fixedOffset}` : `${s}T00:00:00`;
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  // Datetime without timezone:
-  // "YYYY-MM-DDTHH:mm:ss(.fff)" OR "YYYY-MM-DD HH:mm:ss(.fff)"
-  // IMPORTANT: your DB values are Singapore-local, so append +08:00 (NOT Z) when tz is Asia/Singapore
-  const s1 = ensureSeconds(s0);
-
-  // Convert "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ss"
-  const s2 = /^\d{4}-\d{2}-\d{2} \d/.test(s1) ? s1.replace(" ", "T") : s1;
-
-  // If we have fixed offset (Asia/Singapore), interpret as that local time
-  if (fixedOffset) {
-    const d = new Date(`${s2}${fixedOffset}`);
+  // "YYYY-MM-DDTHH:mm:ss(.fff)" (no timezone)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    // IMPORTANT: previously you added "Z" (UTC) which caused +8h shift for SG-local stored values.
+    const iso = fixedOffset ? `${s}${fixedOffset}` : s; // fallback: browser local
+    const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  // Otherwise: fallback (browser will interpret as local)
-  const d = new Date(s2);
+  // "YYYY-MM-DD HH:mm:ss(.fff)" (no timezone)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    const t = s.replace(" ", "T");
+    const iso = fixedOffset ? `${t}${fixedOffset}` : t; // fallback: browser local
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // Fallback
+  const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
