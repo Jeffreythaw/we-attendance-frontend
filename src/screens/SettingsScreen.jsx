@@ -1,6 +1,5 @@
 // src/screens/SettingsScreen.jsx
 import React from "react";
-import { apiBase } from "../api/client";
 
 export function SettingsScreen({ user, onLogout }) {
   return (
@@ -30,10 +29,10 @@ export function SettingsScreen({ user, onLogout }) {
             <span className="we-s-key">EmployeeId</span>
             <span className="we-s-val">{user?.employeeId ?? "—"}</span>
           </div>
-          <div className="we-s-row">
+          {/* <div className="we-s-row">
             <span className="we-s-key">API</span>
             <span className="we-s-val we-s-api">{apiBase()}</span>
-          </div>
+          </div> */}
         </div>
 
         <button className="we-s-logout" onClick={onLogout}>

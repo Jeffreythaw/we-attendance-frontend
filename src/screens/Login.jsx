@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { apiBase, setToken } from "../api/client";
+import { setToken } from "../api/client";
 
 // Assets
 import weLogo from "../assets/WE.png";
@@ -168,10 +168,10 @@ export function Login({ onLogin }) {
             </button>
           </form>
 
-          <div className="we-footer">
+          {/* <div className="we-footer">
             <span className="we-pill">V2.4</span>
             <span className="we-api">{apiBase() || "Cloud Production"}</span>
-          </div>
+          </div> */}
         </div>
       </div>
 

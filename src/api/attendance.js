@@ -9,6 +9,12 @@ export const attendanceApi = {
     return apiFetch("/api/Attendance/me", { method: "GET" });
   },
 
+  // ✅ holidays by year: GET /api/Holidays?year=2026
+  holidays(year) {
+    const y = Number(year) || new Date().getFullYear();
+    return apiFetch(`/api/Holidays?year=${encodeURIComponent(y)}`, { method: "GET" });
+  },
+
   // note + location
   checkIn(note, location) {
     return apiFetch("/api/Attendance/checkin", {
