@@ -1,0 +1,214 @@
+/* ===== Mobile Card List ===== */
+.we-empCards{ display:grid; gap:12px; }
+
+.we-empCard{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(15,23,42,.22);
+  border-radius: 16px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.we-empTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.we-empName{
+  font-weight: 950;
+  color:#fff;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.we-empId{
+  font-weight: 900;
+  opacity: .75;
+  margin-left: 6px;
+}
+
+.we-empMeta{
+  margin-top: 8px;
+  display:grid;
+  gap:6px;
+  font-size: 12px;
+  opacity: .9;
+}
+
+.we-empMetaItem{ word-break: break-word; }
+
+.we-empBtns{
+  margin-top: 10px;
+  display:flex;
+  gap:10px;
+}
+
+.we-empDetails{
+  margin-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  padding-top: 10px;
+}
+
+.we-gridEmptyCard{
+  padding: 14px 12px;
+  opacity: .8;
+}
+
+/* reuse your details grid styling */
+.we-detailsGrid{
+  display:grid;
+  gap:10px;
+  grid-template-columns: 1fr;
+}
+
+/* Buttons stack nicely if needed */
+.we-actionStack{ display:flex; gap:8px; justify-content:center; align-items:center; }
+.we-btn-mini-soft{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+}
+
+/* Details tiles */
+.we-detailItem{
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.we-detailLabel{ font-size: 11px; opacity: .7; font-weight: 900; margin-bottom: 4px; }
+.we-detailValue{ font-size: 13px; font-weight: 900; color: rgba(226,232,240,.95); word-break: break-word; }
+
+/* Make chips look better + work nicely on mobile */
+.we-chip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.we-chipIcon{ font-size: 14px; opacity: .95; }
+.we-chipTextShort{ display:none; }
+
+/* Compact table always */
+.we-gridTableCompact{
+  min-width: 0 !important;
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* Detail row (expanded info) */
+.we-detailsRow td{
+  padding: 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.we-detailsGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  padding: 12px;
+  background: rgba(15,23,42,.35);
+}
+
+.we-kv{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,.04);
+  min-width: 0;
+}
+
+.we-kv .k{
+  font-size: 11px;
+  opacity: .75;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.we-kv .v{
+  font-size: 12px;
+  font-weight: 800;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.we-kvWide{
+  grid-column: 1 / -1;
+}
+
+/* Mobile: chips become full width + short label */
+@media (max-width: 520px){
+  .we-gridToggles{
+    width: 100%;
+    justify-content: stretch;
+  }
+  .we-chip{
+    flex: 1;
+  }
+  .we-chipTextLong{ display:none; }
+  .we-chipTextShort{ display:inline; }
+
+  .we-detailsGrid{
+    grid-template-columns: 1fr;
+  }
+}
+/* ===== Toggle buttons (Compact / Details) — match "Add Employee" ===== */
+.we-gridToggles{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Base toggle button (same vibe as .we-btn but smaller) */
+.we-chip{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 14px;
+
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.10);
+  color:#fff;
+
+  font-weight: 900;
+  font-size: 12px;
+  cursor:pointer;
+
+  box-shadow: 0 14px 34px rgba(0,0,0,.25);
+  transition: transform .12s ease, filter .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.we-chip:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.we-chip:active{
+  transform: translateY(0);
+}
+
+.we-chip:focus-visible{
+  outline: 2px solid rgba(99,102,241,.6);
+  outline-offset: 2px;
+}
+
+/* ON state = Add Employee gradient */
+.we-chip.on{
+  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
+  border-color: rgba(255,255,255,.18);
+}
+
+/* Optional icon/text helpers */
+.we-chipIcon{ font-size: 14px; opacity: .95; }
+.we-chipTextShort{ display:none; }
+
+  .we-detailsGrid{
+    grid-template-columns: 1fr;
+  }

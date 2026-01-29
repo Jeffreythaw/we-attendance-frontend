@@ -1,0 +1,288 @@
+/* =========================
+   Attendance Report (toolbar + data-grid style table)
+   ========================= */
+
+.we-reportCard{ padding: 14px; }
+
+.we-reportActions{
+  display:grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Title + buttons (top line) */
+.we-reportTopRow{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* Buttons group -> looks like a table toolbar */
+.we-reportBtns{
+  display:flex;
+  gap:8px;
+  flex-wrap: wrap;
+  align-items:center;
+
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(15,23,42,.20);
+}
+
+/* Smaller, consistent button sizing */
+.we-reportBtns > button{
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  line-height: 1;
+}
+
+/* Make “Load Report” subtle */
+.we-reportBtns .we-btn-soft{
+  box-shadow: none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+}
+.we-reportBtns .we-btn-soft:hover{ background: rgba(255,255,255,.10); }
+.we-reportBtns .we-btn-soft:active{ transform: translateY(1px); }
+
+/* Search row */
+.we-reportSearchRow{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* Checkbox */
+.we-reportCheck{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size: 10.5px;
+  font-weight: 900;
+  opacity:.9;
+  user-select:none;
+  white-space:nowrap;
+}
+.we-reportCheck input{
+  width:16px;
+  height:16px;
+  accent-color:#a5b4fc;
+}
+
+/* Search bar */
+.we-reportSearch{
+  flex: 1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 14px;
+  background: rgba(15,23,42,.35);
+  border: 1px solid rgba(255,255,255,.12);
+  min-width: 320px;
+  max-width: 640px;
+}
+.we-reportSearch input{
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#fff;
+  width:100%;
+  min-width:0;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.we-reportSearch:focus-within{
+  border-color: rgba(165,180,252,.35);
+  box-shadow: 0 0 0 3px rgba(165,180,252,.10);
+}
+
+/* =========================
+   DATA-GRID STYLE TABLE (scoped)
+   ========================= */
+
+/* outer frame */
+.we-reportCard .we-admin-tableWrap{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(15,23,42,.18);
+  overflow: auto;
+}
+
+/* table */
+.we-reportCard .we-admin-table{
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 10.5px; /* slightly smaller */
+}
+
+/* header */
+.we-reportCard .we-admin-table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  color: rgba(226,232,240,.96);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .25px;
+
+  padding: 7px 8px; /* tighter */
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-right: 1px solid rgba(255,255,255,.08);
+  white-space: nowrap;
+}
+
+/* body */
+.we-reportCard .we-admin-table tbody td{
+  padding: 7px 8px; /* tighter */
+  color: rgba(226,232,240,.92);
+  font-weight: 800;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+
+/* last column no right border */
+.we-reportCard .we-admin-table thead th:last-child,
+.we-reportCard .we-admin-table tbody td:last-child{
+  border-right: 0;
+}
+
+/* zebra */
+.we-reportCard .we-admin-table tbody tr:nth-child(odd) td{
+  background: rgba(255,255,255,.02);
+}
+
+/* hover */
+.we-reportCard .we-admin-table tbody tr:hover td{
+  background: rgba(255,255,255,.06);
+}
+
+/* numeric alignment (everything except No. + Name) */
+.we-reportCard .we-admin-table tbody td:nth-child(n+3),
+.we-reportCard .we-admin-table thead th:nth-child(n+3){
+  text-align: right;
+}
+
+/* =========================
+   Sticky first 2 columns (smaller!)
+   ========================= */
+
+/* No. column (smaller) */
+.we-reportCard .we-admin-table thead th:nth-child(1),
+.we-reportCard .we-admin-table tbody td:nth-child(1){
+  position: sticky;
+  left: 0;
+  z-index: 6;
+
+  background: rgba(17,24,39,.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255,255,255,.12);
+
+  width: 42px;          /* ✅ smaller */
+  min-width: 42px;
+  max-width: 42px;
+  text-align: right;
+}
+
+/* Name column (smaller + ellipsis) */
+.we-reportCard .we-admin-table thead th:nth-child(2),
+.we-reportCard .we-admin-table tbody td:nth-child(2){
+  position: sticky;
+  left: 42px;           /* ✅ must match No. width */
+  z-index: 6;
+
+  background: rgba(17,24,39,.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255,255,255,.12);
+
+  min-width: 160px;     /* ✅ smaller */
+  max-width: 220px;     /* ✅ don’t eat screen */
+  text-align: left;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* sticky header above sticky body */
+.we-reportCard .we-admin-table thead th:nth-child(1),
+.we-reportCard .we-admin-table thead th:nth-child(2){
+  z-index: 10;
+}
+
+/* Total OT (<b>) pops */
+.we-reportCard .we-admin-table tbody td b{
+  color: #fff;
+  font-weight: 950;
+}
+
+/* =========================
+   Mobile / narrow screens
+   - turn OFF sticky cols (better scrolling)
+   ========================= */
+@media (max-width: 860px){
+  .we-reportTopRow{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .we-reportBtns{
+    width: 100%;
+  }
+
+  .we-reportBtns > button{
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .we-reportSearchRow{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .we-reportSearch{
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  /* slightly smaller table */
+  .we-reportCard .we-admin-table{ font-size: 10px; }
+  .we-reportCard .we-admin-table thead th{ font-size: 9.5px; }
+
+  /* ✅ IMPORTANT: disable sticky columns on mobile */
+  .we-reportCard .we-admin-table thead th:nth-child(1),
+  .we-reportCard .we-admin-table tbody td:nth-child(1),
+  .we-reportCard .we-admin-table thead th:nth-child(2),
+  .we-reportCard .we-admin-table tbody td:nth-child(2){
+    position: static;
+    left: auto;
+    z-index: auto;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+    background: transparent; /* let zebra/hover show */
+  }
+}

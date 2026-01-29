@@ -1,0 +1,114 @@
+/* dropdown.css */
+
+.we-dd{ position: relative; }
+.we-ddBtn{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border-radius:14px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(15,23,42,.35);
+  color:#fff;
+  cursor:pointer;
+  font-weight:950;
+}
+.we-ddLabel{ opacity:.85; font-size:12px; }
+.we-ddValue{ font-size:12px; }
+.we-ddCaret{ opacity:.8; margin-left:2px; }
+
+.we-ddPanel{
+  position:absolute;
+  right:0;
+  top: calc(100% + 8px);
+  width: min(420px, 92vw);
+  background: rgba(15,23,42,.96);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 30px 120px rgba(0,0,0,.6);
+  border-radius:16px;
+  overflow:hidden;
+  z-index: 30;
+}
+
+.we-ddTop{
+  padding:10px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  display:grid;
+  gap:10px;
+}
+
+.we-ddSearch{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 10px;
+  border-radius:14px;
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+}
+.we-ddSearchIcon{ opacity:.85; }
+.we-ddSearch input{
+  border:0; outline:0; background:transparent; color:#fff; width:100%;
+  min-width:0;
+}
+
+.we-ddActions{ display:flex; gap:8px; flex-wrap:wrap; }
+.we-ddAct{
+  border-radius:12px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+  font-size:12px;
+}
+.we-ddAct.primary{
+  border-color: rgba(165,180,252,.35);
+  background: rgba(165,180,252,.14);
+}
+
+.we-ddList{
+  max-height: 280px;
+  overflow:auto;
+  padding: 8px;
+}
+.we-ddRow{
+  display:grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items:center;
+  gap:10px;
+  padding:10px 10px;
+  border-radius:12px;
+  cursor:pointer;
+}
+.we-ddRow:hover{ background: rgba(255,255,255,.06); }
+.we-ddRow input{ width:16px; height:16px; accent-color:#a5b4fc; }
+
+.we-ddName{
+  font-weight:950;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.we-ddId{ opacity:.7; font-weight:900; font-size:12px; }
+.we-ddChip{
+  font-size:11px;
+  font-weight:900;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  opacity:.9;
+}
+.we-ddChip.dim{ opacity:.55; }
+
+.we-ddEmpty{ padding:14px; opacity:.75; font-size:12px; }
+
+.we-ddFoot{
+  padding:10px;
+  border-top:1px solid rgba(255,255,255,.10);
+  display:flex;
+  justify-content:flex-end;
+}

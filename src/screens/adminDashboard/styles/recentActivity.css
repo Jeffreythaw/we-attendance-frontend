@@ -1,0 +1,205 @@
+.we-raCard {
+  padding: 14px;
+}
+
+.we-raFilters {
+  display: grid;
+  grid-template-columns: 220px 220px 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: end;
+}
+
+.we-raLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.9;
+}
+
+.we-raLabel select {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.35);
+  color: #fff;
+  padding: 0 10px;
+}
+
+.we-raSearchWrap {
+  min-width: 0;
+}
+.we-raSearch {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.we-raSearch input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  width: 100%;
+  min-width: 0;
+}
+
+.we-dayTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.we-dayGroups{ display:grid; gap:12px; }
+.we-dayGroup{ display:grid; gap:10px; }
+
+.we-dayHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.we-dayHeaderLeft{ min-width:0; }
+.we-dayTitle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight: 950;
+  color: #fff;
+  min-width:0;
+}
+.we-daySub{ font-size:12px; opacity:.75; margin-top:2px; }
+
+.we-dayCount{
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.35);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.we-dayPill{
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.10);
+  opacity: .95;
+}
+
+.we-dayList{ display:grid; gap:10px; }
+
+.we-dayPill {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.95;
+}
+.we-raSearch:focus-within {
+  border-color: rgba(165, 180, 252, 0.35);
+  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.1);
+}
+
+/* activity rows */
+.we-raItem {
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.we-raTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.we-raLeft {
+  min-width: 0;
+}
+
+.we-raNameRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.we-raName {
+  font-weight: 950;
+  color: #fff;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.we-raId {
+  opacity: 0.7;
+  font-weight: 900;
+  margin-left: 6px;
+}
+
+.we-raType {
+  font-size: 11px;
+  font-weight: 950;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  opacity: 0.9;
+}
+
+.we-raMeta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.we-raDot {
+  opacity: 0.6;
+}
+
+.we-raNote {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+  word-break: break-word;
+}
+
+.we-raActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 860px) {
+  .we-raFilters {
+    grid-template-columns: 1fr;
+  }
+  .we-raTop {
+    flex-direction: column;
+  }
+  .we-raActions {
+    justify-content: flex-start;
+  }
+}

@@ -3,17 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { createEmployee, listEmployees } from "../api/employees";
 import { createUser } from "../api/users";
 import { apiFetch } from "../api/client";
+import "./AdminEmployees.css";
 
-/**
- * Adjust these to match your backend routes if needed.
- */
+import EmployeesGrid from "../components/employees/EmployeesGrid";
+
 const ENDPOINTS = {
   holidays: "/api/Holidays",
   leaveTypes: "/api/LeaveTypes",
   leaveRequests: "/api/LeaveRequests",
   approveLeave: (id) => `/api/LeaveRequests/${id}/approve`,
   rejectLeave: (id) => `/api/LeaveRequests/${id}/reject`,
-
   employees: "/api/Employees",
   employeeById: (id) => `/api/Employees/${id}`,
 };
@@ -29,7 +28,7 @@ function fmtDateTime(v) {
 
 function fmtDateOnly(v) {
   if (!v) return "—";
-  return String(v); // DateOnly often is "YYYY-MM-DD"
+  return String(v);
 }
 
 function emptyToNull(s) {
@@ -38,15 +37,42 @@ function emptyToNull(s) {
   return t.length ? t : null;
 }
 
-export default function AdminEmployees({ onAuthError }) {
-  // -----------------------
-  // Tabs
-  // -----------------------
-  const [tab, setTab] = useState("employees"); // employees | holidays | leaveTypes | approvals
+/**
+ * Convert any UI date string into backend-safe ISO DateOnly string (YYYY-MM-DD) or null.
+ * - input type="date" already gives YYYY-MM-DD
+ * - if user somehow has DD-MM-YYYY, convert it
+ * - never send "" to backend for DateOnly? (binding can fail)
+ */
+function toIsoDateOrNull(v) {
+  if (!v) return null;
 
-  // -----------------------
+  const s = String(v).trim();
+  if (!s) return null;
+
+  // already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // dd-mm-yyyy -> yyyy-mm-dd
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+
+  return null; // safest for DateOnly model binding
+}
+
+/**
+ * Backend DateOnly returns "YYYY-MM-DD". Ensure input type=date receives correct format or "".
+ */
+function fromApiDateToInput(v) {
+  if (!v) return "";
+  const s = String(v);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+}
+
+export default function AdminEmployees({ onAuthError }) {
+  // Tabs
+  const [tab, setTab] = useState("employees");
+
   // Common UI state
-  // -----------------------
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -65,23 +91,23 @@ export default function AdminEmployees({ onAuthError }) {
   const [department, setDepartment] = useState("");
   const [active, setActive] = useState(true);
 
-  // NEW fields (Create form)
+  // Create form fields
   const [finNo, setFinNo] = useState("");
   const [nationality, setNationality] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState(""); // yyyy-mm-dd
+  const [dateOfBirth, setDateOfBirth] = useState("");
 
   const [workPermitNo, setWorkPermitNo] = useState("");
-  const [workPermitExpiry, setWorkPermitExpiry] = useState(""); // yyyy-mm-dd
+  const [workPermitExpiry, setWorkPermitExpiry] = useState("");
 
   const [bcssCsocNo, setBcssCsocNo] = useState("");
-  const [csocExpiryDate, setCsocExpiryDate] = useState(""); // yyyy-mm-dd
+  const [csocExpiryDate, setCsocExpiryDate] = useState("");
 
-  const [boomLiftExpiryDate, setBoomLiftExpiryDate] = useState(""); // yyyy-mm-dd
-  const [scissorLiftExpiryDate, setScissorLiftExpiryDate] = useState(""); // yyyy-mm-dd
+  const [boomLiftExpiryDate, setBoomLiftExpiryDate] = useState("");
+  const [scissorLiftExpiryDate, setScissorLiftExpiryDate] = useState("");
 
   const [showMoreFields, setShowMoreFields] = useState(false);
 
-  // Create login user (existing)
+  // Create login user
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -94,10 +120,9 @@ export default function AdminEmployees({ onAuthError }) {
     setLoading(true);
     setMsg("");
     try {
-      const data = await listEmployees(true); // includeInactive=true (if supported)
+      const data = await listEmployees(true);
       setRows(Array.isArray(data) ? data : []);
     } catch {
-      // fallback: if listEmployees(true) is not supported, use old call
       try {
         const data2 = await listEmployees();
         setRows(Array.isArray(data2) ? data2 : []);
@@ -117,27 +142,19 @@ export default function AdminEmployees({ onAuthError }) {
   const filteredRows = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
+
     return rows.filter((e) => {
       const n = String(e?.name || "").toLowerCase();
-      const d = String(e?.department || "").toLowerCase();
+      const d = String(e?.department || e?.dept || "").toLowerCase();
       const id = String(e?.id ?? "");
       const st = e?.active ? "active" : "inactive";
 
-      const fin = String(e?.finNo || "").toLowerCase();
+      const fin = String(e?.finNo || e?.fin_number || "").toLowerCase();
       const nat = String(e?.nationality || "").toLowerCase();
-      const wp = String(e?.workPermitNo || "").toLowerCase();
-      const csoc = String(e?.bcssCsocNo || "").toLowerCase();
+      const wp = String(e?.workPermitNo || e?.work_permit_no || "").toLowerCase();
+      const csoc = String(e?.bcssCsocNo || e?.bcss_csoc_no || "").toLowerCase();
 
-      return (
-        n.includes(s) ||
-        d.includes(s) ||
-        id.includes(s) ||
-        st.includes(s) ||
-        fin.includes(s) ||
-        nat.includes(s) ||
-        wp.includes(s) ||
-        csoc.includes(s)
-      );
+      return n.includes(s) || d.includes(s) || id.includes(s) || st.includes(s) || fin.includes(s) || nat.includes(s) || wp.includes(s) || csoc.includes(s);
     });
   }, [rows, q]);
 
@@ -159,19 +176,20 @@ export default function AdminEmployees({ onAuthError }) {
 
         finNo: emptyToNull(finNo),
         nationality: emptyToNull(nationality),
-        dateOfBirth: dateOfBirth || null,
+
+        // ✅ send DateOnly as ISO or null (never "")
+        dateOfBirth: toIsoDateOrNull(dateOfBirth),
 
         workPermitNo: emptyToNull(workPermitNo),
-        workPermitExpiry: workPermitExpiry || null,
+        workPermitExpiry: toIsoDateOrNull(workPermitExpiry),
 
         bcssCsocNo: emptyToNull(bcssCsocNo),
-        csocExpiryDate: csocExpiryDate || null,
+        csocExpiryDate: toIsoDateOrNull(csocExpiryDate),
 
-        boomLiftExpiryDate: boomLiftExpiryDate || null,
-        scissorLiftExpiryDate: scissorLiftExpiryDate || null,
+        boomLiftExpiryDate: toIsoDateOrNull(boomLiftExpiryDate),
+        scissorLiftExpiryDate: toIsoDateOrNull(scissorLiftExpiryDate),
       });
 
-      // reset
       setName("");
       setDepartment("");
       setActive(true);
@@ -255,21 +273,27 @@ export default function AdminEmployees({ onAuthError }) {
     setEditOpen(true);
 
     setEName(emp?.name || "");
-    setEDepartment(emp?.department || "");
+    setEDepartment(emp?.department || emp?.dept || "");
     setEActive(!!emp?.active);
 
-    setEFinNo(emp?.finNo || "");
+    setEFinNo(emp?.finNo || emp?.fin_number || "");
     setENationality(emp?.nationality || "");
-    setEDob(emp?.dateOfBirth || "");
 
-    setEWorkPermitNo(emp?.workPermitNo || "");
-    setEWorkPermitExpiry(emp?.workPermitExpiry || "");
+    // ✅ ensure date inputs always get YYYY-MM-DD or ""
+    setEDob(fromApiDateToInput(emp?.dateOfBirth || emp?.dob || emp?.date_of_birth));
 
-    setEBcssCsocNo(emp?.bcssCsocNo || "");
-    setECsocExpiryDate(emp?.csocExpiryDate || "");
+    setEWorkPermitNo(emp?.workPermitNo || emp?.work_permit_no || "");
+    setEWorkPermitExpiry(
+      fromApiDateToInput(emp?.workPermitExpiry || emp?.work_permit_expiry || emp?.work_permit_expiry_date)
+    );
 
-    setEBoomLiftExpiryDate(emp?.boomLiftExpiryDate || "");
-    setEScissorLiftExpiryDate(emp?.scissorLiftExpiryDate || "");
+    setEBcssCsocNo(emp?.bcssCsocNo || emp?.bcss_csoc_no || "");
+    setECsocExpiryDate(
+      fromApiDateToInput(emp?.csocExpiryDate || emp?.csoc_expiry_date || emp?.bcss_csoc_expiry_date)
+    );
+
+    setEBoomLiftExpiryDate(fromApiDateToInput(emp?.boomLiftExpiryDate || emp?.boom_lift_expiry_date));
+    setEScissorLiftExpiryDate(fromApiDateToInput(emp?.scissorLiftExpiryDate || emp?.scissor_lift_expiry_date));
   }
 
   function closeEdit() {
@@ -293,16 +317,18 @@ export default function AdminEmployees({ onAuthError }) {
 
         finNo: eFinNo != null ? String(eFinNo) : null,
         nationality: eNationality != null ? String(eNationality) : null,
-        dateOfBirth: eDob || null,
+
+        // ✅ send DateOnly as ISO or null
+        dateOfBirth: toIsoDateOrNull(eDob),
 
         workPermitNo: eWorkPermitNo != null ? String(eWorkPermitNo) : null,
-        workPermitExpiry: eWorkPermitExpiry || null,
+        workPermitExpiry: toIsoDateOrNull(eWorkPermitExpiry),
 
         bcssCsocNo: eBcssCsocNo != null ? String(eBcssCsocNo) : null,
-        csocExpiryDate: eCsocExpiryDate || null,
+        csocExpiryDate: toIsoDateOrNull(eCsocExpiryDate),
 
-        boomLiftExpiryDate: eBoomLiftExpiryDate || null,
-        scissorLiftExpiryDate: eScissorLiftExpiryDate || null,
+        boomLiftExpiryDate: toIsoDateOrNull(eBoomLiftExpiryDate),
+        scissorLiftExpiryDate: toIsoDateOrNull(eScissorLiftExpiryDate),
       };
 
       await apiFetch(ENDPOINTS.employeeById(editRow.id), {
@@ -315,11 +341,7 @@ export default function AdminEmployees({ onAuthError }) {
       closeEdit();
     } catch (e) {
       setEditErr(e?.message || "Update failed");
-      if (
-        String(e?.message || "").includes("401") ||
-        String(e?.message || "").includes("403")
-      )
-        onAuthError?.();
+      if (String(e?.message || "").includes("401") || String(e?.message || "").includes("403")) onAuthError?.();
     } finally {
       setEditSaving(false);
     }
@@ -452,7 +474,7 @@ export default function AdminEmployees({ onAuthError }) {
   }
 
   // ============================================================
-  // 4) LEAVE APPROVALS (Pending)
+  // 4) LEAVE APPROVALS
   // ============================================================
   const [pendingLeaves, setPendingLeaves] = useState([]);
 
@@ -460,9 +482,7 @@ export default function AdminEmployees({ onAuthError }) {
     setLoading(true);
     setMsg("");
     try {
-      const data = await apiFetch(`${ENDPOINTS.leaveRequests}?status=Pending`, {
-        method: "GET",
-      });
+      const data = await apiFetch(`${ENDPOINTS.leaveRequests}?status=Pending`, { method: "GET" });
       setPendingLeaves(Array.isArray(data) ? data : []);
     } catch (e) {
       handleErr(e, "Failed to load leave requests");
@@ -501,9 +521,6 @@ export default function AdminEmployees({ onAuthError }) {
     }
   }
 
-  // -----------------------
-  // Tab load triggers
-  // -----------------------
   useEffect(() => {
     if (tab === "holidays") loadHolidays();
     if (tab === "leaveTypes") loadLeaveTypes();
@@ -521,9 +538,7 @@ export default function AdminEmployees({ onAuthError }) {
         <div>
           <div className="we-admin-kicker">Admin panel</div>
           <div className="we-admin-title">Admin</div>
-          <div className="we-admin-sub">
-            Manage employees • holidays • leave types • approvals
-          </div>
+          <div className="we-admin-sub">Manage employees • holidays • leave types • approvals</div>
         </div>
 
         <button
@@ -549,36 +564,22 @@ export default function AdminEmployees({ onAuthError }) {
 
       {/* Tabs */}
       <div className="we-admin-tabs">
-        <button
-          className={`we-tab ${tab === "employees" ? "on" : ""}`}
-          onClick={() => setTab("employees")}
-        >
+        <button className={`we-tab ${tab === "employees" ? "on" : ""}`} onClick={() => setTab("employees")}>
           👷 Employees
         </button>
-        <button
-          className={`we-tab ${tab === "holidays" ? "on" : ""}`}
-          onClick={() => setTab("holidays")}
-        >
+        <button className={`we-tab ${tab === "holidays" ? "on" : ""}`} onClick={() => setTab("holidays")}>
           🎌 Holidays
         </button>
-        <button
-          className={`we-tab ${tab === "leaveTypes" ? "on" : ""}`}
-          onClick={() => setTab("leaveTypes")}
-        >
+        <button className={`we-tab ${tab === "leaveTypes" ? "on" : ""}`} onClick={() => setTab("leaveTypes")}>
           🧾 Leave Types
         </button>
-        <button
-          className={`we-tab ${tab === "approvals" ? "on" : ""}`}
-          onClick={() => setTab("approvals")}
-        >
+        <button className={`we-tab ${tab === "approvals" ? "on" : ""}`} onClick={() => setTab("approvals")}>
           ✅ Leave Approvals
         </button>
       </div>
 
       {/* Message */}
-      {msg ? (
-        <div className={`we-admin-msg ${isSuccess ? "ok" : "bad"}`}>{msg}</div>
-      ) : null}
+      {msg ? <div className={`we-admin-msg ${isSuccess ? "ok" : "bad"}`}>{msg}</div> : null}
 
       {/* EMPLOYEES TAB */}
       {tab === "employees" ? (
@@ -586,17 +587,13 @@ export default function AdminEmployees({ onAuthError }) {
           <div className="we-admin-grid">
             {/* Create Login User */}
             <div className="we-admin-card">
-              <div className="we-admin-cardTitle">
-                Create Login (Username / Password)
-              </div>
+              <div className="we-admin-cardTitle">Create Login (Username / Password)</div>
 
               <form onSubmit={onCreateLogin} className="we-admin-form">
                 <label className="we-admin-label">
                   Employee
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      👤
-                    </span>
+                    <span className="we-icon" aria-hidden="true">👤</span>
                     <select
                       value={selectedEmployeeId}
                       onChange={(e) => setSelectedEmployeeId(e.target.value)}
@@ -615,29 +612,16 @@ export default function AdminEmployees({ onAuthError }) {
                 <label className="we-admin-label">
                   Username
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      ⌨️
-                    </span>
-                    <input
-                      value={newUsername}
-                      onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="Username"
-                    />
+                    <span className="we-icon" aria-hidden="true">⌨️</span>
+                    <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="Username" />
                   </div>
                 </label>
 
                 <label className="we-admin-label">
                   Password
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      🔒
-                    </span>
-                    <input
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Password"
-                      type="password"
-                    />
+                    <span className="we-icon" aria-hidden="true">🔒</span>
+                    <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password" type="password" />
                   </div>
                 </label>
 
@@ -662,28 +646,16 @@ export default function AdminEmployees({ onAuthError }) {
                 <label className="we-admin-label">
                   Name
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      🪪
-                    </span>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Employee name"
-                    />
+                    <span className="we-icon" aria-hidden="true">🪪</span>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Employee name" />
                   </div>
                 </label>
 
                 <label className="we-admin-label">
                   Department
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      🏢
-                    </span>
-                    <input
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="Department (e.g. WE Engineering)"
-                    />
+                    <span className="we-icon" aria-hidden="true">🏢</span>
+                    <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (e.g. WE Engineering)" />
                   </div>
                 </label>
 
@@ -691,28 +663,16 @@ export default function AdminEmployees({ onAuthError }) {
                   <label className="we-admin-label">
                     Fin No.
                     <div className="we-input">
-                      <span className="we-icon" aria-hidden="true">
-                        🪪
-                      </span>
-                      <input
-                        value={finNo}
-                        onChange={(e) => setFinNo(e.target.value)}
-                        placeholder="Fin No."
-                      />
+                      <span className="we-icon" aria-hidden="true">🪪</span>
+                      <input value={finNo} onChange={(e) => setFinNo(e.target.value)} placeholder="Fin No." />
                     </div>
                   </label>
 
                   <label className="we-admin-label">
                     Nationality
                     <div className="we-input">
-                      <span className="we-icon" aria-hidden="true">
-                        🌍
-                      </span>
-                      <input
-                        value={nationality}
-                        onChange={(e) => setNationality(e.target.value)}
-                        placeholder="Nationality"
-                      />
+                      <span className="we-icon" aria-hidden="true">🌍</span>
+                      <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Nationality" />
                     </div>
                   </label>
                 </div>
@@ -720,35 +680,18 @@ export default function AdminEmployees({ onAuthError }) {
                 <label className="we-admin-label">
                   Date of Birth
                   <div className="we-input">
-                    <span className="we-icon" aria-hidden="true">
-                      🎂
-                    </span>
-                    <input
-                      type="date"
-                      value={dateOfBirth}
-                      onChange={(e) => setDateOfBirth(e.target.value)}
-                    />
+                    <span className="we-icon" aria-hidden="true">🎂</span>
+                    <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
                   </div>
                 </label>
 
                 <label className="we-admin-check">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={(e) => setActive(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
                   Active
                 </label>
 
-                <button
-                  type="button"
-                  className="we-btn-soft"
-                  onClick={() => setShowMoreFields((v) => !v)}
-                  disabled={loading}
-                >
-                  {showMoreFields
-                    ? "Hide permit/cert fields"
-                    : "Show permit/cert fields"}
+                <button type="button" className="we-btn-soft" onClick={() => setShowMoreFields((v) => !v)} disabled={loading}>
+                  {showMoreFields ? "Hide permit/cert fields" : "Show permit/cert fields"}
                 </button>
 
                 {showMoreFields ? (
@@ -757,30 +700,16 @@ export default function AdminEmployees({ onAuthError }) {
                       <label className="we-admin-label">
                         Work Permit No.
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            🧾
-                          </span>
-                          <input
-                            value={workPermitNo}
-                            onChange={(e) => setWorkPermitNo(e.target.value)}
-                            placeholder="Work Permit No."
-                          />
+                          <span className="we-icon" aria-hidden="true">🧾</span>
+                          <input value={workPermitNo} onChange={(e) => setWorkPermitNo(e.target.value)} placeholder="Work Permit No." />
                         </div>
                       </label>
 
                       <label className="we-admin-label">
                         Work Permit Expiry
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            📅
-                          </span>
-                          <input
-                            type="date"
-                            value={workPermitExpiry}
-                            onChange={(e) =>
-                              setWorkPermitExpiry(e.target.value)
-                            }
-                          />
+                          <span className="we-icon" aria-hidden="true">📅</span>
+                          <input type="date" value={workPermitExpiry} onChange={(e) => setWorkPermitExpiry(e.target.value)} />
                         </div>
                       </label>
                     </div>
@@ -789,28 +718,16 @@ export default function AdminEmployees({ onAuthError }) {
                       <label className="we-admin-label">
                         BCSS / CSOC No.
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            🪪
-                          </span>
-                          <input
-                            value={bcssCsocNo}
-                            onChange={(e) => setBcssCsocNo(e.target.value)}
-                            placeholder="BCSS / CSOC No."
-                          />
+                          <span className="we-icon" aria-hidden="true">🪪</span>
+                          <input value={bcssCsocNo} onChange={(e) => setBcssCsocNo(e.target.value)} placeholder="BCSS / CSOC No." />
                         </div>
                       </label>
 
                       <label className="we-admin-label">
                         CSOC Expiry Date
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            📅
-                          </span>
-                          <input
-                            type="date"
-                            value={csocExpiryDate}
-                            onChange={(e) => setCsocExpiryDate(e.target.value)}
-                          />
+                          <span className="we-icon" aria-hidden="true">📅</span>
+                          <input type="date" value={csocExpiryDate} onChange={(e) => setCsocExpiryDate(e.target.value)} />
                         </div>
                       </label>
                     </div>
@@ -819,32 +736,16 @@ export default function AdminEmployees({ onAuthError }) {
                       <label className="we-admin-label">
                         Boom Lift Expiry Date
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            🏗️
-                          </span>
-                          <input
-                            type="date"
-                            value={boomLiftExpiryDate}
-                            onChange={(e) =>
-                              setBoomLiftExpiryDate(e.target.value)
-                            }
-                          />
+                          <span className="we-icon" aria-hidden="true">🏗️</span>
+                          <input type="date" value={boomLiftExpiryDate} onChange={(e) => setBoomLiftExpiryDate(e.target.value)} />
                         </div>
                       </label>
 
                       <label className="we-admin-label">
                         Scissor Lift Expiry Date
                         <div className="we-input">
-                          <span className="we-icon" aria-hidden="true">
-                            🪜
-                          </span>
-                          <input
-                            type="date"
-                            value={scissorLiftExpiryDate}
-                            onChange={(e) =>
-                              setScissorLiftExpiryDate(e.target.value)
-                            }
-                          />
+                          <span className="we-icon" aria-hidden="true">🪜</span>
+                          <input type="date" value={scissorLiftExpiryDate} onChange={(e) => setScissorLiftExpiryDate(e.target.value)} />
                         </div>
                       </label>
                     </div>
@@ -865,141 +766,28 @@ export default function AdminEmployees({ onAuthError }) {
             </div>
           </div>
 
-          {/* List */}
-          <div className="we-admin-card">
-            <div className="we-admin-listHead">
-              <div className="we-admin-cardTitle">
-                Employees ({filteredRows.length})
-              </div>
-              <span className="we-admin-hint">
-                Search: name / dept / id / fin / nationality / permit / csoc
-              </span>
-            </div>
-
-            <div className="we-admin-searchRow">
-              <div className="we-input">
-                <span className="we-icon" aria-hidden="true">
-                  🔎
-                </span>
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search employees..."
-                />
-              </div>
-            </div>
-
-            <div className="we-admin-list">
-              {filteredRows.length === 0 ? (
-                <div className="we-admin-empty">
-                  {loading ? "Loading…" : "No employees yet."}
-                </div>
-              ) : (
-                filteredRows.map((e) => (
-                  <div key={e.id} className="we-admin-row">
-                    <div className="we-admin-rowTop">
-                      <div className="we-admin-name">
-                        {e.name || "(no name)"}{" "}
-                        <span className="we-admin-id">#{e.id}</span>
-                      </div>
-
-                      <div className="we-admin-actions">
-                        <div
-                          className={`we-admin-pill ${e.active ? "ok" : "bad"}`}
-                        >
-                          {e.active ? "ACTIVE" : "INACTIVE"}
-                        </div>
-                        <button
-                          className="we-btn-mini"
-                          onClick={() => openEdit(e)}
-                          disabled={loading}
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="we-admin-meta">
-                      <span className="we-admin-muted">
-                        {e.department || "-"}
-                      </span>
-                    </div>
-
-                    <div className="we-admin-meta2">
-                      <span>
-                        <b>FIN:</b> {e.finNo || "—"}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>Nation:</b> {e.nationality || "—"}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>DOB:</b> {fmtDateOnly(e.dateOfBirth)}
-                      </span>
-                    </div>
-
-                    <div className="we-admin-meta2">
-                      <span>
-                        <b>WP No:</b> {e.workPermitNo || "—"}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>WP Exp:</b> {fmtDateOnly(e.workPermitExpiry)}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>CSOC:</b> {e.bcssCsocNo || "—"}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>CSOC Exp:</b> {fmtDateOnly(e.csocExpiryDate)}
-                      </span>
-                    </div>
-
-                    <div className="we-admin-meta2">
-                      <span>
-                        <b>Boom Lift:</b> {fmtDateOnly(e.boomLiftExpiryDate)}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>
-                        <b>Scissor Lift:</b>{" "}
-                        {fmtDateOnly(e.scissorLiftExpiryDate)}
-                      </span>
-                      <span className="we-admin-dot">•</span>
-                      <span>Created: {fmtDateTime(e.createdAt)}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <EmployeesGrid
+            rows={filteredRows}
+            loading={loading}
+            q={q}
+            setQ={setQ}
+            onEdit={openEdit}
+            fmtDateOnly={fmtDateOnly}
+            fmtDateTime={fmtDateTime}
+          />
 
           {/* ---- Edit Modal ---- */}
           {editOpen ? (
-            <div
-              className="we-modalBack"
-              role="dialog"
-              aria-modal="true"
-              onMouseDown={closeEdit}
-            >
-              <div
-                className="we-modal"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
+            <div className="we-modalBack" role="dialog" aria-modal="true" onMouseDown={closeEdit}>
+              <div className="we-modal" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="we-modalHead">
                   <div>
                     <div className="we-modalTitle">Edit employee</div>
                     <div className="we-modalSub">
-                      ID #{editRow?.id} • Created{" "}
-                      {fmtDateTime(editRow?.createdAt)}
+                      ID #{editRow?.id} • Created {fmtDateTime(editRow?.createdAt)}
                     </div>
                   </div>
-                  <button
-                    className="we-btn-x"
-                    onClick={closeEdit}
-                    disabled={editSaving}
-                  >
+                  <button className="we-btn-x" onClick={closeEdit} disabled={editSaving}>
                     ✕
                   </button>
                 </div>
@@ -1009,36 +797,22 @@ export default function AdminEmployees({ onAuthError }) {
                     <label className="we-admin-label">
                       Name
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🪪
-                        </span>
-                        <input
-                          value={eName}
-                          onChange={(ev) => setEName(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🪪</span>
+                        <input value={eName} onChange={(ev) => setEName(ev.target.value)} />
                       </div>
                     </label>
 
                     <label className="we-admin-label">
                       Department
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🏢
-                        </span>
-                        <input
-                          value={eDepartment}
-                          onChange={(ev) => setEDepartment(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🏢</span>
+                        <input value={eDepartment} onChange={(ev) => setEDepartment(ev.target.value)} />
                       </div>
                     </label>
                   </div>
 
                   <label className="we-admin-check">
-                    <input
-                      type="checkbox"
-                      checked={eActive}
-                      onChange={(ev) => setEActive(ev.target.checked)}
-                    />
+                    <input type="checkbox" checked={eActive} onChange={(ev) => setEActive(ev.target.checked)} />
                     Active
                   </label>
 
@@ -1046,26 +820,16 @@ export default function AdminEmployees({ onAuthError }) {
                     <label className="we-admin-label">
                       Fin No.
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🪪
-                        </span>
-                        <input
-                          value={eFinNo}
-                          onChange={(ev) => setEFinNo(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🪪</span>
+                        <input value={eFinNo} onChange={(ev) => setEFinNo(ev.target.value)} />
                       </div>
                     </label>
 
                     <label className="we-admin-label">
                       Nationality
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🌍
-                        </span>
-                        <input
-                          value={eNationality}
-                          onChange={(ev) => setENationality(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🌍</span>
+                        <input value={eNationality} onChange={(ev) => setENationality(ev.target.value)} />
                       </div>
                     </label>
                   </div>
@@ -1073,14 +837,8 @@ export default function AdminEmployees({ onAuthError }) {
                   <label className="we-admin-label">
                     Date of Birth
                     <div className="we-input">
-                      <span className="we-icon" aria-hidden="true">
-                        🎂
-                      </span>
-                      <input
-                        type="date"
-                        value={eDob}
-                        onChange={(ev) => setEDob(ev.target.value)}
-                      />
+                      <span className="we-icon" aria-hidden="true">🎂</span>
+                      <input type="date" value={eDob} onChange={(ev) => setEDob(ev.target.value)} />
                     </div>
                   </label>
 
@@ -1088,29 +846,16 @@ export default function AdminEmployees({ onAuthError }) {
                     <label className="we-admin-label">
                       Work Permit No.
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🧾
-                        </span>
-                        <input
-                          value={eWorkPermitNo}
-                          onChange={(ev) => setEWorkPermitNo(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🧾</span>
+                        <input value={eWorkPermitNo} onChange={(ev) => setEWorkPermitNo(ev.target.value)} />
                       </div>
                     </label>
 
                     <label className="we-admin-label">
                       Work Permit Expiry
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          📅
-                        </span>
-                        <input
-                          type="date"
-                          value={eWorkPermitExpiry}
-                          onChange={(ev) =>
-                            setEWorkPermitExpiry(ev.target.value)
-                          }
-                        />
+                        <span className="we-icon" aria-hidden="true">📅</span>
+                        <input type="date" value={eWorkPermitExpiry} onChange={(ev) => setEWorkPermitExpiry(ev.target.value)} />
                       </div>
                     </label>
                   </div>
@@ -1119,27 +864,16 @@ export default function AdminEmployees({ onAuthError }) {
                     <label className="we-admin-label">
                       BCSS / CSOC No.
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🪪
-                        </span>
-                        <input
-                          value={eBcssCsocNo}
-                          onChange={(ev) => setEBcssCsocNo(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">🪪</span>
+                        <input value={eBcssCsocNo} onChange={(ev) => setEBcssCsocNo(ev.target.value)} />
                       </div>
                     </label>
 
                     <label className="we-admin-label">
                       CSOC Expiry Date
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          📅
-                        </span>
-                        <input
-                          type="date"
-                          value={eCsocExpiryDate}
-                          onChange={(ev) => setECsocExpiryDate(ev.target.value)}
-                        />
+                        <span className="we-icon" aria-hidden="true">📅</span>
+                        <input type="date" value={eCsocExpiryDate} onChange={(ev) => setECsocExpiryDate(ev.target.value)} />
                       </div>
                     </label>
                   </div>
@@ -1148,59 +882,28 @@ export default function AdminEmployees({ onAuthError }) {
                     <label className="we-admin-label">
                       Boom Lift Expiry Date
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🏗️
-                        </span>
-                        <input
-                          type="date"
-                          value={eBoomLiftExpiryDate}
-                          onChange={(ev) =>
-                            setEBoomLiftExpiryDate(ev.target.value)
-                          }
-                        />
+                        <span className="we-icon" aria-hidden="true">🏗️</span>
+                        <input type="date" value={eBoomLiftExpiryDate} onChange={(ev) => setEBoomLiftExpiryDate(ev.target.value)} />
                       </div>
                     </label>
 
                     <label className="we-admin-label">
                       Scissor Lift Expiry Date
                       <div className="we-input">
-                        <span className="we-icon" aria-hidden="true">
-                          🪜
-                        </span>
-                        <input
-                          type="date"
-                          value={eScissorLiftExpiryDate}
-                          onChange={(ev) =>
-                            setEScissorLiftExpiryDate(ev.target.value)
-                          }
-                        />
+                        <span className="we-icon" aria-hidden="true">🪜</span>
+                        <input type="date" value={eScissorLiftExpiryDate} onChange={(ev) => setEScissorLiftExpiryDate(ev.target.value)} />
                       </div>
                     </label>
                   </div>
 
-                  {editErr ? (
-                    <div className="we-admin-msg bad">{editErr}</div>
-                  ) : null}
+                  {editErr ? <div className="we-admin-msg bad">{editErr}</div> : null}
                 </div>
 
                 <div className="we-modalFoot">
-                  <button
-                    className="we-btn-soft"
-                    onClick={closeEdit}
-                    disabled={editSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="we-btn"
-                    onClick={saveEdit}
-                    disabled={editSaving}
-                  >
+                  <button className="we-btn-soft" onClick={closeEdit} disabled={editSaving}>Cancel</button>
+                  <button className="we-btn" onClick={saveEdit} disabled={editSaving}>
                     {editSaving ? (
-                      <span className="we-btn-spin">
-                        <span className="spinner" />
-                        Saving…
-                      </span>
+                      <span className="we-btn-spin"><span className="spinner" />Saving…</span>
                     ) : (
                       "Save"
                     )}
@@ -1212,7 +915,7 @@ export default function AdminEmployees({ onAuthError }) {
         </>
       ) : null}
 
-      {/* HOLIDAYS TAB */}
+      {/* HOLIDAYS / LEAVE TYPES / APPROVALS: keep as-is in your file (no change needed) */}
       {tab === "holidays" ? (
         <>
           <div className="we-admin-card">
@@ -1221,52 +924,32 @@ export default function AdminEmployees({ onAuthError }) {
               <label className="we-admin-label">
                 Date
                 <div className="we-input">
-                  <span className="we-icon" aria-hidden="true">
-                    📅
-                  </span>
-                  <input
-                    type="date"
-                    value={holidayDate}
-                    onChange={(e) => setHolidayDate(e.target.value)}
-                  />
+                  <span className="we-icon" aria-hidden="true">📅</span>
+                  <input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} />
                 </div>
               </label>
 
               <label className="we-admin-label">
                 Name
                 <div className="we-input">
-                  <span className="we-icon" aria-hidden="true">
-                    🏷️
-                  </span>
-                  <input
-                    value={holidayName}
-                    onChange={(e) => setHolidayName(e.target.value)}
-                    placeholder="e.g. New Year"
-                  />
+                  <span className="we-icon" aria-hidden="true">🏷️</span>
+                  <input value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. New Year" />
                 </div>
               </label>
 
-              <button className="we-btn" disabled={loading}>
-                {loading ? "Saving…" : "Add Holiday"}
-              </button>
+              <button className="we-btn" disabled={loading}>{loading ? "Saving…" : "Add Holiday"}</button>
             </form>
           </div>
 
           <div className="we-admin-card">
             <div className="we-admin-listHead">
-              <div className="we-admin-cardTitle">
-                Holidays ({holidays.length})
-              </div>
-              <span className="we-admin-hint">
-                Used to compute PH work / leave
-              </span>
+              <div className="we-admin-cardTitle">Holidays ({holidays.length})</div>
+              <span className="we-admin-hint">Used to compute PH work / leave</span>
             </div>
 
             <div className="we-admin-list">
               {holidays.length === 0 ? (
-                <div className="we-admin-empty">
-                  {loading ? "Loading…" : "No holidays yet."}
-                </div>
+                <div className="we-admin-empty">{loading ? "Loading…" : "No holidays yet."}</div>
               ) : (
                 holidays
                   .slice()
@@ -1274,14 +957,8 @@ export default function AdminEmployees({ onAuthError }) {
                   .map((h) => (
                     <div key={h.id} className="we-admin-row">
                       <div className="we-admin-rowTop">
-                        <div className="we-admin-name">
-                          {h.name || "(no name)"}
-                        </div>
-                        <button
-                          className="we-btn-soft"
-                          onClick={() => deleteHoliday(h.id)}
-                          disabled={loading}
-                        >
+                        <div className="we-admin-name">{h.name || "(no name)"}</div>
+                        <button className="we-btn-soft" onClick={() => deleteHoliday(h.id)} disabled={loading}>
                           Delete
                         </button>
                       </div>
@@ -1308,9 +985,7 @@ export default function AdminEmployees({ onAuthError }) {
               <label className="we-admin-label">
                 Code
                 <div className="we-input">
-                  <span className="we-icon" aria-hidden="true">
-                    🧾
-                  </span>
+                  <span className="we-icon" aria-hidden="true">🧾</span>
                   <input
                     value={ltCode}
                     onChange={(e) => setLtCode(e.target.value)}
@@ -1322,9 +997,7 @@ export default function AdminEmployees({ onAuthError }) {
               <label className="we-admin-label">
                 Name
                 <div className="we-input">
-                  <span className="we-icon" aria-hidden="true">
-                    🏷️
-                  </span>
+                  <span className="we-icon" aria-hidden="true">🏷️</span>
                   <input
                     value={ltName}
                     onChange={(e) => setLtName(e.target.value)}
@@ -1359,17 +1032,13 @@ export default function AdminEmployees({ onAuthError }) {
 
           <div className="we-admin-card">
             <div className="we-admin-listHead">
-              <div className="we-admin-cardTitle">
-                Leave Types ({leaveTypes.length})
-              </div>
+              <div className="we-admin-cardTitle">Leave Types ({leaveTypes.length})</div>
               <span className="we-admin-hint">MC / AL / etc</span>
             </div>
 
             <div className="we-admin-list">
               {leaveTypes.length === 0 ? (
-                <div className="we-admin-empty">
-                  {loading ? "Loading…" : "No leave types yet."}
-                </div>
+                <div className="we-admin-empty">{loading ? "Loading…" : "No leave types yet."}</div>
               ) : (
                 leaveTypes.map((t) => (
                   <div key={t.id} className="we-admin-row">
@@ -1413,9 +1082,7 @@ export default function AdminEmployees({ onAuthError }) {
 
           <div className="we-admin-list">
             {pendingLeaves.length === 0 ? (
-              <div className="we-admin-empty">
-                {loading ? "Loading…" : "No pending leave."}
-              </div>
+              <div className="we-admin-empty">{loading ? "Loading…" : "No pending leave."}</div>
             ) : (
               pendingLeaves.map((r) => (
                 <div key={r.id} className="we-admin-row">
@@ -1423,7 +1090,6 @@ export default function AdminEmployees({ onAuthError }) {
                     <div className="we-admin-name">
                       #{r.id} • {r.employee?.name || `Employee ${r.employeeId}`}
                     </div>
-
                     <div className="we-approveBtns">
                       <button
                         className="we-btn"
@@ -1444,8 +1110,7 @@ export default function AdminEmployees({ onAuthError }) {
 
                   <div className="we-admin-meta">
                     <span className="we-admin-muted">
-                      Type:{" "}
-                      {r.leaveType?.code || r.leaveTypeCode || r.leaveTypeId}
+                      Type: {r.leaveType?.code || r.leaveTypeCode || r.leaveTypeId}
                     </span>
                   </div>
 
@@ -1466,257 +1131,6 @@ export default function AdminEmployees({ onAuthError }) {
           </div>
         </div>
       ) : null}
-
-      <style>{css}</style>
     </div>
   );
 }
-
-const css = `
-.we-admin-page{ display:grid; gap:12px; color:#e5e7eb; }
-
-/* Header */
-.we-admin-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.we-admin-kicker{ font-size:12px; opacity:.75; }
-.we-admin-title{ margin-top:2px; font-size:24px; font-weight:950; color:#fff; line-height:1.1; }
-.we-admin-sub{ margin-top:6px; font-size:12px; color: rgba(226,232,240,.75); }
-.we-admin-refresh{ width:auto; }
-
-/* Tabs */
-.we-admin-tabs{ display:flex; gap:10px; flex-wrap: wrap; }
-.we-tab{
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:900;
-  cursor:pointer;
-  border-radius:999px;
-  padding:10px 12px;
-  transition: background .12s ease, transform .12s ease, opacity .12s ease;
-}
-.we-tab:hover{ background: rgba(255,255,255,.14); transform: translateY(-1px); }
-.we-tab.on{
-  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
-  border-color: rgba(255,255,255,.18);
-}
-
-/* Message */
-.we-admin-msg{
-  border-radius:16px;
-  padding:10px 12px;
-  font-size:12px;
-  font-weight:900;
-  word-break: break-word;
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.08);
-}
-.we-admin-msg.ok{
-  border-color: rgba(34,197,94,.28);
-  background: rgba(34,197,94,.14);
-  color:#bbf7d0;
-}
-.we-admin-msg.bad{
-  border-color: rgba(244,63,94,.28);
-  background: rgba(244,63,94,.14);
-  color:#fecdd3;
-}
-
-/* Layout */
-.we-admin-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-.we-admin-two{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-.we-admin-more{ display:grid; gap:12px; }
-
-/* Glass card */
-.we-admin-card{
-  background: rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:20px;
-  padding:14px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 18px 48px rgba(0,0,0,.35);
-}
-.we-admin-cardTitle{ font-weight:950; color:#fff; margin-bottom:10px; }
-
-/* Form */
-.we-admin-form{ display:grid; gap:12px; }
-.we-admin-label{ font-size:12px; font-weight:800; opacity:.9; display:grid; gap:8px; }
-
-/* Inputs */
-.we-input{
-  display:flex; align-items:center; gap:10px;
-  padding:12px 12px; border-radius:14px;
-  background: rgba(15,23,42,.35);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-}
-.we-icon{ opacity:.85; font-size:16px; }
-.we-input input{
-  width:100%; border:0; outline:none;
-  background:transparent; color:#fff; font-size:14px;
-}
-.we-input input::placeholder{ color: rgba(226,232,240,.55); }
-
-.we-admin-select{
-  width:100%;
-  border:0;
-  outline:none;
-  background:transparent;
-  color:#fff;
-  font-size:14px;
-  appearance:none;
-}
-.we-admin-select option{ color:#0f172a; }
-
-.we-admin-check{
-  display:flex; align-items:center; gap:10px;
-  font-size:12px; opacity:.9; user-select:none;
-}
-.we-admin-check input{ width:16px;height:16px; accent-color: #a5b4fc; }
-
-/* Buttons */
-.we-btn{
-  border:0; border-radius:14px; padding:12px 14px;
-  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
-  color:#fff; font-weight:900; font-size:14px;
-  cursor:pointer; box-shadow: 0 14px 34px rgba(0,0,0,.35);
-  transition: transform .12s ease, filter .12s ease, opacity .12s ease;
-}
-.we-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
-.we-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
-.we-btn.danger{
-  background: linear-gradient(135deg, rgba(244,63,94,1), rgba(236,72,153,1));
-}
-
-.we-btn-soft{
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:900;
-  cursor:pointer;
-  transition: background .12s ease, opacity .12s ease;
-  border-radius:14px;
-  padding:10px 12px;
-}
-.we-btn-soft:hover{ background: rgba(255,255,255,.14); }
-.we-btn-soft:disabled{ opacity:.55; cursor:not-allowed; }
-
-.we-btn-mini{
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:900;
-  cursor:pointer;
-  border-radius:999px;
-  padding:8px 10px;
-  font-size:12px;
-}
-.we-btn-mini:hover{ background: rgba(255,255,255,.14); }
-.we-btn-mini:disabled{ opacity:.55; cursor:not-allowed; }
-
-.we-btn-spin{ display:flex; align-items:center; justify-content:center; gap:10px; }
-.spinner{
-  width:16px;height:16px;border-radius:999px;
-  border:2px solid rgba(255,255,255,.5);
-  border-top-color:#fff;
-  animation:spin .9s linear infinite;
-}
-@keyframes spin{ to{ transform:rotate(360deg);} }
-
-/* List */
-.we-admin-listHead{
-  display:flex; align-items:baseline; justify-content:space-between;
-  gap:10px; margin-bottom:10px;
-}
-.we-admin-hint{ font-size:12px; opacity:.75; white-space:nowrap; }
-.we-admin-searchRow{ margin-bottom:12px; }
-
-.we-admin-list{ display:grid; gap:10px; }
-.we-admin-empty{ font-size:13px; opacity:.8; }
-
-/* Row */
-.we-admin-row{
-  padding:12px; border-radius:18px;
-  background: rgba(15,23,42,.22);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-  display:grid; gap:8px;
-}
-.we-admin-rowTop{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-.we-admin-name{
-  font-weight:950; color:#fff; font-size:14px;
-  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.we-admin-id{ opacity:.75; font-weight:900; margin-left: 6px; }
-
-.we-admin-actions{ display:flex; align-items:center; gap:10px; }
-
-.we-admin-pill{
-  font-size:12px; font-weight:950; padding:6px 10px;
-  border-radius:999px; white-space:nowrap;
-  border:1px solid rgba(255,255,255,.16);
-}
-.we-admin-pill.ok{
-  background: rgba(34,197,94,.16);
-  border-color: rgba(34,197,94,.28);
-  color:#bbf7d0;
-}
-.we-admin-pill.bad{
-  background: rgba(244,63,94,.14);
-  border-color: rgba(244,63,94,.28);
-  color:#fecdd3;
-}
-
-.we-admin-meta{ font-size:12px; color: rgba(226,232,240,.9); }
-.we-admin-muted{ opacity:.9; }
-.we-admin-meta2{
-  font-size:12px; color: rgba(226,232,240,.75);
-  display:flex; flex-wrap:wrap; gap:8px;
-}
-.we-admin-dot{ opacity:.6; }
-
-.we-approveBtns{ display:flex; gap:10px; align-items:center; }
-.we-approveBtns .we-btn{ padding:10px 12px; border-radius:12px; font-size:13px; }
-
-/* Modal */
-.we-modalBack{
-  position:fixed; inset:0; z-index:999;
-  background: rgba(0,0,0,.55);
-  display:flex; align-items:center; justify-content:center;
-  padding: 18px;
-}
-.we-modal{
-  width: min(760px, 96vw);
-  max-height: 92vh;
-  overflow:auto;
-  background: rgba(15,23,42,.95);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 18px;
-  box-shadow: 0 30px 90px rgba(0,0,0,.55);
-  padding: 14px;
-}
-.we-modalHead{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-.we-modalTitle{ font-weight:950; font-size:16px; color:#fff; }
-.we-modalSub{ font-size:12px; opacity:.75; margin-top:4px; }
-.we-btn-x{
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.08);
-  color:#fff;
-  border-radius: 12px;
-  padding: 8px 10px;
-  cursor:pointer;
-}
-.we-btn-x:hover{ background: rgba(255,255,255,.12); }
-.we-modalBody{ margin-top: 12px; display:grid; gap:12px; }
-.we-modalFoot{ margin-top: 14px; display:flex; justify-content:flex-end; gap:10px; }
-
-/* Mobile */
-@media (max-width: 720px){
-  .we-admin-grid{ grid-template-columns: 1fr; }
-  .we-admin-two{ grid-template-columns: 1fr; }
-  .we-admin-head{ flex-direction: column; align-items: stretch; }
-  .we-admin-refresh{ width:100%; }
-  .we-admin-hint{ white-space:normal; }
-  .we-approveBtns{ flex-direction: column; align-items: stretch; }
-}
-`;

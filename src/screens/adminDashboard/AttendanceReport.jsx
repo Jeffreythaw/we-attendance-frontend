@@ -1,0 +1,345 @@
+import React, { useMemo, useState } from "react";
+import { apiBase, getToken } from "../../api/client";
+import { REPORT_ENDPOINT } from "./constants";
+import { parseContentDispositionFilename, parseCsvText } from "./csv";
+
+/**
+ * UI table columns (ONLY for display on screen)
+ * Exports (Excel/PDF) include ALL columns from CSV automatically.
+ */
+const DISPLAY_COLUMNS = [
+  { label: "No.", key: "No." },
+  { label: "Name", key: "Staff Name" },
+  { label: "NW days", key: "Normal Working days" },
+  { label: "WS day", key: "Working Sunday" },
+  { label: "PH day", key: "Public Holiday" },
+  { label: "TTLW hour", key: "Total Working hour" },
+  { label: "N OT", key: "Normal day OT" },
+  { label: "S OT", key: "Sunday OT" },
+  { label: "PH OT", key: "Public Holiday OT" },
+  { label: "TTL OT", key: "Total OT" },
+  { label: "Leave", key: "Total Leave" },
+];
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+export default function AttendanceReport({ from, to, disabled, onAuthError }) {
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportErr, setReportErr] = useState("");
+  const [reportCsv, setReportCsv] = useState("");
+  const [reportRows, setReportRows] = useState([]);
+  const [reportHeaders, setReportHeaders] = useState([]);
+
+  const [reportSearch, setReportSearch] = useState("");
+  const [reportOnlyMissing, setReportOnlyMissing] = useState(false);
+
+  async function loadReport({ downloadCsv = false } = {}) {
+    setReportErr("");
+    setReportBusy(true);
+
+    try {
+      if (!from || !to) throw new Error("Please select From and To dates.");
+
+      const qs = new URLSearchParams();
+      qs.set("from", from);
+      qs.set("to", to);
+
+      const base = apiBase();
+      const url = base
+        ? `${base}${REPORT_ENDPOINT}?${qs.toString()}`
+        : `${REPORT_ENDPOINT}?${qs.toString()}`;
+
+      const token = getToken();
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        onAuthError?.();
+        throw new Error("Unauthorized");
+      }
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+
+      const cd = res.headers.get("content-disposition");
+      const serverFilename = parseContentDispositionFilename(cd);
+
+      const text = await res.text();
+      setReportCsv(text);
+
+      const parsed = parseCsvText(text);
+      setReportRows(parsed.rows || []);
+      setReportHeaders(parsed.headers || []);
+
+      if (downloadCsv) {
+        const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+        const fileName = serverFilename || `WE_Attendance_${from}_to_${to}.csv`;
+        downloadBlob(blob, fileName);
+      }
+    } catch (e) {
+      setReportErr(e?.message || "Failed to load report");
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
+  const filteredReportRows = useMemo(() => {
+    const s = reportSearch.trim().toLowerCase();
+    let rows = Array.isArray(reportRows) ? reportRows : [];
+
+    if (s) {
+      rows = rows.filter((r) => {
+        const name = String(r["Staff Name"] || "").toLowerCase();
+        const fin = String(r["Fin No."] || "").toLowerCase();
+        const no = String(r["No."] || "").toLowerCase();
+        return name.includes(s) || fin.includes(s) || no.includes(s);
+      });
+    }
+
+    if (reportOnlyMissing) {
+      rows = rows.filter((r) => Number(r["Missing Checkout"] || 0) > 0);
+    }
+
+    return rows;
+  }, [reportRows, reportSearch, reportOnlyMissing]);
+
+  async function downloadExcel() {
+    try {
+      setReportErr("");
+
+      if (!reportRows?.length) {
+        await loadReport({ downloadCsv: false });
+      }
+
+      const headers = reportHeaders?.length
+        ? reportHeaders
+        : Object.keys(reportRows?.[0] || {});
+      if (!headers.length) throw new Error("No data to export.");
+
+      const rowsToExport = filteredReportRows;
+
+      const ExcelJS = (await import("exceljs")).default;
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Attendance", {
+        views: [{ state: "frozen", ySplit: 1 }],
+      });
+
+      ws.addTable({
+        name: "AttendanceTable",
+        ref: "A1",
+        headerRow: true,
+        totalsRow: false,
+        style: {
+          theme: "TableStyleMedium9",
+          showRowStripes: true,
+        },
+        columns: headers.map((h) => ({ name: h, filterButton: true })),
+        rows: rowsToExport.map((r) => headers.map((h) => r?.[h] ?? "")),
+      });
+
+      headers.forEach((h, i) => {
+        const maxLen = Math.max(
+          String(h).length,
+          ...rowsToExport.slice(0, 200).map((r) => String(r?.[h] ?? "").length)
+        );
+        ws.getColumn(i + 1).width = Math.min(Math.max(maxLen + 2, 10), 45);
+      });
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      downloadBlob(blob, `WE_Attendance_${from}_to_${to}.xlsx`);
+    } catch (e) {
+      setReportErr(e?.message || "Failed to download Excel");
+    }
+  }
+
+  async function downloadPdf() {
+    try {
+      setReportErr("");
+
+      if (!reportRows?.length) {
+        await loadReport({ downloadCsv: false });
+      }
+
+      const headers = reportHeaders?.length
+        ? reportHeaders
+        : Object.keys(reportRows?.[0] || {});
+      if (!headers.length) throw new Error("No data to export.");
+
+      const rowsToExport = filteredReportRows;
+
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "pt",
+        format: "a4",
+      });
+
+      doc.setFontSize(10);
+      doc.text(`WE Attendance Report (${from} → ${to})`, 40, 30);
+
+      autoTable(doc, {
+        startY: 45,
+        head: [headers],
+        body: rowsToExport.map((r) => headers.map((h) => String(r?.[h] ?? ""))),
+        theme: "striped",
+        styles: {
+          fontSize: 7,
+          cellPadding: 3,
+          overflow: "linebreak",
+        },
+        headStyles: { fontStyle: "bold" },
+        margin: { left: 20, right: 20 },
+      });
+
+      doc.save(`WE_Attendance_${from}_to_${to}.pdf`);
+    } catch (e) {
+      setReportErr(e?.message || "Failed to download PDF");
+    }
+  }
+
+  const uiRowsCount = filteredReportRows.length;
+
+  return (
+    <div className="we-glass-card we-reportCard">
+      <div className="we-reportActions">
+        {/* Title + meta */}
+        <div className="we-reportTopRow">
+          <div>
+            <div className="we-admin-sectionTitle">
+              Employee status (Attendance Report)
+            </div>
+            <div className="we-admin-sectionMeta">
+              {uiRowsCount} rows • CSV from ReportsController
+            </div>
+          </div>
+
+          <div className="we-reportBtns">
+            <button
+              className="we-btn-soft"
+              type="button"
+              onClick={() => loadReport({ downloadCsv: false })}
+              disabled={reportBusy || disabled}
+            >
+              {reportBusy ? "Loading…" : "Load Report"}
+            </button>
+
+            <button
+              className="we-btn"
+              type="button"
+              onClick={() => loadReport({ downloadCsv: true })}
+              disabled={reportBusy || disabled}
+            >
+              Download CSV
+            </button>
+
+            <button
+              className="we-btn"
+              type="button"
+              onClick={downloadExcel}
+              disabled={reportBusy || disabled || uiRowsCount === 0}
+            >
+              Download Excel
+            </button>
+
+            <button
+              className="we-btn-soft"
+              type="button"
+              onClick={downloadPdf}
+              disabled={reportBusy || disabled || uiRowsCount === 0}
+            >
+              Download PDF
+            </button>
+          </div>
+        </div>
+
+        {/* Search + checkbox row */}
+        <div className="we-reportSearchRow">
+          <label className="we-reportCheck">
+            <input
+              type="checkbox"
+              checked={reportOnlyMissing}
+              onChange={(e) => setReportOnlyMissing(e.target.checked)}
+              disabled={reportBusy || disabled}
+            />
+            Only missing checkout
+          </label>
+
+          <div className="we-reportSearch">
+            <span className="we-admin-searchIcon" aria-hidden="true">
+              🔎
+            </span>
+            <input
+              value={reportSearch}
+              onChange={(e) => setReportSearch(e.target.value)}
+              placeholder="Search staff / FIN / No."
+              disabled={reportBusy || disabled}
+            />
+          </div>
+        </div>
+      </div>
+
+      {reportErr ? <div className="we-error">{reportErr}</div> : null}
+
+      {uiRowsCount === 0 ? (
+        <div className="we-admin-empty">
+          {reportBusy ? "Loading report…" : "No report rows."}
+        </div>
+      ) : (
+        <div className="we-admin-tableWrap">
+          <table className="we-admin-table">
+            <thead>
+              <tr>
+                {DISPLAY_COLUMNS.map((c) => (
+                  <th key={c.key}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredReportRows.map((r, idx) => (
+                <tr key={`${r["No."] || idx}-${r["Staff Name"] || ""}`}>
+                  {DISPLAY_COLUMNS.map((c) => (
+                    <td key={c.key}>
+                      {c.key === "Total OT" ? (
+                        <b>{r?.[c.key] ?? "—"}</b>
+                      ) : (
+                        r?.[c.key] ?? "—"
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {reportCsv ? (
+        <details className="we-rawCsv">
+          <summary>Show raw CSV</summary>
+          <pre>{reportCsv}</pre>
+        </details>
+      ) : null}
+    </div>
+  );
+}

@@ -1,0 +1,415 @@
+/* ===== Matrix (modern) ===== */
+.we-matrixCard{ padding: 14px; }
+
+.we-matrixHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom: 10px;
+}
+
+.we-matrixHeadRight{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.we-matrixTitle{
+  font-weight:950;
+  color:#fff;
+  font-size:14px;
+  line-height:1.2;
+}
+.we-matrixSub{
+  margin-top:6px;
+  font-size:12px;
+  opacity:.72;
+  font-weight:700;
+}
+
+.we-matrixLegend{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:12px;
+  opacity:.9;
+  font-weight:900;
+}
+.we-mxLegend{ display:flex; align-items:center; gap:6px; }
+
+.we-mxDot{
+  width:10px; height:10px;
+  border-radius:999px;
+  display:inline-block;
+  opacity:.95;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.06);
+}
+.we-mxDot.in{ background: rgba(236,72,153,1); }
+.we-mxDot.out{ background: rgba(34,197,94,1); }
+.we-mxDot.hrs{ background: rgba(148,163,184,1); }
+
+.we-matrixTableWrap{
+  width: 100%;
+  overflow:auto;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(15,23,42,.18);
+}
+
+.we-matrixTable{
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.we-matrixTable th,
+.we-matrixTable td{
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-right: 1px solid rgba(255,255,255,.06);
+  vertical-align: top;
+}
+
+.we-matrixTable th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255,255,255,.06);
+  color:#fff;
+  font-size:12px;
+  font-weight:950;
+}
+
+.we-matrixDayHead{ text-align:center; min-width: 140px; }
+.we-matrixDayTop{ font-size:12px; font-weight:950; color:#fff; }
+.we-matrixDayBot{ margin-top:2px; font-size:11px; opacity:.75; font-weight:800; }
+
+.we-matrixStickyCol{
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: rgba(17,24,39,.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255,255,255,.12);
+  min-width: 220px;
+  max-width: 260px;
+}
+
+.we-matrixEmpHead{ min-width: 260px; }
+.we-matrixEmpHeadTop{ font-size:12px; font-weight:950; color:#fff; }
+.we-matrixEmpHeadBot{ margin-top:2px; font-size:11px; opacity:.72; font-weight:900; }
+
+.we-matrixEmpCell{ padding: 12px; }
+.we-matrixEmpName{
+  font-weight:950;
+  color:#fff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.we-matrixEmpMeta{
+  margin-top:4px;
+  font-size:11px;
+  opacity:.75;
+  font-weight:900;
+}
+
+.we-matrixCell{ background: rgba(15,23,42,.20); }
+.we-matrixCell.has:hover{ background: rgba(255,255,255,.06); }
+.we-matrixCell.empty{ opacity: .55; }
+
+.we-mxTimes{ display:grid; gap:6px; }
+.we-mxTimeRow{ display:flex; align-items:center; gap:8px; }
+.we-mxTime{
+  font-size:12px;
+  font-weight:900;
+  color: rgba(226,232,240,.95);
+  letter-spacing: .2px;
+}
+
+.we-mxBarRow{
+  margin-top: 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.we-mxBarTrack{
+  flex:1;
+  height:10px;
+  border-radius:999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  overflow:hidden;
+}
+.we-mxBarFill{
+  height:100%;
+  border-radius:999px;
+  background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
+  box-shadow: 0 10px 20px rgba(0,0,0,.25);
+}
+.we-mxPct{
+  width:44px;
+  text-align:right;
+  font-size:12px;
+  font-weight:950;
+  color:#fff;
+  opacity:.9;
+}
+.we-mxHours{
+  margin-top:6px;
+  font-size:11px;
+  font-weight:900;
+  opacity:.78;
+}
+
+/* sparkline */
+.we-matrixSparkRow{
+  margin-top: 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.we-sparkLine{
+  stroke: rgba(99,102,241,1);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.we-sparkGlow{
+  stroke: rgba(236,72,153,.55);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: blur(1.2px);
+  opacity: .9;
+}
+.we-sparkEmpty{
+  width: 92px;
+  height: 22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 12px;
+  opacity:.7;
+  border: 1px dashed rgba(255,255,255,.16);
+  border-radius: 10px;
+  background: rgba(15,23,42,.18);
+}
+
+.we-sparkMeta{ display:flex; flex-wrap:wrap; gap:6px; }
+.we-sparkChip{
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(226,232,240,.92);
+}
+.we-sparkChip.subtle{ opacity: .75; }
+
+/* badges */
+.we-mxBadges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+  min-height:18px;
+}
+.we-mxBadgesPlaceholder{ height:18px; margin-bottom:8px; }
+
+.we-mxBadge{
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(226,232,240,.92);
+  white-space: nowrap;
+}
+.we-mxBadge.bad{
+  border-color: rgba(244,63,94,.28);
+  background: rgba(244,63,94,.14);
+  color: #fecdd3;
+}
+.we-mxBadge.warn{
+  border-color: rgba(245,158,11,.30);
+  background: rgba(245,158,11,.14);
+  color: #fde68a;
+}
+.we-mxBadge.dim{ opacity:.65; }
+
+/* dropdown button */
+.we-ddBtn{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border-radius:14px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(15,23,42,.35);
+  color:#fff;
+  cursor:pointer;
+  font-weight:950;
+}
+.we-ddLabel{ opacity:.85; font-size:12px; }
+.we-ddValue{ font-size:12px; }
+.we-ddCaret{ opacity:.8; margin-left:2px; }
+
+/* ✅ Overlay */
+.we-ddOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0,0,0,.45);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding: 80px 14px 14px;
+}
+
+/* ✅ Panel */
+.we-ddPanelFixed{
+  width: min(520px, 96vw);
+  max-height: calc(100vh - 110px);
+  background: rgba(15,23,42,.96);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 30px 120px rgba(0,0,0,.65);
+  display:flex;
+  flex-direction: column;
+
+  /* ✅ IMPORTANT: default text color for ALL content inside panel */
+  color: rgba(226,232,240,.95);
+}
+
+.we-ddTop{
+  padding:10px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  display:grid;
+  gap:10px;
+}
+
+.we-ddSearch{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 10px;
+  border-radius:14px;
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+}
+.we-ddSearch input{
+  border:0; outline:0; background:transparent;
+  color:#fff; width:100%; min-width:0;
+}
+
+.we-ddActions{ display:flex; gap:8px; flex-wrap:wrap; }
+.we-ddAct{
+  border-radius:12px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+  font-size:12px;
+}
+.we-ddAct.primary{
+  border-color: rgba(165,180,252,.35);
+  background: rgba(165,180,252,.14);
+}
+
+/* ✅ List scrolls properly */
+.we-ddList{
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 8px;
+  min-height: 0; /* important for flex scrolling */
+}
+
+/* ✅ ROW VISIBILITY FIX (names, id, chips) */
+.we-ddRow{
+  display:grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items:center;
+  gap:10px;
+  padding:10px 10px;
+  border-radius:12px;
+  cursor:pointer;
+
+  /* ✅ force visible text even if global label/span rules exist */
+  color: rgba(226,232,240,.95);
+  opacity: 1;
+}
+.we-ddRow:hover{ background: rgba(255,255,255,.06); }
+
+/* ✅ If any global rule makes spans transparent, this overrides it */
+.we-ddRow span{
+  color: inherit;
+  opacity: 1;
+}
+
+.we-ddRow input{
+  width:16px; height:16px;
+  accent-color:#a5b4fc;
+}
+
+.we-ddName{
+  font-weight:950;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.we-ddId{
+  font-weight:900;
+  font-size:12px;
+  color: rgba(226,232,240,.70); /* slightly dim */
+}
+
+.we-ddChip{
+  font-size:11px;
+  font-weight:900;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(226,232,240,.92);
+  opacity: .95;
+}
+.we-ddChip.dim{ opacity:.55; }
+
+.we-ddEmpty{ padding:14px; opacity:.75; font-size:12px; }
+
+/* ✅ Footer always visible + clickable */
+.we-ddFoot{
+  flex: 0 0 auto;
+  padding: 10px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  background: rgba(15,23,42,.96);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+@media (max-width: 860px){
+  .we-matrixStickyCol{ min-width: 180px; }
+  .we-matrixDayHead{ min-width: 120px; }
+  .we-matrixEmpHead{ min-width: 220px; }
+  .we-matrixSparkRow{ flex-direction: column; align-items:flex-start; }
+}

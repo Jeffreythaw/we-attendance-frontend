@@ -1,7 +1,7 @@
 // src/api/client.js
 
 // ✅ use VITE_API_BASE_URL (recommended)
-// set this on Vercel to: https://we-attendance-backend.onrender.com
+// set this on Vercel to: https://kjapi.gys.com.mm
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 // used by UI (Login shows this)
@@ -80,4 +80,66 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
   }
 
   return text ? JSON.parse(text) : null;
+}
+
+/* =========================================================
+   ✅ ADD THESE for Reports (CSV download / preview)
+   ========================================================= */
+
+export async function apiFetchText(path, { method = "GET", auth = true } = {}) {
+  const headers = {};
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const url = joinUrl(API_BASE, path);
+
+  const res = await fetch(url, { method, headers });
+  const text = await res.text();
+
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = text ? JSON.parse(text) : null;
+      msg = data?.message || data?.title || msg;
+    } catch {
+      msg = text || msg;
+    }
+    throw new Error(msg);
+  }
+
+  return text || "";
+}
+
+export async function apiFetchBlob(path, { method = "GET", auth = true } = {}) {
+  const headers = {};
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const url = joinUrl(API_BASE, path);
+
+  const res = await fetch(url, { method, headers });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = text ? JSON.parse(text) : null;
+      msg = data?.message || data?.title || msg;
+    } catch {
+      msg = text || msg;
+    }
+    throw new Error(msg);
+  }
+
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get("content-disposition") || "";
+  const contentType = res.headers.get("content-type") || "";
+
+  return { blob, contentDisposition, contentType };
 }
