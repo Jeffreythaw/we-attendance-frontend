@@ -23,11 +23,29 @@ export const attendanceApi = {
     });
   },
 
-  // location only
-  checkOut(location) {
+  // ✅ location + optional OT project
+  checkOut(location, otProjectName) {
+    const project = (otProjectName || "").trim();
+
     return apiFetch("/api/Attendance/checkout", {
       method: "POST",
-      body: { location: location ?? null },
+      body: {
+        location: location ?? null,
+        // send only if provided
+        otProjectName: project ? project : null,
+      },
     });
+  },
+
+  adminGetLog(id) {
+    return apiFetch(`/api/Attendance/log/${encodeURIComponent(id)}`, { method: "GET" });
+  },
+
+  adminEmployee(employeeId, from, to) {
+    const qs =
+      from && to
+        ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+        : "";
+    return apiFetch(`/api/Attendance/employee/${encodeURIComponent(employeeId)}${qs}`, { method: "GET" });
   },
 };

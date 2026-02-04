@@ -1,15 +1,36 @@
 /* src/screens/ClockScreen.css */
 
 /* ================================
-   Theme + layout
+   Theme + layout (MOBILE FIRST)
 ================================ */
+
+/* ✅ Important: mobile browsers (iOS Safari / Chrome) safe areas */
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ✅ Root must start at top (no vertical centering) */
 .we-clock-root{
   position: relative;
+  width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: visible;
-  padding: 10px 0 92px; /* bottom space for nav */
+
+  /* ✅ Fix: remove big empty space on top */
+  padding-top: max(6px, var(--safe-top));
+  padding-left: 0;
+  padding-right: 0;
+
+  /* bottom space for nav + safe area */
+  padding-bottom: calc(92px + var(--safe-bottom));
+
   color: #e5e7eb;
+
+  /* ✅ prevents parent flex-center effects */
+  display: block;
+  align-self: stretch;
 }
 
 /* Theme modifiers (set on root): .we-clock-root.is-day / .is-night */
@@ -44,12 +65,19 @@
   --blob-3: radial-gradient(circle at 30% 30%, #0ea5e9, transparent 62%);
 }
 
-/* Background */
-.we-clock-bg{ position: fixed; inset: 0; z-index: 0; background: var(--bg-base); }
+/* ================================
+   Background
+================================ */
+.we-clock-bg{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg-base);
+}
 .we-clock-blob{
   position: absolute;
-  width: 560px;
-  height: 560px;
+  width: 520px;
+  height: 520px;
   filter: blur(70px);
   opacity: .55;
   border-radius: 999px;
@@ -57,7 +85,7 @@
 }
 .we-clock-blob-1{ top:-220px; left:-220px; background: var(--blob-1); }
 .we-clock-blob-2{ bottom:-260px; right:-220px; background: var(--blob-2); }
-.we-clock-blob-3{ top:25%; right:-280px; background: var(--blob-3); }
+.we-clock-blob-3{ top:25%; right:-260px; background: var(--blob-3); }
 
 .we-clock-noise{
   position: absolute;
@@ -67,11 +95,15 @@
   mix-blend-mode: overlay;
 }
 
-/* Container */
+/* ================================
+   Container (mobile first)
+================================ */
 .we-clock-wrap{
   position: relative;
   z-index: 1;
-  width: min(520px, 100%);
+
+  /* ✅ mobile: full width, no top gap */
+  width: 100%;
   margin: 0 auto;
   display: grid;
   gap: 12px;
@@ -87,7 +119,10 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 2px;
+
+  /* ✅ reduce top spacing */
+  padding: 2px 2px 6px;
+  margin: 0;
 }
 
 .we-clock-kicker{
@@ -115,7 +150,7 @@
   gap: 8px;
 }
 
-/* WE logo (optional <img class="we-clock-logo" src={WE.png} /> ) */
+/* WE logo */
 .we-clock-logoRow{
   display: flex;
   align-items: center;
@@ -131,7 +166,7 @@
   border: 1px solid rgba(255,255,255,.18);
 }
 
-/* Status pill (OPEN/OFF) */
+/* Status pill */
 .we-clock-pill{
   padding: 6px 10px;
   border-radius: 999px;
@@ -166,7 +201,7 @@
 }
 .we-clock-pill.off::before{ background: #f43f5e; }
 
-/* Live clock + date chips row (optional) */
+/* Live clock + date chips */
 .we-clock-nowRow{
   display: flex;
   gap: 10px;
@@ -199,9 +234,7 @@
   font-size: 12px;
   line-height: 1;
 }
-.we-clock-chip.live .ic{
-  position: relative;
-}
+.we-clock-chip.live .ic{ position: relative; }
 .we-clock-chip.live .ic::after{
   content: "";
   position: absolute;
@@ -260,11 +293,6 @@
 }
 .we-clock-warn .txt{ line-height: 1.25; }
 .we-clock-warn .hint{ opacity: .9; font-weight: 800; margin-top: 2px; }
-.we-clock-warn a{
-  color: #fde68a;
-  text-decoration: underline;
-  font-weight: 950;
-}
 
 /* ================================
    Inputs
@@ -298,6 +326,49 @@
   display: grid;
   gap: 8px;
 }
+
+/* OT badge */
+.we-clock-otBadge{
+  margin-left: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+  border: 1px solid rgba(245,158,11,.28);
+  background: rgba(245,158,11,.12);
+  color: #fde68a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.we-clock-otBadge::before{
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,.16);
+}
+.we-clock-otBadge .hint{
+  opacity: .9;
+  font-weight: 900;
+  margin-left: 6px;
+}
+
+/* OT validation */
+.we-input.invalid{
+  border-color: rgba(244,63,94,.42);
+  box-shadow: 0 0 0 4px rgba(244,63,94,.14), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.we-fieldHint{
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(226,232,240,.8);
+}
+.we-fieldHint.warn{ color: #fecdd3; }
 
 /* ================================
    Status row
@@ -354,7 +425,6 @@
 .we-clock-miniTop{ font-weight: 950; font-size: 12px; color: #fff; }
 .we-clock-miniBot{ font-size: 11px; opacity: .8; margin-top: 2px; }
 
-/* location line */
 .we-clock-locLine{
   margin-top: 10px;
   font-size: 12px;
@@ -367,7 +437,11 @@
    Buttons
 ================================ */
 .we-clock-actions{ margin-top: 12px; display: grid; gap: 12px; }
-.we-clock-btnRow{ display: flex; gap: 10px; margin-top: 12px; }
+.we-clock-btnRow{
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
 .we-clock-btnRow > *{ flex: 1; }
 
 .we-btn{
@@ -439,7 +513,7 @@
 }
 
 /* ================================
-   Recent activity (today only)
+   Recent activity
 ================================ */
 .we-clock-recentHead{
   display: flex;
@@ -477,7 +551,7 @@
 .we-clock-itemNote{
   font-size: 12px;
   opacity: .75;
-  max-width: 230px;
+  max-width: 210px;
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -506,22 +580,36 @@
 .we-clock-mapLink:hover{ text-decoration: underline; }
 
 /* ================================
-   Responsive
+   Responsive (small phones)
 ================================ */
 @media (max-width: 420px){
+  .we-clock-wrap{ padding: 0 10px; gap: 10px; }
+
   .we-clock-statusRow{
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
   .we-clock-mini{
     min-width: 0;
     width: 100%;
   }
+
   .we-clock-btnRow{
     flex-direction: column;
   }
+
   .we-clock-itemNote{
     max-width: 160px;
   }
-  .we-clock-wrap{ padding: 0 10px; }
+}
+
+/* ================================
+   Responsive (bigger screens)
+================================ */
+@media (min-width: 520px){
+  .we-clock-wrap{
+    width: min(520px, 100%);
+    padding: 0 12px;
+  }
 }
