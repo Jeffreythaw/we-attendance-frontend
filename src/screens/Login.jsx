@@ -181,6 +181,8 @@ export function Login({ onLogin }) {
 }
 
 const css = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap');
+
 :root { 
   --primary: #6366f1; 
   --accent: #ec4899; 
@@ -189,8 +191,9 @@ const css = `
 }
 
 .we-login-root {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  padding: 24px; background: #050810; font-family: -apple-system, system-ui, sans-serif;
+  padding: 24px; background: #050810; font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
   color: #fff; position: relative; overflow: hidden;
 }
 
@@ -207,7 +210,7 @@ const css = `
 }
 
 .we-login-window {
-  z-index: 10; width: 100%; max-width: 420px;
+  z-index: 10; width: 100%; max-width: 760px;
   background: var(--glass);
   backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
   border: 1px solid var(--border);
@@ -245,35 +248,35 @@ const css = `
   overflow: hidden;        /* Keeps the image within the rounded corners */
 }
 
-.we-login-content { padding: 32px 36px; }
+.we-login-content { padding: 32px 36px; display: grid; gap: 24px; }
 
 /* ✅ Large Centered Logo Styling */
 .we-login-header-vertical {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 40px; /* Increased from 32px to handle the bigger logo */
+  margin-bottom: 10px;
   text-align: center;
 }
 .we-logo-hero { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
 .we-logo-glow {
-  position: absolute; width: 130px; height: 130px; 
+  position: absolute; width: 120px; height: 120px; 
   background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
   filter: blur(20px); z-index: 0;
 }
 .we-logo-img-large {
-  width: 230px; /* Large center logo */
+  width: clamp(150px, 22vw, 210px);
   height: auto;
   position: relative; z-index: 1;
   filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4));
 }
 
-.we-login-h1 { font-size: 26px; font-weight: 900; margin: 0; color: #fff; letter-spacing: -0.5px; }
-.we-login-kicker { font-size: 11px; font-weight: 800; color: #818cf8; text-transform: uppercase; margin-bottom: 6px; }
+.we-login-h1 { font-size: clamp(22px, 2.4vw, 30px); font-weight: 900; margin: 0; color: #fff; letter-spacing: -0.5px; font-family: "Fraunces", serif; }
+.we-login-kicker { font-size: 11px; font-weight: 700; color: #a5b4fc; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.6px; }
 .we-login-sub { font-size: 14px; opacity: 0.5; margin-top: 6px; }
 
 /* Inputs & Form */
-.we-login-form { display: flex; flex-direction: column; gap: 20px; }
+.we-login-form { display: flex; flex-direction: column; gap: 16px; }
 .we-login-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: block; opacity: 0.8; letter-spacing: 0.5px; }
 .we-input {
   background: rgba(0,0,0,0.35); border: 1px solid var(--border);
@@ -313,8 +316,28 @@ const css = `
 .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+
+@media (min-width: 900px) {
+  .we-login-content { grid-template-columns: 1.05fr 1fr; align-items: center; }
+  .we-login-header-vertical { align-items: flex-start; text-align: left; margin-bottom: 0; }
+  .we-text-center { text-align: left; }
+  .we-brandbar-full { padding: 8px 14px; }
+  .we-brandWordmark { max-height: 56px; }
+}
+
 @media (max-width: 480px) {
   .we-login-window { border-radius: 0; min-height: 100vh; max-width: 100%; }
-  .we-login-root { padding: 0; }
+  .we-login-root {
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding: 0; }
+  .we-login-titlebar { display: none; }
+  .we-brandbar-full { display: none; }
+  .we-login-content { padding: 18px 16px 24px; gap: 16px; }
+  .we-login-header-vertical { margin-bottom: 6px; }
+  .we-logo-img-large { width: clamp(120px, 42vw, 170px); }
+  .we-login-h1 { font-size: 22px; }
+  .we-login-sub { font-size: 12px; opacity: 0.7; }
+  .we-input { padding: 12px 12px; border-radius: 12px; }
+  .we-btn { padding: 14px; font-size: 15px; }
+  .we-login-row { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
 `;

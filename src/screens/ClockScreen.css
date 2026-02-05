@@ -19,7 +19,7 @@
   overflow-y: visible;
 
   /* ✅ Fix: remove big empty space on top */
-  padding-top: max(6px, var(--safe-top));
+  padding-top: var(--safe-top);
   padding-left: 0;
   padding-right: 0;
 
@@ -107,7 +107,7 @@
   margin: 0 auto;
   display: grid;
   gap: 12px;
-  padding: 0 12px;
+  padding: 2px 12px 0;
   box-sizing: border-box;
 }
 
@@ -121,7 +121,7 @@
   gap: 10px;
 
   /* ✅ reduce top spacing */
-  padding: 2px 2px 6px;
+  padding: 0 2px 6px;
   margin: 0;
 }
 
@@ -583,6 +583,8 @@
    Responsive (small phones)
 ================================ */
 @media (max-width: 420px){
+  .we-clock-chip{ padding: 5px 8px; font-size: 11px; }
+  .we-clock-chip .ic{ width: 16px; height: 16px; font-size: 11px; }
   .we-clock-wrap{ padding: 0 10px; gap: 10px; }
 
   .we-clock-statusRow{
@@ -612,4 +614,14 @@
     width: min(520px, 100%);
     padding: 0 12px;
   }
+}
+
+.we-clock-noOt{
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+.we-clock-noOtHint{
+  font-size: 12px;
+  opacity: 0.75;
 }

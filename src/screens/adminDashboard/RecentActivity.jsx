@@ -252,18 +252,24 @@ export default function RecentActivity({
                   const department = pickDept(r, employeeMap);
                   const t = pickType(r);
                   const when = pickWhen(r);
+                  const tone = t.includes("OUT") ? "out" : t.includes("IN") ? "in" : t.includes("EDIT") ? "edit" : "neutral";
 
                   const mapLink = (mapUrlFn ? mapUrlFn(r) : null) || safeMapUrl(r);
 
                   return (
-                    <div key={rowKey(r, g.day, idx)} className="we-raItem">
-                      <div className="we-raTop">
+                    <div key={rowKey(r, g.day, idx)} className={`we-raItem ${tone}`}>
+                      <div className="we-raRail">
+                        <span className="we-raRailDot" />
+                        <span className="we-raRailLine" />
+                      </div>
+                      <div className="we-raContent">
+                        <div className="we-raTop">
                         <div className="we-raLeft">
                           <div className="we-raNameRow">
                             <div className="we-raName" title={name}>
                               {name} <span className="we-raId">#{empId}</span>
                             </div>
-                            {t ? <span className="we-raType">{t}</span> : null}
+                            {t ? <span className={`we-raType ${tone}`}>{t}</span> : null}
                           </div>
 
                           <div className="we-raMeta">
@@ -300,6 +306,7 @@ export default function RecentActivity({
                             </button>
                           ) : null}
                         </div>
+                      </div>
                       </div>
                     </div>
                   );

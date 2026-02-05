@@ -55,15 +55,16 @@ function AuthedApp({ user, logout }) {
       <div className="we-container">
         {/* Header */}
         <div
+          className={`we-app-header ${isAdmin ? "is-admin" : "is-employee"}`}
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             gap: 10,
-            marginBottom: 12,
+            marginBottom: 8,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <div className="we-app-brand" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <div
               style={{
                 width: 38,
@@ -84,14 +85,6 @@ function AuthedApp({ user, logout }) {
               </div>
             </div>
           </div>
-
-          <button
-            onClick={logout}
-            className="we-btn-soft"
-            style={{ borderRadius: 999, padding: "10px 12px", fontWeight: 950, fontSize: 13 }}
-          >
-            Logout
-          </button>
         </div>
 
         {/* Screens */}
@@ -140,6 +133,40 @@ const cssBg = `
 .we-app-blob.b1{ top:-220px; left:-220px; background: radial-gradient(circle at 30% 30%, #7c3aed, transparent 55%); }
 .we-app-blob.b2{ bottom:-260px; right:-220px; background: radial-gradient(circle at 30% 30%, #22c55e, transparent 55%); }
 .we-app-blob.b3{ top:25%; right:-280px; background: radial-gradient(circle at 30% 30%, #06b6d4, transparent 55%); }
+
+
+.we-app-header{ position:relative; z-index:2; }
+@media (max-width: 520px){
+  .we-app-header.is-employee{
+    margin-bottom: 6px !important;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  }
+  .we-app-header.is-employee .we-app-brand{
+    gap: 8px;
+  }
+  .we-app-header.is-employee .we-app-brand > div:first-child{
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 10px !important;
+  }
+  .we-app-header.is-employee .we-app-brand > div:last-child > div:first-child{
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+  }
+  .we-app-header.is-employee .we-app-brand > div:last-child > div:last-child{
+    font-size: 11px !important;
+    opacity: 0.8;
+  }
+  .we-app-header.is-employee .we-app-logout{
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+  .we-container{ padding-top: 8px; }
+}
 
 .we-app-noise{
   position:absolute; inset:0;

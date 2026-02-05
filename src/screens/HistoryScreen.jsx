@@ -49,21 +49,19 @@ function sgDayRangeUtcMs(isoDay) {
   return { startUtcMs, endUtcMsExclusive };
 }
 
-/** Input date parsing (keep as ISO string; compute SG range using sgDayRangeUtcMs) */
+/** Validate yyyy-mm-dd */
 function parseIsoDateInput(iso) {
   if (!iso) return null;
   const [y, m, d] = iso.split("-").map((x) => Number(x));
   if (!y || !m || !d) return null;
-  // not a real Date in local tz; just validate
   return { y, m, d };
 }
 
 function prettyDate(dayKey) {
-  // Render as SG weekday/month/day, stable
   const r = sgDayRangeUtcMs(dayKey);
   if (!r) return dayKey;
 
-  // Use the SG noon for stable formatting
+  // Use SG noon for stable formatting
   const noonUtcMs = r.startUtcMs + 12 * 60 * 60 * 1000;
   const d = new Date(noonUtcMs);
   if (!isValidDate(d)) return dayKey;
@@ -84,7 +82,8 @@ function weekdayShort(dayKey) {
 }
 
 /**
- * ✅ For charts/stats: iterate days between two ISO dates (inclusive)
+ * ✅ Iterate days between two ISO dates (inclusive).
+ * This walks calendar days, safe across months/years.
  */
 function daysBetweenInclusiveIso(fromIso, toIso) {
   const out = [];
@@ -92,7 +91,6 @@ function daysBetweenInclusiveIso(fromIso, toIso) {
   const b = parseIsoDateInput(toIso);
   if (!a || !b) return out;
 
-  // Iterate in UTC date increments (since we are just walking calendar days)
   let cur = new Date(Date.UTC(a.y, a.m - 1, a.d, 0, 0, 0, 0));
   const end = new Date(Date.UTC(b.y, b.m - 1, b.d, 0, 0, 0, 0));
 
@@ -105,7 +103,6 @@ function daysBetweenInclusiveIso(fromIso, toIso) {
 }
 
 function monthRangeIso(baseDate) {
-  // compute using Singapore date (not local)
   const baseIso = isoDateInSg(baseDate);
   const a = parseIsoDateInput(baseIso);
   if (!a) return { fromIso: "", toIso: "" };
@@ -115,10 +112,30 @@ function monthRangeIso(baseDate) {
 
   const fromIso = `${y}-${pad2(m)}-01`;
 
-  // last day of month: create UTC date for next month day 0
+  // last day of month
   const lastDay = new Date(Date.UTC(y, m, 0));
   const toIso = `${y}-${pad2(m)}-${pad2(lastDay.getUTCDate())}`;
 
+  return { fromIso, toIso };
+}
+
+function weekRangeIso(baseDate) {
+  const baseIso = isoDateInSg(baseDate);
+  const a = parseIsoDateInput(baseIso);
+  if (!a) return { fromIso: "", toIso: "" };
+
+  const noon = new Date(Date.UTC(a.y, a.m - 1, a.d, 12, 0, 0));
+  const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(noon);
+  const mapDow = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const back = mapDow[dow] ?? 0;
+
+  const start = new Date(Date.UTC(a.y, a.m - 1, a.d, 0, 0, 0));
+  start.setUTCDate(start.getUTCDate() - back);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+
+  const fromIso = `${start.getUTCFullYear()}-${pad2(start.getUTCMonth() + 1)}-${pad2(start.getUTCDate())}`;
+  const toIso = `${end.getUTCFullYear()}-${pad2(end.getUTCMonth() + 1)}-${pad2(end.getUTCDate())}`;
   return { fromIso, toIso };
 }
 
@@ -145,7 +162,6 @@ function isLate(checkInAt) {
   const d = parseApiDate(checkInAt);
   if (!d) return false;
 
-  // Evaluate in Singapore time (NOT device local)
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: SG_TZ,
     hour: "2-digit",
@@ -166,36 +182,22 @@ function isLate(checkInAt) {
 function getOtMinutesFromRow(r, isWorkdayDay) {
   if (typeof r?.otMinutes === "number") return Math.max(0, r.otMinutes);
 
-  // fallback calc (should rarely be used)
   const inD = parseApiDate(r?.checkInAt);
   const outD = parseApiDate(r?.checkOutAt);
   if (!inD || !outD) return 0;
 
-  // If off day, all duration is OT (no lunch deduction here in fallback)
   if (!isWorkdayDay) {
     const diff = Math.max(0, outD.getTime() - inD.getTime());
     return Math.round(diff / 60000);
   }
 
-  // Workday: OT starts at 17:00 SG of check-in date.
-  // Build cutoff using SG calendar date.
   const inIso = isoDateInSg(inD);
   const r0 = sgDayRangeUtcMs(inIso);
   if (!r0) return 0;
 
-  // SG 17:00 = SG 00:00 + 17h
-  const cutoffUtcMs = r0.startUtcMs + 17 * 60 * 60 * 1000;
+  const cutoffUtcMs = r0.startUtcMs + 17 * 60 * 60 * 1000; // 17:00 SG
   const extra = Math.max(0, outD.getTime() - cutoffUtcMs);
   return Math.round(extra / 60000);
-}
-
-function formatHm(mins) {
-  const m = Math.max(0, mins || 0);
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h <= 0) return `${mm}m`;
-  if (mm === 0) return `${h}h`;
-  return `${h}h ${mm}m`;
 }
 
 /**
@@ -207,12 +209,21 @@ function getWorkedMinutesFromRow(r) {
   const ot = typeof r?.otMinutes === "number" ? r.otMinutes : null;
   if (reg != null && ot != null) return Math.max(0, reg + ot);
 
-  // fallback: raw time diff
   const inD = parseApiDate(r?.checkInAt);
   const outD = parseApiDate(r?.checkOutAt);
   if (!inD || !outD) return null;
+
   const mins = Math.round((outD.getTime() - inD.getTime()) / 60000);
   return mins >= 0 ? mins : null;
+}
+
+function formatHm(mins) {
+  const m = Math.max(0, mins || 0);
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h <= 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  return `${h}h ${mm}m`;
 }
 
 export function HistoryScreen({ onAuthError }) {
@@ -223,33 +234,31 @@ export function HistoryScreen({ onAuthError }) {
   const [q, setQ] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(false);
 
-  // ✅ Keep “now” for UI only
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
 
-  // ✅ Default range = current month (by Singapore date)
-  const currentMonth = useMemo(() => monthRangeIso(now), [now]);
-  const [fromIso, setFromIso] = useState(() => currentMonth.fromIso);
-  const [toIso, setToIso] = useState(() => currentMonth.toIso);
+  // ✅ Default range = this week (by SG date)
+  const currentWeek = useMemo(() => weekRangeIso(now), [now]);
+  const [fromIso, setFromIso] = useState(() => currentWeek.fromIso);
+  const [toIso, setToIso] = useState(() => currentWeek.toIso);
 
-  // Auto-shift if month changed and user still default
+  // Auto-shift if week changed and user still default
   useEffect(() => {
-    const expectedFrom = currentMonth.fromIso;
-    const expectedTo = currentMonth.toIso;
+    const expectedFrom = currentWeek.fromIso;
+    const expectedTo = currentWeek.toIso;
 
     const isStillDefault =
-      fromIso === monthRangeIso(now).fromIso &&
-      toIso === monthRangeIso(now).toIso;
+      fromIso === weekRangeIso(now).fromIso && toIso === weekRangeIso(now).toIso;
 
     if (isStillDefault) {
       setFromIso(expectedFrom);
       setToIso(expectedTo);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMonth.fromIso, currentMonth.toIso]);
+  }, [currentWeek.fromIso, currentWeek.toIso]);
 
   // Holidays: Map<year, Set<YYYY-MM-DD>>
   const [holidaySets, setHolidaySets] = useState(() => new Map());
@@ -287,8 +296,6 @@ export function HistoryScreen({ onAuthError }) {
   // ✅ Range selected in SG calendar days
   const rangeSelected = useMemo(() => {
     if (!fromIso || !toIso) return { fromIso: null, toIso: null };
-
-    // swap if reversed
     if (fromIso > toIso) return { fromIso: toIso, toIso: fromIso };
     return { fromIso, toIso };
   }, [fromIso, toIso]);
@@ -373,10 +380,10 @@ export function HistoryScreen({ onAuthError }) {
 
   const isWorkdayIso = useCallback(
     (iso) => {
-      // Sunday OFF (based on SG calendar day)
       const r = sgDayRangeUtcMs(iso);
       if (!r) return true;
       const noon = new Date(r.startUtcMs + 12 * 60 * 60 * 1000);
+
       const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(noon);
       if (dow === "Sun") return false;
       if (isHolidayIso(iso)) return false;
@@ -460,28 +467,33 @@ export function HistoryScreen({ onAuthError }) {
    * ✅ Daily report = THIS WEEK (Sun → Sat) in Singapore
    */
   const daily = useMemo(() => {
-    // Determine "today" in SG
     const todayIso = isoDateInSg(now);
-    const r = sgDayRangeUtcMs(todayIso);
-    const noon = r ? new Date(r.startUtcMs + 12 * 60 * 60 * 1000) : new Date();
+    const todayRange = sgDayRangeUtcMs(todayIso);
 
-    // Robust approach: use UTC noon date and adjust by SG weekday number
-    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(noon);
+    const todayNoon = todayRange
+      ? new Date(todayRange.startUtcMs + 12 * 60 * 60 * 1000)
+      : new Date();
+
+    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(todayNoon);
     const mapDow = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     const back = mapDow[dow] ?? 0;
 
-    const todayRange = sgDayRangeUtcMs(todayIso);
-    const todaySgStartUtc = todayRange?.startUtcMs ?? noon.getTime();
+    const todaySgStartUtc = todayRange ? todayRange.startUtcMs : todayNoon.getTime();
     const weekStartUtcMs = todaySgStartUtc - back * 24 * 60 * 60 * 1000;
 
-    const days = [];
+    // 7 days ISO keys
+    const daysIso = [];
     for (let i = 0; i < 7; i += 1) {
-      const d = new Date(weekStartUtcMs + i * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000); // noon
-      days.push(isoDateInSg(d));
+      const noon = new Date(weekStartUtcMs + i * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000);
+      daysIso.push(isoDateInSg(noon));
     }
 
     const map = new Map();
-    for (const iso of days) {
+    for (const iso of daysIso) {
+      const rr = sgDayRangeUtcMs(iso);
+      const nd = rr ? new Date(rr.startUtcMs + 12 * 60 * 60 * 1000) : new Date();
+      const w = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(nd);
+
       map.set(iso, {
         key: iso,
         onTime: 0,
@@ -490,12 +502,7 @@ export function HistoryScreen({ onAuthError }) {
         otMins: 0,
         isOff: !isWorkdayIso(iso),
         isHoliday: isHolidayIso(iso),
-        isSunday: (() => {
-          const rr = sgDayRangeUtcMs(iso);
-          const nd = rr ? new Date(rr.startUtcMs + 12 * 60 * 60 * 1000) : new Date();
-          const w = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(nd);
-          return w === "Sun";
-        })(),
+        isSunday: w === "Sun",
       });
     }
 
@@ -546,6 +553,12 @@ export function HistoryScreen({ onAuthError }) {
   const showList = q.trim().length > 0 || onlyOpen;
 
   // ✅ Quick range buttons
+  const setThisWeek = useCallback(() => {
+    const r = weekRangeIso(new Date());
+    setFromIso(r.fromIso);
+    setToIso(r.toIso);
+  }, []);
+
   const setThisMonth = useCallback(() => {
     const r = monthRangeIso(new Date());
     setFromIso(r.fromIso);
@@ -625,6 +638,9 @@ export function HistoryScreen({ onAuthError }) {
             </div>
 
             <div className="we-h-rangeBtns">
+              <button className="we-h-chip" onClick={setThisWeek} type="button">
+                This Week
+              </button>
               <button className="we-h-chip" onClick={setThisMonth} type="button">
                 This Month
               </button>
@@ -752,10 +768,10 @@ export function HistoryScreen({ onAuthError }) {
               const onPct = d.total > 0 ? Math.round((d.onTime / d.total) * 100) : 0;
               const latePct = d.total > 0 ? Math.round((d.late / d.total) * 100) : 0;
 
-              const CAP_MAX_PX = 10;
+              const CAP_MAX_PX = 14;
               const capPx =
                 d.otMins > 0
-                  ? Math.max(2, Math.round((d.otMins / daily.maxOt) * CAP_MAX_PX))
+                  ? Math.max(6, Math.round((d.otMins / daily.maxOt) * CAP_MAX_PX))
                   : 0;
 
               const offText = d.isOff ? (d.isSunday ? "OFF" : d.isHoliday ? "Holiday" : "OFF") : "";
@@ -831,7 +847,6 @@ export function HistoryScreen({ onAuthError }) {
 
                 const isOpen = !r.checkOutAt;
 
-                // ✅ Use backend minutes
                 const worked = getWorkedMinutesFromRow(r);
                 const ot = r.checkOutAt ? getOtMinutesFromRow(r, wd) : 0;
 

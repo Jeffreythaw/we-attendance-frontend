@@ -24,15 +24,17 @@ export const attendanceApi = {
   },
 
   // ✅ location + optional OT project
-  checkOut(location, otProjectName) {
+  checkOut(location, otProjectName, forceNoOt = false) {
     const project = (otProjectName || "").trim();
+    const noOt = forceNoOt === true;
 
     return apiFetch("/api/Attendance/checkout", {
       method: "POST",
       body: {
         location: location ?? null,
         // send only if provided
-        otProjectName: project ? project : null,
+        otProjectName: !noOt && project ? project : null,
+        forceNoOt: noOt ? true : null,
       },
     });
   },

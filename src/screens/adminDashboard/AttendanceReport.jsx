@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiBase, getToken } from "../../api/client";
 import { REPORT_ENDPOINT } from "./constants";
+import { attendanceApi } from "../../api/attendance";
 import { parseContentDispositionFilename, parseCsvText } from "./csv";
 
 /**
@@ -12,14 +13,31 @@ const DISPLAY_COLUMNS = [
   { label: "Name", key: "Staff Name" },
   { label: "NW days", key: "Normal Working days" },
   { label: "WS day", key: "Working Sunday" },
-  { label: "PH day", key: "Public Holiday" },
+  { label: "PH in range", key: "Public Holiday" },
   { label: "TTLW hour", key: "Total Working hour" },
+  { label: "Act W", key: "Actual Worked Hours" },
   { label: "N OT", key: "Normal day OT" },
   { label: "S OT", key: "Sunday OT" },
   { label: "PH OT", key: "Public Holiday OT" },
   { label: "TTL OT", key: "Total OT" },
   { label: "Leave", key: "Total Leave" },
 ];
+
+function parseIsoDateInput(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map((x) => Number(x));
+  if (!y || !m || !d) return null;
+  return { y, m, d };
+}
+
+function yearsBetween(fromIso, toIso) {
+  const a = parseIsoDateInput(fromIso);
+  const b = parseIsoDateInput(toIso);
+  if (!a || !b) return [];
+  const out = [];
+  for (let y = a.y; y <= b.y; y += 1) out.push(y);
+  return out;
+}
 
 function downloadBlob(blob, filename) {
   const a = document.createElement("a");
@@ -37,9 +55,35 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
   const [reportCsv, setReportCsv] = useState("");
   const [reportRows, setReportRows] = useState([]);
   const [reportHeaders, setReportHeaders] = useState([]);
+  const [reportOpen, setReportOpen] = useState(true);
+  const [phInRange, setPhInRange] = useState(null);
 
   const [reportSearch, setReportSearch] = useState("");
   const [reportOnlyMissing, setReportOnlyMissing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPh() {
+      try {
+        if (!from || !to) { setPhInRange(null); return; }
+        const years = yearsBetween(from, to);
+        const sets = await Promise.all(years.map((y) => attendanceApi.holidays(y).catch(() => [])));
+        let count = 0;
+        for (const list of sets) {
+          for (const h of Array.isArray(list) ? list : []) {
+            const iso = String(h?.date ?? h?.Date ?? "").slice(0, 10);
+            if (!iso) continue;
+            if (iso >= from && iso <= to) count += 1;
+          }
+        }
+        if (!cancelled) setPhInRange(count);
+      } catch {
+        if (!cancelled) setPhInRange(null);
+      }
+    }
+    loadPh();
+    return () => { cancelled = true; };
+  }, [from, to]);
 
   async function loadReport({ downloadCsv = false } = {}) {
     setReportErr("");
@@ -235,8 +279,11 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
           </div>
 
           <div className="we-reportBtns">
+            <button className="we-btn-soft we-report-toggle" type="button" onClick={() => setReportOpen((v) => !v)} disabled={reportBusy}>
+              {reportOpen ? "Hide" : "Show"}
+            </button>
             <button
-              className="we-btn-soft"
+              className="we-btn"
               type="button"
               onClick={() => loadReport({ downloadCsv: false })}
               disabled={reportBusy || disabled}
@@ -245,7 +292,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
             </button>
 
             <button
-              className="we-btn"
+              className="we-btn-soft"
               type="button"
               onClick={() => loadReport({ downloadCsv: true })}
               disabled={reportBusy || disabled}
@@ -301,45 +348,48 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
 
       {reportErr ? <div className="we-error">{reportErr}</div> : null}
 
-      {uiRowsCount === 0 ? (
-        <div className="we-admin-empty">
-          {reportBusy ? "Loading report…" : "No report rows."}
-        </div>
-      ) : (
-        <div className="we-admin-tableWrap">
-          <table className="we-admin-table">
-            <thead>
-              <tr>
-                {DISPLAY_COLUMNS.map((c) => (
-                  <th key={c.key}>{c.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReportRows.map((r, idx) => (
-                <tr key={`${r["No."] || idx}-${r["Staff Name"] || ""}`}>
-                  {DISPLAY_COLUMNS.map((c) => (
-                    <td key={c.key}>
-                      {c.key === "Total OT" ? (
-                        <b>{r?.[c.key] ?? "—"}</b>
-                      ) : (
-                        r?.[c.key] ?? "—"
-                      )}
-                    </td>
+      {reportOpen ? (
+        <>
+          {uiRowsCount === 0 ? (
+            <div className="we-reportEmpty">
+              <div className="we-reportEmptyTitle">No report loaded</div>
+              <div className="we-reportEmptySub">Select a range and click Load Report.</div>
+              <button className="we-btn" type="button" onClick={() => loadReport({ downloadCsv: false })} disabled={reportBusy || disabled}>
+                {reportBusy ? "Loading…" : "Load Report"}
+              </button>
+            </div>
+          ) : (
+            <div className="we-admin-tableWrap">
+              <table className="we-admin-table">
+                <thead>
+                  <tr>
+                    {DISPLAY_COLUMNS.map((c) => (
+                      <th key={c.key}>{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReportRows.map((r, idx) => (
+                    <tr key={`${r["No."] || idx}-${r["Staff Name"] || ""}`}>
+                      {DISPLAY_COLUMNS.map((c) => (
+                        <td key={c.key}>
+                          {c.key === "Total OT" ? (
+                            <b>{r?.[c.key] ?? "—"}</b>
+                          ) : c.key === "Public Holiday" ? (
+                            (r?.[c.key] ?? "") === "" ? (phInRange ?? "—") : r?.[c.key]
+                          ) : (
+                            r?.[c.key] ?? "—"
+                          )}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {reportCsv ? (
-        <details className="we-rawCsv">
-          <summary>Show raw CSV</summary>
-          <pre>{reportCsv}</pre>
-        </details>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       ) : null}
-    </div>
+</div>
   );
 }

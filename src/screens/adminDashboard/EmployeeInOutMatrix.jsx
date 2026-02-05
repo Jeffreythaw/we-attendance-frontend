@@ -94,6 +94,50 @@ function pickEmpId(row) {
     row?.employeeId ?? row?.empId ?? row?.staffId ?? row?.userId ?? NaN
   );
 }
+function pickWhen(row) {
+  return (
+    row?.checkInAt ??
+    row?.checkOutAt ??
+    row?.createdAt ??
+    row?.timestamp ??
+    row?.time ??
+    row?.date ??
+    row?.workDate ??
+    null
+  );
+}
+
+function pickLocationName(row) {
+  return row?.locationName ?? row?.location ?? row?.siteName ?? row?.site ?? "";
+}
+
+function pickLatLng(row) {
+  const lat = row?.lat ?? row?.latitude ?? row?.checkInLat ?? row?.checkOutLat;
+  const lng = row?.lng ?? row?.longitude ?? row?.checkInLng ?? row?.checkOutLng;
+  if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
+    return { lat: Number(lat), lng: Number(lng) };
+  }
+  return null;
+}
+
+function timeAgo(value) {
+  if (!value) return "";
+  const t = new Date(value).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = Date.now() - t;
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return `${days}d ago`;
+}
+
+function mapUrl(lat, lng) {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
 function pickEmpName(row, employeeMap) {
   const id = pickEmpId(row);
   const emp = employeeMap?.get?.(id);
@@ -110,6 +154,13 @@ function shortDayLabel(iso) {
   if (!iso) return "—";
   const parts = iso.split("-");
   return `${parts[1]}/${parts[2]}`;
+}
+
+function dayLabel(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
 }
 
 function monthDay(iso) {
@@ -170,6 +221,7 @@ export default function EmployeeInOutMatrix({
   recentActivity = [],
   employeeMap,
   employees = [],
+  problemsOnly = false,
   defaultSelectedCount = 5,
   workDayMinutes = 8 * 60,
   lunchBreakMinutes = 60,
@@ -216,7 +268,11 @@ export default function EmployeeInOutMatrix({
         name,
         inAt: null,
         outAt: null,
+        lastEventAt: null,
+        row: null,
       };
+
+      const when = pickWhen(r);
 
       if (inAt) {
         if (!cur.inAt) cur.inAt = inAt;
@@ -225,6 +281,14 @@ export default function EmployeeInOutMatrix({
       if (outAt) {
         if (!cur.outAt) cur.outAt = outAt;
         else if (new Date(outAt) > new Date(cur.outAt)) cur.outAt = outAt;
+      }
+
+      if (when) {
+        const t = new Date(when).getTime();
+        if (Number.isFinite(t) && (!cur.lastEventAt || t > cur.lastEventAt)) {
+          cur.lastEventAt = t;
+          cur.row = r;
+        }
       }
       map.set(k, cur);
     }
@@ -319,6 +383,18 @@ export default function EmployeeInOutMatrix({
     () => employeesList.filter((e) => selected.has(e.empId)),
     [employeesList, selected]
   );
+
+  const visibleEmployees = useMemo(() => {
+    if (!problemsOnly) return selectedEmployees;
+    return selectedEmployees.filter((emp) => {
+      const latest = latestCellForEmp(emp.empId, days, byEmpDay);
+      if (!latest) return false;
+      const inAt = latest?.inAt || null;
+      const outAt = latest?.outAt || null;
+      const badges = cellBadges(inAt, outAt);
+      return badges.length > 0;
+    });
+  }, [problemsOnly, selectedEmployees, days, byEmpDay]);
   const selectedCount = selectedEmployees.length;
 
   const rangeLabel = useMemo(() => {
@@ -337,7 +413,17 @@ export default function EmployeeInOutMatrix({
     return clamp(Math.round((mins / workDayMinutes) * 100), 0, 100);
   }
 
-  function hoursLabel(inAt, outAt) {
+  function latestCellForEmp(empId, days, byEmpDay) {
+  if (!days || !days.length) return null;
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    const k = `${empId}|${days[i]}`;
+    const cell = byEmpDay.get(k);
+    if (cell && (cell.inAt || cell.outAt)) return cell;
+  }
+  return null;
+}
+
+function hoursLabel(inAt, outAt) {
     const mins = workedMinutes(
       inAt,
       outAt,
@@ -350,7 +436,11 @@ export default function EmployeeInOutMatrix({
     return m ? `${h}h ${m}m` : `${h}h`;
   }
 
-  function cellBadges(inAt, outAt) {
+  function badgeKeyList(badges) {
+  return (badges || []).map((b) => b.label);
+}
+
+function cellBadges(inAt, outAt) {
     const badges = [];
     if (inAt && !outAt)
       badges.push({ key: "missingout", label: "MISSING OUT", tone: "warn" });
@@ -407,130 +497,110 @@ export default function EmployeeInOutMatrix({
         </div>
       </div>
 
-      {selectedEmployees.length === 0 ? (
+      {visibleEmployees.length === 0 ? (
         <div className="we-admin-empty">Select at least 1 employee.</div>
       ) : (
         <>
-          <div className="we-matrixTableWrap">
-            <table className="we-matrixTable">
-              <thead>
-                <tr>
-                  <th className="we-matrixStickyCol we-matrixEmpHead">
-                    <div className="we-matrixEmpHeadTop">Employee</div>
-                    <div className="we-matrixEmpHeadBot">
-                      Trend (worked mins)
-                    </div>
-                  </th>
-                  {days.map((day) => (
-                    <th key={day} className="we-matrixDayHead">
-                      <div className="we-matrixDayTop">
-                        {shortDayLabel(day)}
+          <div className="we-presenceGrid">
+            {visibleEmployees.map((emp) => {
+              const trend = trendByEmp.get(emp.empId) || [];
+              const latest = latestCellForEmp(emp.empId, days, byEmpDay);
+              const inAt = latest?.inAt || null;
+              const outAt = latest?.outAt || null;
+              const latestRow = latest?.row || null;
+              const latestDay = latest?.dayKey || null;
+              const locName = latestRow ? pickLocationName(latestRow) : "";
+              const latLng = latestRow ? pickLatLng(latestRow) : null;
+              const latestTime = latestRow ? timeAgo(pickWhen(latestRow)) : "";
+              const badges = cellBadges(inAt, outAt);
+              const state = badges.some((b) => b.tone === "bad")
+                ? "bad"
+                : badges.some((b) => b.tone === "warn")
+                ? "warn"
+                : inAt || outAt
+                ? "ok"
+                : "empty";
+
+              return (
+                <div key={emp.empId} className={`we-presenceCard ${state}`}>
+                  <div className="we-presenceTop">
+                    <div>
+                      <div className="we-presenceNameRow">
+                        <div className="we-presenceName" title={emp.name}>{emp.name}</div>
+                        <div className="we-presenceChips">
+                          {badgeKeyList(badges).slice(0, 2).map((b) => (
+                            <span key={b} className="we-presenceChip">{b}</span>
+                          ))}
+                          {badgeKeyList(badges).length > 2 ? (
+                            <span className="we-presenceChip dim">+{badgeKeyList(badges).length - 2}</span>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="we-matrixDayBot">{monthDay(day)}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+                      <div className="we-presenceMeta">#{emp.empId}</div>
+                    </div>
+                    <div className={`we-presenceStatus ${state}`}>
+                      {state === "ok" ? "IN" : state === "warn" ? "CHECK" : state === "bad" ? "ALERT" : "—"}
+                    </div>
+                  </div>
 
-              <tbody>
-                {selectedEmployees.map((emp) => {
-                  const trend = trendByEmp.get(emp.empId) || [];
-                  return (
-                    <tr key={emp.empId}>
-                      <td className="we-matrixStickyCol we-matrixEmpCell">
-                        <div className="we-matrixEmpName" title={emp.name}>
-                          {emp.name}
-                        </div>
-                        <div className="we-matrixEmpMeta">#{emp.empId}</div>
+                  <div className="we-presenceSub">
+                    <span className="we-presenceDay">{dayLabel(latestDay)}</span>
+                    {latestTime ? <span className="we-presenceAgo">• {latestTime}</span> : null}
+                    {locName ? <span className="we-presenceLoc">• {locName}</span> : null}
+                  </div>
 
-                        <div className="we-matrixSparkRow">
-                          <Sparkline values={trend} max={workDayMinutes} />
-                          <div className="we-sparkMeta">
-                            <span className="we-sparkChip">
-                              {expectedIn}–{expectedOut}
-                            </span>
-                            <span className="we-sparkChip subtle">
-                              - {lunchBreakMinutes}m lunch
-                            </span>
-                          </div>
-                        </div>
-                      </td>
+                  <div className="we-presenceTimes">
+                    <div className="we-presenceTime">
+                      <span className="dot in" />
+                      <span>IN</span>
+                      <b>{fmtTime(inAt)}</b>
+                    </div>
+                    <div className="we-presenceTime">
+                      <span className="dot out" />
+                      <span>OUT</span>
+                      <b>{fmtTime(outAt)}</b>
+                    </div>
+                  </div>
 
-                      {days.map((day) => {
-                        const k = `${emp.empId}|${day}`;
-                        const cell = byEmpDay.get(k);
-                        const inAt = cell?.inAt || null;
-                        const outAt = cell?.outAt || null;
+                  {badges.length ? (
+                    <div className="we-presenceBadges">
+                      {badges.slice(0, 3).map((b) => (
+                        <span key={b.key} className={`we-mxBadge ${b.tone}`}>{b.label}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="we-presenceBadges empty">No flags</div>
+                  )}
 
-                        const pct = pctForCell(inAt, outAt);
-                        const hasAny = !!(inAt || outAt);
-                        const badges = cellBadges(inAt, outAt);
+                  <div className="we-presenceTrend">
+                    <Sparkline values={trend} max={workDayMinutes} />
+                    <div className="we-presenceTrendMeta">
+                      <span className="we-sparkChip">{expectedIn}–{expectedOut}</span>
+                      <span className="we-sparkChip subtle">- {lunchBreakMinutes}m lunch</span>
+                    </div>
+                  </div>
 
-                        return (
-                          <td
-                            key={k}
-                            className={`we-matrixCell ${
-                              hasAny ? "has" : "empty"
-                            }`}
-                          >
-                            {badges.length ? (
-                              <div className="we-mxBadges">
-                                {badges.slice(0, 2).map((b) => (
-                                  <span
-                                    key={b.key}
-                                    className={`we-mxBadge ${b.tone}`}
-                                  >
-                                    {b.label}
-                                  </span>
-                                ))}
-                                {badges.length > 2 ? (
-                                  <span className="we-mxBadge dim">
-                                    +{badges.length - 2}
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <div className="we-mxBadgesPlaceholder" />
-                            )}
-
-                            <div className="we-mxTimes">
-                              <div className="we-mxTimeRow">
-                                <span className="we-mxDot in" />
-                                <span className="we-mxTime">
-                                  {fmtTime(inAt)}
-                                </span>
-                              </div>
-                              <div className="we-mxTimeRow">
-                                <span className="we-mxDot out" />
-                                <span className="we-mxTime">
-                                  {fmtTime(outAt)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="we-mxBarRow">
-                              <div className="we-mxBarTrack" aria-hidden="true">
-                                <div
-                                  className="we-mxBarFill"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <div className="we-mxPct">
-                                {pct ? `${pct}%` : "—"}
-                              </div>
-                            </div>
-
-                            <div className="we-mxHours">
-                              {hoursLabel(inAt, outAt)}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  <div className="we-presenceFoot">
+                    <div className="we-presenceHours">Worked: <b>{hoursLabel(inAt, outAt)}</b></div>
+                    <div className="we-presenceActions">
+                      {latLng ? (
+                        <a className="we-btn-mini" href={mapUrl(latLng.lat, latLng.lng)} target="_blank" rel="noreferrer">
+                          Map
+                        </a>
+                      ) : (
+                        <button className="we-btn-mini" type="button" disabled>Map</button>
+                      )}
+                      {typeof onEdit === "function" && latestRow ? (
+                        <button className="we-btn-mini primary" type="button" onClick={() => onEdit(latestRow)}>
+                          Edit
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="we-presencePct">{pctForCell(inAt, outAt) || 0}%</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="we-matrixFootNote">

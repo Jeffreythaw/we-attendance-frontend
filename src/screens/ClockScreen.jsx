@@ -7,11 +7,17 @@ import { fmtDateTime, parseApiDate } from "../utils/datetime";
 import WELogo from "../assets/WE.png";
 import "./ClockScreen.css";
 
+const SG_TZ = "Asia/Singapore";
+
 function localIsoDate(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  // en-CA gives YYYY-MM-DD format
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: SG_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 function formatFullDateDots(d = new Date()) {
@@ -67,7 +73,12 @@ export function ClockScreen({ onAuthError }) {
 
   // ✅ CSS expects is-day / is-night
   const themeClass = useMemo(() => {
-    const h = now.getHours();
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: SG_TZ,
+      hour: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
     return h >= 6 && h < 18 ? "is-day" : "is-night";
   }, [now]);
 
@@ -100,12 +111,22 @@ export function ClockScreen({ onAuthError }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now.getFullYear()]);
 
-  const isSunday = useMemo(() => now.getDay() === 0, [now]);
+  const isSunday = useMemo(() => {
+    const w = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(now);
+    return w == "Sun";
+  }, [now]);
   const isHoliday = useMemo(() => holidaySet.has(todayKey), [holidaySet, todayKey]);
+  const isWorkday = useMemo(() => !isSunday && !isHoliday, [isSunday, isHoliday]);
 
   const isAfterShiftEnd = useMemo(() => {
-    const h = now.getHours();
-    const m = now.getMinutes();
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: SG_TZ,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
     // OT after 17:00 (include 17:00 and above)
     return h > 17 || (h === 17 && m >= 0);
   }, [now]);
@@ -119,6 +140,10 @@ export function ClockScreen({ onAuthError }) {
 
   // ✅ OT required only when user is currently OPEN (checked in)
   const otRequired = useMemo(() => Boolean(open) && otLikely, [open, otLikely]);
+  const canNoOtCheckout = useMemo(
+    () => Boolean(open) && isWorkday && isAfterShiftEnd,
+    [open, isWorkday, isAfterShiftEnd]
+  );
 
   const otProjectOk = useMemo(() => {
     if (!otRequired) return true;
@@ -165,7 +190,8 @@ export function ClockScreen({ onAuthError }) {
       const o = await attendanceApi.open();
       setOpen(o);
 
-      const rows = await attendanceApi.me();
+      const data = await attendanceApi.me();
+      const rows = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
 
       // ✅ Today-only recent activity (timezone-safe)
       const todayRows = (rows || []).filter((r) => {
@@ -176,6 +202,12 @@ export function ClockScreen({ onAuthError }) {
         if (!d) return false;
 
         return localIsoDate(d) === todayKey;
+      });
+
+      todayRows.sort((a, b) => {
+        const ta = parseApiDate(a?.checkInAt || a?.createdAt || a?.timestamp)?.getTime() ?? 0;
+        const tb = parseApiDate(b?.checkInAt || b?.createdAt || b?.timestamp)?.getTime() ?? 0;
+        return tb - ta;
       });
 
       setRecent(todayRows.slice(0, 8));
@@ -220,7 +252,7 @@ export function ClockScreen({ onAuthError }) {
     }
   }
 
-  async function checkOut() {
+  async function checkOut(forceNoOt = false) {
     setBusy(true);
     setErr("");
     setGeoWarn("");
@@ -234,15 +266,16 @@ export function ClockScreen({ onAuthError }) {
       }
 
       const project = (otProjectName || "").trim();
+      const noOt = forceNoOt === true;
 
-      // ✅ Frontend guard: require OT project if OT required
-      if (otRequired && !project) {
+      // ✅ Frontend guard: require OT project if OT required (unless user chooses no-OT checkout)
+      if (!noOt && otRequired && !project) {
         setErr("OT detected. Please enter OT Project name before checkout.");
         setShowOtManual(true);
         return;
       }
 
-      await attendanceApi.checkOut(location, project);
+      await attendanceApi.checkOut(location, project, noOt);
 
       setOtProjectName("");
       setShowOtManual(false);
@@ -256,7 +289,7 @@ export function ClockScreen({ onAuthError }) {
 
       // Overnight approval (backend returns 409)
       if (String(msg).includes("409")) {
-        setErr("Checkout pending admin approval (overnight OT).");
+        setErr("Overnight checkout pending admin approval.");
         await refresh();
         return;
       }
@@ -489,6 +522,22 @@ export function ClockScreen({ onAuthError }) {
                   🔄 Refresh
                 </button>
               </div>
+
+              {canNoOtCheckout ? (
+                <div className="we-clock-noOt">
+                  <button
+                    type="button"
+                    className="we-btn-soft"
+                    onClick={() => checkOut(true)}
+                    disabled={busy}
+                  >
+                    ⛔ No OT — Check out
+                  </button>
+                  <div className="we-clock-noOtHint">
+                    Use this if you are not claiming OT. We'll use standard end time (no OT).
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
 

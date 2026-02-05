@@ -1,110 +1,115 @@
 /* =========================
-   Attendance Report (toolbar + data-grid style table)
+   Attendance Report (modern)
    ========================= */
 
-.we-reportCard{ padding: 14px; }
+.we-reportCard {
+  padding: 12px;
+}
 
-.we-reportActions{
-  display:grid;
+.we-reportActions {
+  display: grid;
   gap: 10px;
   margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Title + buttons (top line) */
-.we-reportTopRow{
-  display:flex;
+.we-reportTopRow {
+  display: flex;
   gap: 12px;
-  align-items:center;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
 }
 
 /* Buttons group -> looks like a table toolbar */
-.we-reportBtns{
-  display:flex;
-  gap:8px;
+.we-reportBtns {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
-  align-items:center;
-
-  padding: 6px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(15,23,42,.20);
+  align-items: center;
 }
 
 /* Smaller, consistent button sizing */
-.we-reportBtns > button{
-  height: 32px;
+.we-reportBtns > button {
+  height: 28px;
   padding: 0 10px;
   border-radius: 12px;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 900;
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
   line-height: 1;
 }
 
 /* Make “Load Report” subtle */
-.we-reportBtns .we-btn-soft{
+.we-reportBtns .we-btn-soft {
   box-shadow: none;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.85);
 }
-.we-reportBtns .we-btn-soft:hover{ background: rgba(255,255,255,.10); }
-.we-reportBtns .we-btn-soft:active{ transform: translateY(1px); }
+.we-reportBtns .we-btn-soft:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.we-reportBtns .we-btn-soft:active {
+  transform: translateY(1px);
+}
 
 /* Search row */
-.we-reportSearchRow{
-  display:flex;
-  gap: 12px;
-  align-items:center;
+.we-reportSearchRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
 }
 
 /* Checkbox */
-.we-reportCheck{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size: 10.5px;
+.we-reportCheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
   font-weight: 900;
-  opacity:.9;
-  user-select:none;
-  white-space:nowrap;
+  opacity: 0.9;
+  user-select: none;
+  white-space: nowrap;
 }
-.we-reportCheck input{
-  width:16px;
-  height:16px;
-  accent-color:#a5b4fc;
+.we-reportCheck input {
+  width: 16px;
+  height: 16px;
+  accent-color: #a5b4fc;
 }
 
 /* Search bar */
-.we-reportSearch{
-  flex: 1;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding: 0 12px;
-  height: 32px;
+.we-reportSearch {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  height: 28px;
   border-radius: 14px;
-  background: rgba(15,23,42,.35);
-  border: 1px solid rgba(255,255,255,.12);
-  min-width: 320px;
-  max-width: 640px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 0;
+  max-width: 100%;
 }
-.we-reportSearch input{
-  border:0;
-  outline:0;
-  background:transparent;
-  color:#fff;
-  width:100%;
-  min-width:0;
-  font-size: 10.5px;
+.we-reportSearch input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  width: 100%;
+  min-width: 0;
+  font-size: 10px;
   font-weight: 800;
 }
-.we-reportSearch:focus-within{
-  border-color: rgba(165,180,252,.35);
-  box-shadow: 0 0 0 3px rgba(165,180,252,.10);
+.we-reportSearch:focus-within {
+  border-color: rgba(165, 180, 252, 0.35);
+  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.1);
 }
 
 /* =========================
@@ -112,15 +117,19 @@
    ========================= */
 
 /* outer frame */
-.we-reportCard .we-admin-tableWrap{
+.we-reportCard .we-admin-tableWrap {
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(15,23,42,.18);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.28),
+    rgba(15, 23, 42, 0.18)
+  );
   overflow: auto;
 }
 
 /* table */
-.we-reportCard .we-admin-table{
+.we-reportCard .we-admin-table {
   width: max-content;
   min-width: 100%;
   border-collapse: separate;
@@ -129,56 +138,56 @@
 }
 
 /* header */
-.we-reportCard .we-admin-table thead th{
+.we-reportCard .we-admin-table thead th {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: rgba(255,255,255,.06);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 
-  color: rgba(226,232,240,.96);
+  color: rgba(226, 232, 240, 0.96);
   font-size: 10px;
   font-weight: 950;
-  letter-spacing: .25px;
+  letter-spacing: 0.25px;
 
   padding: 7px 8px; /* tighter */
-  border-bottom: 1px solid rgba(255,255,255,.12);
-  border-right: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
 }
 
 /* body */
-.we-reportCard .we-admin-table tbody td{
+.we-reportCard .we-admin-table tbody td {
   padding: 7px 8px; /* tighter */
-  color: rgba(226,232,240,.92);
+  color: rgba(226, 232, 240, 0.92);
   font-weight: 800;
   vertical-align: middle;
   white-space: nowrap;
 
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  border-right: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* last column no right border */
 .we-reportCard .we-admin-table thead th:last-child,
-.we-reportCard .we-admin-table tbody td:last-child{
+.we-reportCard .we-admin-table tbody td:last-child {
   border-right: 0;
 }
 
 /* zebra */
-.we-reportCard .we-admin-table tbody tr:nth-child(odd) td{
-  background: rgba(255,255,255,.02);
+.we-reportCard .we-admin-table tbody tr:nth-child(odd) td {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* hover */
-.we-reportCard .we-admin-table tbody tr:hover td{
-  background: rgba(255,255,255,.06);
+.we-reportCard .we-admin-table tbody tr:hover td {
+  background: rgba(15, 23, 42, 0.85);
 }
 
 /* numeric alignment (everything except No. + Name) */
-.we-reportCard .we-admin-table tbody td:nth-child(n+3),
-.we-reportCard .we-admin-table thead th:nth-child(n+3){
+.we-reportCard .we-admin-table tbody td:nth-child(n + 3),
+.we-reportCard .we-admin-table thead th:nth-child(n + 3) {
   text-align: right;
 }
 
@@ -188,17 +197,17 @@
 
 /* No. column (smaller) */
 .we-reportCard .we-admin-table thead th:nth-child(1),
-.we-reportCard .we-admin-table tbody td:nth-child(1){
+.we-reportCard .we-admin-table tbody td:nth-child(1) {
   position: sticky;
   left: 0;
   z-index: 6;
 
-  background: rgba(17,24,39,.78);
+  background: rgba(17, 24, 39, 0.78);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255,255,255,.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 
-  width: 42px;          /* ✅ smaller */
+  width: 42px; /* ✅ smaller */
   min-width: 42px;
   max-width: 42px;
   text-align: right;
@@ -206,18 +215,18 @@
 
 /* Name column (smaller + ellipsis) */
 .we-reportCard .we-admin-table thead th:nth-child(2),
-.we-reportCard .we-admin-table tbody td:nth-child(2){
+.we-reportCard .we-admin-table tbody td:nth-child(2) {
   position: sticky;
-  left: 42px;           /* ✅ must match No. width */
+  left: 42px; /* ✅ must match No. width */
   z-index: 6;
 
-  background: rgba(17,24,39,.78);
+  background: rgba(17, 24, 39, 0.78);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255,255,255,.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 
-  min-width: 160px;     /* ✅ smaller */
-  max-width: 220px;     /* ✅ don’t eat screen */
+  min-width: 160px; /* ✅ smaller */
+  max-width: 220px; /* ✅ don’t eat screen */
   text-align: left;
 
   overflow: hidden;
@@ -227,12 +236,12 @@
 
 /* sticky header above sticky body */
 .we-reportCard .we-admin-table thead th:nth-child(1),
-.we-reportCard .we-admin-table thead th:nth-child(2){
+.we-reportCard .we-admin-table thead th:nth-child(2) {
   z-index: 10;
 }
 
 /* Total OT (<b>) pops */
-.we-reportCard .we-admin-table tbody td b{
+.we-reportCard .we-admin-table tbody td b {
   color: #fff;
   font-weight: 950;
 }
@@ -241,41 +250,61 @@
    Mobile / narrow screens
    - turn OFF sticky cols (better scrolling)
    ========================= */
-@media (max-width: 860px){
-  .we-reportTopRow{
+@media (max-width: 860px) {
+  .we-reportTopRow {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .we-reportBtns{
+  .we-reportBtns {
     width: 100%;
   }
 
-  .we-reportBtns > button{
+  .we-reportBtns > button {
     flex: 1;
     min-width: 120px;
   }
-
-  .we-reportSearchRow{
+  .we-reportSearchWrap {
+    min-width: 0;
+  }
+  .we-reportSearchRow {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
-
-  .we-reportSearch{
+  .we-reportSearch input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #e2e8f0;
     width: 100%;
-    max-width: none;
     min-width: 0;
   }
 
+  .we-reportSearch {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
   /* slightly smaller table */
-  .we-reportCard .we-admin-table{ font-size: 10px; }
-  .we-reportCard .we-admin-table thead th{ font-size: 9.5px; }
+  .we-reportCard .we-admin-table {
+    font-size: 10px;
+  }
+  .we-reportCard .we-admin-table thead th {
+    font-size: 9.5px;
+  }
 
   /* ✅ IMPORTANT: disable sticky columns on mobile */
   .we-reportCard .we-admin-table thead th:nth-child(1),
   .we-reportCard .we-admin-table tbody td:nth-child(1),
   .we-reportCard .we-admin-table thead th:nth-child(2),
-  .we-reportCard .we-admin-table tbody td:nth-child(2){
+  .we-reportCard .we-admin-table tbody td:nth-child(2) {
     position: static;
     left: auto;
     z-index: auto;
@@ -285,4 +314,29 @@
     white-space: nowrap;
     background: transparent; /* let zebra/hover show */
   }
+}
+
+.we-reportEmpty {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.28);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  text-align: center;
+}
+.we-reportEmptyTitle {
+  font-weight: 950;
+  color: #fff;
+}
+.we-reportEmptySub {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.we-report-toggle {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 10.5px;
+  font-weight: 900;
 }
