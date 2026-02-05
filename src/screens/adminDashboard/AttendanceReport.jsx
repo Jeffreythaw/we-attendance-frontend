@@ -8,6 +8,21 @@ import { parseContentDispositionFilename, parseCsvText } from "./csv";
  * UI table columns (ONLY for display on screen)
  * Exports (Excel/PDF) include ALL columns from CSV automatically.
  */
+function formatOtHours(value) {
+  if (value == null || value === "") return "—";
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  const minutes = Math.round(n * 60);
+  const rounded = Math.round(minutes / 15) * 15;
+  const h = Math.floor(rounded / 60);
+  const mm = rounded % 60;
+  if (h <= 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  return `${h}h ${mm}m`;
+}
+
+const OT_COLUMNS = new Set(["Normal day OT", "Sunday OT", "Public Holiday OT", "Total OT"]);
+
 const DISPLAY_COLUMNS = [
   { label: "No.", key: "No." },
   { label: "Name", key: "Staff Name" },
@@ -374,9 +389,11 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
                       {DISPLAY_COLUMNS.map((c) => (
                         <td key={c.key}>
                           {c.key === "Total OT" ? (
-                            <b>{r?.[c.key] ?? "—"}</b>
+                            <b>{formatOtHours(r?.[c.key])}</b>
                           ) : c.key === "Public Holiday" ? (
                             (r?.[c.key] ?? "") === "" ? (phInRange ?? "—") : r?.[c.key]
+                          ) : OT_COLUMNS.has(c.key) ? (
+                            formatOtHours(r?.[c.key])
                           ) : (
                             r?.[c.key] ?? "—"
                           )}

@@ -218,9 +218,10 @@ function getWorkedMinutesFromRow(r) {
 }
 
 function formatHm(mins) {
-  const m = Math.max(0, mins || 0);
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
+  const m0 = Math.max(0, mins || 0);
+  const rounded = Math.round(m0 / 15) * 15;
+  const h = Math.floor(rounded / 60);
+  const mm = rounded % 60;
   if (h <= 0) return `${mm}m`;
   if (mm === 0) return `${h}h`;
   return `${h}h ${mm}m`;

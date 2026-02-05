@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { createEmployee, listEmployees } from "../api/employees";
-import { apiFetch } from "../api/client";
+import { apiFetch, apiFetchBlob } from "../api/client";
 
 /**
  * ✅ Update these paths to match your backend controllers if needed.
@@ -22,9 +22,9 @@ const API = {
 
   // Common patterns — adjust to your LeaveController
   leaveRequestsList: (status) =>
-    status ? `/api/Leave/requests?status=${encodeURIComponent(status)}` : `/api/Leave/requests`,
-  leaveRequestsApprove: (id) => `/api/Leave/requests/${id}/approve`,
-  leaveRequestsReject: (id) => `/api/Leave/requests/${id}/reject`,
+    status ? `/api/LeaveRequests?status=${encodeURIComponent(status)}` : `/api/LeaveRequests`,
+  leaveRequestsApprove: (id) => `/api/LeaveRequests/${id}/approve`,
+  leaveRequestsReject: (id) => `/api/LeaveRequests/${id}/reject`,
 
   // Optional (if you implement later)
   leaveBalances: (year) => `/api/Leave/balances?year=${encodeURIComponent(year)}`,
@@ -384,6 +384,29 @@ export function AdminScreen({ onAuthError }) {
       const msg = e?.message || "Failed to reject leave";
       setErr(msg);
       if (String(msg).includes("401") || String(msg).includes("403")) onAuthError?.();
+    } finally {
+      setLrBusy(false);
+    }
+  }
+
+  async function downloadLeaveAttachment(id) {
+    setErr("");
+    setLrBusy(true);
+    try {
+      const { blob, contentDisposition } = await apiFetchBlob(`/api/Leave/${encodeURIComponent(id)}/attachment`, { method: "GET", auth: true });
+      const nameMatch = /filename="?([^";]+)"?/i.exec(contentDisposition || "");
+      const name = nameMatch?.[1] || `leave_${id}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      const msg = e?.message || "Failed to download attachment";
+      setErr(msg);
     } finally {
       setLrBusy(false);
     }

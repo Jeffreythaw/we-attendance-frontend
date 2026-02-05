@@ -82,6 +82,39 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
   return text ? JSON.parse(text) : null;
 }
 
+
+export async function apiFetchForm(path, { method = "POST", formData, auth = true } = {}) {
+  const headers = {};
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const url = joinUrl(API_BASE, path);
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = text ? JSON.parse(text) : null;
+      msg = data?.message || data?.title || msg;
+    } catch {
+      msg = text || msg;
+    }
+    throw new Error(msg);
+  }
+
+  return text ? JSON.parse(text) : null;
+}
+
 /* =========================================================
    ✅ ADD THESE for Reports (CSV download / preview)
    ========================================================= */
