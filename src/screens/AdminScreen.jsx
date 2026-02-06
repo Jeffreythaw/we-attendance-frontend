@@ -28,6 +28,10 @@ const API = {
 
   // Optional (if you implement later)
   leaveBalances: (year) => `/api/Leave/balances?year=${encodeURIComponent(year)}`,
+
+  quotationInvoicesList: "/api/QuotationInvoices",
+  quotationInvoicesCreate: "/api/QuotationInvoices",
+  quotationInvoicesUpdate: (id) => `/api/QuotationInvoices/${id}`,
 };
 
 function fmtDateTime(v) {
@@ -44,6 +48,21 @@ function fmtDateOnly(v) {
 
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
+}
+
+function formatMoney(n) {
+  const v = Number(n || 0);
+  return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const ms = now.getTime() - d.getTime();
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  return days >= 0 ? days : null;
 }
 
 function daysInclusive(startStr, endStr) {
@@ -428,6 +447,31 @@ export function AdminScreen({ onAuthError }) {
   const [balances, setBalances] = useState(null); // could be array or object
   const [balNote, setBalNote] = useState("");
 
+  // ============ Quotations & Invoices ============
+  const [qiBusy, setQiBusy] = useState(false);
+  const [quotationInvoices, setQuotationInvoices] = useState([]);
+  const [qiSearch, setQiSearch] = useState("");
+
+  const [qiQuotRef, setQiQuotRef] = useState("");
+  const [qiLocation, setQiLocation] = useState("");
+  const [qiDescription, setQiDescription] = useState("");
+  const [qiTotalBeforeGst, setQiTotalBeforeGst] = useState("");
+  const [qiQuotStatus, setQiQuotStatus] = useState("Pending");
+  const [qiWorkStatus, setQiWorkStatus] = useState("Scheduling");
+  const [qiInvoiceStatus, setQiInvoiceStatus] = useState("Pending due to Svc report");
+  const [qiInvoiceDate, setQiInvoiceDate] = useState("");
+  const [qiInvoiceRef, setQiInvoiceRef] = useState("");
+  const [qiPaymentStatus, setQiPaymentStatus] = useState("Pending");
+  const [qiReceivedDate, setQiReceivedDate] = useState("");
+  const [qiFilterQuotStatus, setQiFilterQuotStatus] = useState("All");
+  const [qiFilterWorkStatus, setQiFilterWorkStatus] = useState("All");
+  const [qiFilterInvoiceStatus, setQiFilterInvoiceStatus] = useState("All");
+  const [qiFilterPaymentStatus, setQiFilterPaymentStatus] = useState("All");
+  const [qiFilterLocation, setQiFilterLocation] = useState("");
+  const [qiFilterFrom, setQiFilterFrom] = useState("");
+  const [qiFilterTo, setQiFilterTo] = useState("");
+  const [qiReportMonth, setQiReportMonth] = useState("");
+
   async function loadBalances() {
     setErr("");
     setBalNote("");
@@ -453,7 +497,97 @@ export function AdminScreen({ onAuthError }) {
     }
   }
 
-  // ============ Tab loading triggers ============
+    async function loadQuotationInvoices() {
+    setErr("");
+    setQiBusy(true);
+    try {
+      const data = await apiFetch(API.quotationInvoicesList, { method: "GET", auth: true });
+      setQuotationInvoices(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const msg = e?.message || "Failed to load quotation/invoice records";
+      setErr(msg);
+      if (String(msg).includes("401") || String(msg).includes("403")) onAuthError?.();
+    } finally {
+      setQiBusy(false);
+    }
+  }
+
+  async function createQuotationInvoice(e) {
+    e.preventDefault();
+    setErr("");
+    setQiBusy(true);
+    try {
+      const body = {
+        quotRef: qiQuotRef || null,
+        location: qiLocation || null,
+        description: qiDescription || null,
+        totalBeforeGst: Number(qiTotalBeforeGst || 0),
+        quotStatus: qiQuotStatus,
+        workStatus: qiWorkStatus,
+        invoiceStatus: qiInvoiceStatus,
+        invoiceDate: qiInvoiceDate || null,
+        invoiceRef: qiInvoiceRef || null,
+        paymentStatus: qiPaymentStatus,
+        receivedDate: qiReceivedDate || null,
+      };
+      await apiFetch(API.quotationInvoicesCreate, { method: "POST", auth: true, body });
+      setQiQuotRef("");
+      setQiLocation("");
+      setQiDescription("");
+      setQiTotalBeforeGst("");
+      setQiInvoiceDate("");
+      setQiInvoiceRef("");
+      setQiReceivedDate("");
+      await loadQuotationInvoices();
+    } catch (e) {
+      const msg = e?.message || "Failed to create record";
+      setErr(msg);
+      if (String(msg).includes("401") || String(msg).includes("403")) onAuthError?.();
+    } finally {
+      setQiBusy(false);
+    }
+  }
+
+  async function downloadQuotationReport(format) {
+    if (!qiReportMonth) {
+      setErr("Please select report month.");
+      return;
+    }
+    const url = `/api/QuotationInvoices/report?month=${encodeURIComponent(qiReportMonth)}&format=${encodeURIComponent(format)}`;
+    if (format === "html") {
+      window.open(url, "_blank");
+      return;
+    }
+    const { blob, contentDisposition } = await apiFetchBlob(url, { method: "GET", auth: true });
+    const nameMatch = /filename="?([^";]+)"?/i.exec(contentDisposition || "");
+    const name = nameMatch?.[1] || `quotation-invoice-${qiReportMonth}.csv`;
+    const dlUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = dlUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(dlUrl);
+  }
+
+  async function updateQuotationInvoice(id, patch) {
+    if (!id) return;
+    setErr("");
+    setQiBusy(true);
+    try {
+      await apiFetch(API.quotationInvoicesUpdate(id), { method: "PUT", auth: true, body: patch });
+      await loadQuotationInvoices();
+    } catch (e) {
+      const msg = e?.message || "Failed to update record";
+      setErr(msg);
+      if (String(msg).includes("401") || String(msg).includes("403")) onAuthError?.();
+    } finally {
+      setQiBusy(false);
+    }
+  }
+
+// ============ Tab loading triggers ============
   useEffect(() => {
     // load only what’s needed when switching tabs
     if (tab === "employees") loadEmployees();
@@ -461,6 +595,7 @@ export function AdminScreen({ onAuthError }) {
     if (tab === "leaveTypes") loadLeaveTypes();
     if (tab === "leaveRequests") loadLeaveRequests();
     if (tab === "balances") loadBalances();
+    if (tab === "quotes") loadQuotationInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -507,6 +642,9 @@ export function AdminScreen({ onAuthError }) {
           </button>
           <button className={`we-tab ${tab === "balances" ? "active" : ""}`} onClick={() => setTab("balances")}>
             Balances
+          </button>
+          <button className={`we-tab ${tab === "quotes" ? "active" : ""}`} onClick={() => setTab("quotes")}>
+            Quotations
           </button>
         </div>
 
@@ -1013,7 +1151,321 @@ export function AdminScreen({ onAuthError }) {
           </Card>
         ) : null}
 
-        {/* ========== TAB: BALANCES (OPTIONAL) ========== */}
+        
+        {/* ========== TAB: QUOTATIONS & INVOICES ========== */}
+        {tab === "quotes" ? (
+          <div className="we-a-grid2">
+            <Card className="we-glass-card">
+              <div className="we-a-cardHead">
+                <div className="we-a-cardTitle">Create Record</div>
+                <div className="we-a-cardMeta">Quotation & invoice tracking</div>
+              </div>
+
+              <form onSubmit={createQuotationInvoice} className="we-a-form">
+                <label className="we-a-label">
+                  Quot Ref
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">#️⃣</span>
+                    <input value={qiQuotRef} onChange={(e) => setQiQuotRef(e.target.value)} placeholder="e.g. Q-2026-001" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  Location
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">📍</span>
+                    <input value={qiLocation} onChange={(e) => setQiLocation(e.target.value)} placeholder="Site / client" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  Description
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🧾</span>
+                    <input value={qiDescription} onChange={(e) => setQiDescription(e.target.value)} placeholder="Work scope" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  TTL Amount bef GST
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">💰</span>
+                    <input value={qiTotalBeforeGst} onChange={(e) => setQiTotalBeforeGst(e.target.value)} placeholder="0.00" inputMode="decimal" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  Quot Status
+                  <select className="we-select" value={qiQuotStatus} onChange={(e) => setQiQuotStatus(e.target.value)}>
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Work Status
+                  <select className="we-select" value={qiWorkStatus} onChange={(e) => setQiWorkStatus(e.target.value)}>
+                    <option value="Completed">Completed</option>
+                    <option value="Scheduling">Scheduling</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Invoice Status
+                  <select className="we-select" value={qiInvoiceStatus} onChange={(e) => setQiInvoiceStatus(e.target.value)}>
+                    <option value="Submitted">Submitted</option>
+                    <option value="Pending due to Svc report">Pending due to Svc report</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Invoice Date
+                  <input type="date" value={qiInvoiceDate} onChange={(e) => setQiInvoiceDate(e.target.value)} />
+                </label>
+
+                <label className="we-a-label">
+                  Invoice Ref
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🧾</span>
+                    <input value={qiInvoiceRef} onChange={(e) => setQiInvoiceRef(e.target.value)} placeholder="INV-2026-001" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  Payment Status
+                  <select className="we-select" value={qiPaymentStatus} onChange={(e) => setQiPaymentStatus(e.target.value)}>
+                    <option value="Pending">Pending</option>
+                    <option value="Received">Received</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Received Date
+                  <input type="date" value={qiReceivedDate} onChange={(e) => setQiReceivedDate(e.target.value)} />
+                </label>
+
+                <button className="we-btn" type="submit" disabled={qiBusy}>
+                  {qiBusy ? "Saving…" : "Create"}
+                </button>
+              </form>
+            </Card>
+
+            <Card className="we-glass-card">
+              <div className="we-a-listHead">
+                <div>
+                  <div className="we-a-cardTitle">Quotation & Invoice Records</div>
+                  <div className="we-a-cardMeta">{quotationInvoices.length} items</div>
+                </div>
+
+                <div className="we-inline">
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🔎</span>
+                    <input value={qiSearch} onChange={(e) => setQiSearch(e.target.value)} placeholder="Search ref / location / invoice" />
+                  </div>
+
+                  <button className="we-btn-soft" onClick={loadQuotationInvoices} disabled={qiBusy}>
+                    {qiBusy ? "Loading…" : "Refresh"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="we-a-form" style={{ marginTop: 10 }}>
+                <label className="we-a-label">
+                  Location
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">📍</span>
+                    <input value={qiFilterLocation} onChange={(e) => setQiFilterLocation(e.target.value)} placeholder="Filter location" />
+                  </div>
+                </label>
+
+                <label className="we-a-label">
+                  Quot Status
+                  <select className="we-select" value={qiFilterQuotStatus} onChange={(e) => setQiFilterQuotStatus(e.target.value)}>
+                    <option value="All">All</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Work Status
+                  <select className="we-select" value={qiFilterWorkStatus} onChange={(e) => setQiFilterWorkStatus(e.target.value)}>
+                    <option value="All">All</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Scheduling">Scheduling</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Invoice Status
+                  <select className="we-select" value={qiFilterInvoiceStatus} onChange={(e) => setQiFilterInvoiceStatus(e.target.value)}>
+                    <option value="All">All</option>
+                    <option value="Submitted">Submitted</option>
+                    <option value="Pending due to Svc report">Pending due to Svc report</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Payment Status
+                  <select className="we-select" value={qiFilterPaymentStatus} onChange={(e) => setQiFilterPaymentStatus(e.target.value)}>
+                    <option value="All">All</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Received">Received</option>
+                  </select>
+                </label>
+
+                <label className="we-a-label">
+                  Invoice From
+                  <input type="date" value={qiFilterFrom} onChange={(e) => setQiFilterFrom(e.target.value)} />
+                </label>
+
+                <label className="we-a-label">
+                  Invoice To
+                  <input type="date" value={qiFilterTo} onChange={(e) => setQiFilterTo(e.target.value)} />
+                </label>
+              </div>
+
+              <div className="we-a-form" style={{ marginTop: 10 }}>
+                <label className="we-a-label">
+                  Report Month
+                  <input type="month" value={qiReportMonth} onChange={(e) => setQiReportMonth(e.target.value)} />
+                </label>
+                <button className="we-btn-soft" type="button" onClick={() => downloadQuotationReport("csv")}>Download Excel (CSV)</button>
+                <button className="we-btn-soft" type="button" onClick={() => downloadQuotationReport("html")}>Open PDF (Print)</button>
+              </div>
+
+              {quotationInvoices.length === 0 ? (
+                <div className="we-a-empty">No records yet.</div>
+              ) : (
+                <div className="we-admin-tableWrap">
+                  <table className="we-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Quot Ref</th>
+                        <th>Location</th>
+                        <th>Description</th>
+                        <th>TTL Amount bef GST</th>
+                        <th>Quot Status</th>
+                        <th>Work Status</th>
+                        <th>Invoice Status</th>
+                        <th>Invoice Date</th>
+                        <th>Invoice Ref</th>
+                        <th>0-30 days</th>
+                        <th>31-60 days</th>
+                        <th>61+ days</th>
+                        <th>TTL Due Amount</th>
+                        <th>Payment Status</th>
+                        <th>Received Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quotationInvoices
+                        .filter((r) => {
+                          const s = qiSearch.trim().toLowerCase();
+                          if (s) {
+                            if (!String(r.quotRef || "").toLowerCase().includes(s)
+                              && !String(r.location || "").toLowerCase().includes(s)
+                              && !String(r.invoiceRef || "").toLowerCase().includes(s)) return false;
+                          }
+                          if (qiFilterLocation && !String(r.location || "").toLowerCase().includes(qiFilterLocation.trim().toLowerCase())) return false;
+                          if (qiFilterQuotStatus !== "All" && r.quotStatus !== qiFilterQuotStatus) return false;
+                          if (qiFilterWorkStatus !== "All" && r.workStatus !== qiFilterWorkStatus) return false;
+                          if (qiFilterInvoiceStatus !== "All" && r.invoiceStatus !== qiFilterInvoiceStatus) return false;
+                          if (qiFilterPaymentStatus !== "All" && r.paymentStatus !== qiFilterPaymentStatus) return false;
+                          if (qiFilterFrom && (!r.invoiceDate || r.invoiceDate < qiFilterFrom)) return false;
+                          if (qiFilterTo && (!r.invoiceDate || r.invoiceDate > qiFilterTo)) return false;
+                          return true;
+                        })
+                        .map((r) => {
+                          const days = daysSince(r.invoiceDate);
+                          const amt = Number(r.totalBeforeGst || 0);
+                          const b0_30 = days != null && days >= 0 && days <= 30 ? amt : 0;
+                          const b31_60 = days != null && days >= 31 && days <= 60 ? amt : 0;
+                          const b61 = days != null && days >= 61 ? amt : 0;
+                          const ttlDue = (r.paymentStatus === "Received") ? 0 : (b0_30 + b31_60 + b61);
+                          return (
+                            <tr key={r.id}>
+                              <td>{r.quotRef || "—"}</td>
+                              <td>{r.location || "—"}</td>
+                              <td>{r.description || "—"}</td>
+                              <td>{formatMoney(r.totalBeforeGst)}</td>
+                              <td>
+                                <select
+                                  className="we-select"
+                                  value={r.quotStatus || "Pending"}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { quotStatus: e.target.value })}
+                                >
+                                  <option value="Approved">Approved</option>
+                                  <option value="Pending">Pending</option>
+                                </select>
+                              </td>
+                              <td>
+                                <select
+                                  className="we-select"
+                                  value={r.workStatus || "Scheduling"}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { workStatus: e.target.value })}
+                                >
+                                  <option value="Completed">Completed</option>
+                                  <option value="Scheduling">Scheduling</option>
+                                </select>
+                              </td>
+                              <td>
+                                <select
+                                  className="we-select"
+                                  value={r.invoiceStatus || "Pending due to Svc report"}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { invoiceStatus: e.target.value })}
+                                >
+                                  <option value="Submitted">Submitted</option>
+                                  <option value="Pending due to Svc report">Pending due to Svc report</option>
+                                </select>
+                              </td>
+                              <td>
+                                <input
+                                  type="date"
+                                  value={r.invoiceDate || ""}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { invoiceDate: e.target.value })}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  value={r.invoiceRef || ""}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { invoiceRef: e.target.value })}
+                                  placeholder="Invoice ref"
+                                />
+                              </td>
+                              <td>{formatMoney(b0_30)}</td>
+                              <td>{formatMoney(b31_60)}</td>
+                              <td>{formatMoney(b61)}</td>
+                              <td>{formatMoney(ttlDue)}</td>
+                              <td>
+                                <select
+                                  className="we-select"
+                                  value={r.paymentStatus || "Pending"}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { paymentStatus: e.target.value })}
+                                >
+                                  <option value="Pending">Pending</option>
+                                  <option value="Received">Received</option>
+                                </select>
+                              </td>
+                              <td>
+                                <input
+                                  type="date"
+                                  value={r.receivedDate || ""}
+                                  onChange={(e) => updateQuotationInvoice(r.id, { receivedDate: e.target.value })}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : null
+
+{/* ========== TAB: BALANCES (OPTIONAL) ========== */}
         {tab === "balances" ? (
           <Card className="we-glass-card">
             <div className="we-a-listHead">

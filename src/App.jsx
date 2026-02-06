@@ -9,6 +9,7 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 
 import AdminDashboard from "./screens/AdminDashboard";
 import AdminEmployees from "./pages/AdminEmployees";
+import AdminQuotations from "./screens/AdminQuotations";
 
 import { Tabs } from "./components/Tabs";
 
@@ -32,6 +33,7 @@ function AuthedApp({ user, logout }) {
       ? [
           { key: "dashboard", label: "Dashboard", icon: "📊" },
           { key: "employees", label: "Employees", icon: "🧑‍💼" },
+          { key: "quotations", label: "Quotations", icon: "🧾" },
           { key: "settings", label: "Settings", icon: "⚙️" },
         ]
       : [
@@ -93,6 +95,7 @@ function AuthedApp({ user, logout }) {
 
         {isAdmin && tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} />}
         {isAdmin && tab === "employees" && <AdminEmployees onAuthError={onAuthError} />}
+        {isAdmin && tab === "quotations" && <AdminQuotations onAuthError={onAuthError} />}
 
         {tab === "settings" && (
           <SettingsScreen user={user} onLogout={logout} isAdmin={isAdmin} />
