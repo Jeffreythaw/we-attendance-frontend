@@ -227,6 +227,15 @@ function formatHm(mins) {
   return `${h}h ${mm}m`;
 }
 
+function formatHShort(mins) {
+  const m = Math.max(0, mins || 0);
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h === 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  return `${h}.${Math.round((mm / 60) * 10)}h`;
+}
+
 export function HistoryScreen({ onAuthError }) {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -409,6 +418,7 @@ export function HistoryScreen({ onAuthError }) {
     let lateWorkdaySessions = 0;
 
     let offDaySessions = 0;
+    const offDayWorkedKeys = new Set();
     let overtimeAll = 0;
     let overtimeOffDays = 0;
     let overtimeWorkdays = 0;
@@ -426,6 +436,7 @@ export function HistoryScreen({ onAuthError }) {
         else onTimeWorkdaySessions += 1;
       } else {
         offDaySessions += 1;
+        offDayWorkedKeys.add(dk);
       }
 
       if (r.checkOutAt) {
@@ -460,9 +471,33 @@ export function HistoryScreen({ onAuthError }) {
       overtimeMinutes: overtimeAll,
       overtimeWorkMinutes: overtimeWorkdays,
       overtimeOffMinutes: overtimeOffDays,
+      offDayWorkedDays: offDayWorkedKeys.size,
       offDaySessions,
     };
   }, [rowsInRange, isWorkdayIso, rangeSelected]);
+
+  const overviewDonuts = useMemo(() => {
+    const workdayDenom = Math.max(1, stats.onTimeWorkdaySessions + stats.lateWorkdaySessions);
+    const onTimePct = Math.round((stats.onTimeWorkdaySessions / workdayDenom) * 100);
+    const latePct = Math.max(0, 100 - onTimePct);
+
+    const coveragePct =
+      stats.expectedWorkdays > 0 ? Math.round((stats.workingDays / stats.expectedWorkdays) * 100) : 0;
+
+    const otWorkPct =
+      stats.overtimeMinutes > 0
+        ? Math.round((stats.overtimeWorkMinutes / stats.overtimeMinutes) * 100)
+        : 0;
+    const otOffPct = stats.overtimeMinutes > 0 ? Math.max(0, 100 - otWorkPct) : 0;
+
+    return {
+      onTimePct,
+      latePct,
+      coveragePct,
+      otWorkPct,
+      otOffPct,
+    };
+  }, [stats]);
 
   /**
    * ✅ Daily report = THIS WEEK (Sun → Sat) in Singapore
@@ -501,6 +536,7 @@ export function HistoryScreen({ onAuthError }) {
         late: 0,
         total: 0,
         otMins: 0,
+        workedMins: 0,
         isOff: !isWorkdayIso(iso),
         isHoliday: isHolidayIso(iso),
         isSunday: w === "Sun",
@@ -523,14 +559,14 @@ export function HistoryScreen({ onAuthError }) {
       }
 
       if (r0.checkOutAt) {
+        bucket.workedMins += Math.max(0, getWorkedMinutesFromRow(r0) || 0);
         bucket.otMins += getOtMinutesFromRow(r0, !bucket.isOff);
       }
     }
 
     const items = Array.from(map.values());
-    const maxTotal = Math.max(1, ...items.map((x) => x.total));
     const maxOt = Math.max(1, ...items.map((x) => x.otMins));
-    return { items, maxTotal, maxOt };
+    return { items, maxOt };
   }, [rowsInRange, isHolidayIso, isWorkdayIso, now]);
 
   // ✅ Search list works on rowsInRange
@@ -618,7 +654,7 @@ export function HistoryScreen({ onAuthError }) {
           <div className="we-h-cardHead">
             <div>
               <div className="we-h-cardTitle">Date Range</div>
-              <div className="we-h-cardHint">Default is current month. Select to review.</div>
+              <div className="we-h-cardHint">Default is this week. Select to review.</div>
             </div>
             <div className="we-h-cardMeta">{rangeText}</div>
           </div>
@@ -668,12 +704,68 @@ export function HistoryScreen({ onAuthError }) {
           </div>
 
           <div className="we-h-overview">
-            <div className="we-h-donut">
-              <div className="we-h-donutRing" style={{ "--pct": `${stats.onTimePct}%` }}>
-                <div className="we-h-donutCenter">
-                  <div className="we-h-donutPct">{stats.onTimePct}%</div>
-                  <div className="we-h-donutLbl">On time</div>
-                  <div className="we-h-donutSub">Workdays only</div>
+            <div className="we-h-donutGrid">
+              <div className="we-h-donutCard">
+                <div className="we-h-donutCardTitle">On-time quality</div>
+                <div className="we-h-donut">
+                  <div
+                    className="we-h-donutRing"
+                    style={{ "--pct": `${overviewDonuts.onTimePct}%` }}
+                  >
+                    <div className="we-h-donutCenter">
+                      <div className="we-h-donutPct">{overviewDonuts.onTimePct}%</div>
+                      <div className="we-h-donutLbl">On time</div>
+                      <div className="we-h-donutSub">Late {overviewDonuts.latePct}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="we-h-donutCard">
+                <div className="we-h-donutCardTitle">Coverage</div>
+                <div className="we-h-donut">
+                  <div
+                    className="we-h-donutRing blue"
+                    style={{ "--pct": `${overviewDonuts.coveragePct}%` }}
+                  >
+                    <div className="we-h-donutCenter">
+                      <div className="we-h-donutPct">{overviewDonuts.coveragePct}%</div>
+                      <div className="we-h-donutLbl">Worked days</div>
+                      <div className="we-h-donutSub">Absent {stats.absent}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="we-h-donutCard">
+                <div className="we-h-donutCardTitle">Mon-Sat OT</div>
+                <div className="we-h-donut">
+                  <div
+                    className="we-h-donutRing amber"
+                    style={{ "--pct": `${overviewDonuts.otWorkPct}%` }}
+                  >
+                    <div className="we-h-donutCenter">
+                      <div className="we-h-donutPct">{overviewDonuts.otWorkPct}%</div>
+                      <div className="we-h-donutLbl">Mon-Sat OT</div>
+                      <div className="we-h-donutSub">{formatHm(stats.overtimeWorkMinutes)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="we-h-donutCard">
+                <div className="we-h-donutCardTitle">Sun/PH OT</div>
+                <div className="we-h-donut">
+                  <div
+                    className="we-h-donutRing slate"
+                    style={{ "--pct": `${overviewDonuts.otOffPct}%` }}
+                  >
+                    <div className="we-h-donutCenter">
+                      <div className="we-h-donutPct">{overviewDonuts.otOffPct}%</div>
+                      <div className="we-h-donutLbl">Sun/PH OT</div>
+                      <div className="we-h-donutSub">{formatHm(stats.overtimeOffMinutes)}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -702,7 +794,7 @@ export function HistoryScreen({ onAuthError }) {
                   <div className="we-h-kpiLabel">On time</div>
                   <div className="we-h-kpiValue green">{stats.onTimeWorkdaySessions}</div>
                 </div>
-                <div className="we-h-kpiSub">Workday sessions on-time</div>
+                <div className="we-h-kpiSub">Workday sessions on-time ({overviewDonuts.onTimePct}%)</div>
               </div>
 
               <div className="we-h-kpiCard">
@@ -728,10 +820,10 @@ export function HistoryScreen({ onAuthError }) {
 
               <div className="we-h-kpiCard wide">
                 <div className="we-h-kpiTop">
-                  <div className="we-h-kpiLabel">OFF-day sessions</div>
-                  <div className="we-h-kpiValue">{stats.offDaySessions}</div>
+                  <div className="we-h-kpiLabel">Sunday/PH worked days</div>
+                  <div className="we-h-kpiValue">{stats.offDayWorkedDays}</div>
                 </div>
-                <div className="we-h-kpiSub">Sessions on Sunday / public holidays</div>
+                <div className="we-h-kpiSub">Sessions on Sunday/public holidays: {stats.offDaySessions}</div>
               </div>
             </div>
           </div>
@@ -743,37 +835,31 @@ export function HistoryScreen({ onAuthError }) {
             <div>
               <div className="we-h-cardTitle">Daily Report</div>
               <div className="we-h-cardHint">
-                This week (Sun → Sat) • Height = sessions/day • Purple = late (workdays) • Orange cap = overtime (backend OT)
+                This week (Sun → Sat) • Donut split by 24h: work, OT, rest
               </div>
             </div>
 
             <div className="we-h-legend">
-              <span className="dot green" /> On time
-              <span className="dot purple" /> Late
+              <span className="dot green" /> Work
               <span className="dot ot" /> OT
-              <span className="dot off" /> OFF day
+              <span className="dot off" /> Rest
+              <span className="dot purple" /> Late marker
             </div>
           </div>
 
-          <div className="we-h-bars">
+          <div className="we-h-dailyDonutGrid">
             {daily.items.map((d) => {
-              const MAX_BAR_PX = 96;
-              const MIN_BAR_PX = 10;
-              const BASE_PX = 8;
+              const DAY_MINS = 24 * 60;
+              const totalWork = Math.max(0, d.workedMins);
+              const otOnly = Math.max(0, Math.min(totalWork, d.otMins));
+              const normalWork = Math.max(0, totalWork - otOnly);
 
-              const barPx =
-                d.total === 0
-                  ? MIN_BAR_PX
-                  : Math.round((d.total / daily.maxTotal) * MAX_BAR_PX) + BASE_PX;
-
-              const onPct = d.total > 0 ? Math.round((d.onTime / d.total) * 100) : 0;
-              const latePct = d.total > 0 ? Math.round((d.late / d.total) * 100) : 0;
-
-              const CAP_MAX_PX = 14;
-              const capPx =
-                d.otMins > 0
-                  ? Math.max(6, Math.round((d.otMins / daily.maxOt) * CAP_MAX_PX))
-                  : 0;
+              const workPct = Math.min(100, Math.round((normalWork / DAY_MINS) * 100));
+              const otPct = Math.min(100 - workPct, Math.round((otOnly / DAY_MINS) * 100));
+              const donutWorkEnd = workPct;
+              const donutOtEnd = Math.min(100, workPct + otPct);
+              const otScale = daily.maxOt > 0 ? Math.round((d.otMins / daily.maxOt) * 100) : 0;
+              const hasLate = d.late > 0;
 
               const offText = d.isOff ? (d.isSunday ? "OFF" : d.isHoliday ? "Holiday" : "OFF") : "";
 
@@ -782,25 +868,30 @@ export function HistoryScreen({ onAuthError }) {
               }`;
 
               return (
-                <div className="we-h-barCol" key={d.key} title={title}>
-                  <div className={`we-h-barWrap ${d.isOff ? "off" : ""}`} style={{ height: `${barPx}px` }}>
-                    {capPx > 0 ? <div className="we-h-barOTCap" style={{ height: `${capPx}px` }} /> : null}
-
-                    {d.total === 0 ? (
-                      <div className="we-h-barEmpty" />
-                    ) : d.isOff ? (
-                      <div className="we-h-barOff" />
-                    ) : (
-                      <>
-                        <div className="we-h-barLate" style={{ height: `${latePct}%` }} />
-                        <div className="we-h-barOn" style={{ height: `${onPct}%` }} />
-                      </>
-                    )}
+                <div
+                  className={`we-h-dayCard ${d.isOff && !totalWork ? "off" : ""} ${d.otMins > 0 ? "has-ot" : ""} ${hasLate ? "has-late" : ""}`}
+                  key={d.key}
+                  title={title}
+                >
+                  <div
+                    className={`we-h-dayDonut ${d.isOff && !totalWork ? "off" : ""} ${d.otMins > 0 ? "has-ot" : ""}`}
+                    style={{ "--workEnd": `${donutWorkEnd}%`, "--otEnd": `${donutOtEnd}%` }}
+                  >
+                    <div className="we-h-dayCenter">
+                      <div className="we-h-dayCount">{formatHShort(totalWork)}</div>
+                      <div className="we-h-dayUnit">worked</div>
+                    </div>
                   </div>
 
-                  <div className="we-h-barLbl">{weekdayShort(d.key)}</div>
-                  <div className="we-h-barNum">{d.total}</div>
-                  {d.isOff ? <div className="we-h-barOffTxt">{offText}</div> : null}
+                  <div className="we-h-dayMeta">
+                    <div className="we-h-dayLabel">{weekdayShort(d.key)}</div>
+                    {d.isOff ? <div className="we-h-dayOff">{offText}</div> : null}
+                    {!d.isOff ? <div className="we-h-dayRate">Work {formatHm(normalWork)} • Late {d.late}</div> : null}
+                    <div className={`we-h-dayOt ${d.otMins > 0 ? "active" : ""}`}>OT {d.otMins ? formatHm(d.otMins) : "-"}</div>
+                    <div className="we-h-dayOtBar">
+                      <span style={{ width: `${otScale}%` }} />
+                    </div>
+                  </div>
                 </div>
               );
             })}

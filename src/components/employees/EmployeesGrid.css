@@ -212,3 +212,80 @@
   .we-detailsGrid{
     grid-template-columns: 1fr;
   }
+/* Employees table typography + density */
+.we-gridWrap{
+  overflow: auto;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(15,23,42,.28);
+}
+
+.we-gridTable{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.we-gridTable thead th{
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .01em;
+  color: rgba(226,232,240,.78);
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+  background: rgba(15,23,42,.58);
+}
+
+.we-gridTable tbody td{
+  font-size: 12px;
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: rgba(226,232,240,.95);
+}
+
+.we-gridRow:hover td{
+  background: rgba(255,255,255,.04);
+}
+
+.we-gridWrap.compact .we-gridTable thead th,
+.we-gridWrap.compact .we-gridTable tbody td{
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.we-cellEllip,
+.we-cellMono{
+  font-size: 12px;
+}
+
+.we-cellMono{
+  font-variant-numeric: tabular-nums;
+}
+
+.we-gridEmpty{
+  font-size: 12px;
+  opacity: .82;
+  text-align: center;
+  padding: 14px 10px;
+}
+
+.we-gridHint{
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: .75;
+}
+
+@media (max-width: 520px){
+  .we-gridTable{
+    font-size: 11px;
+  }
+  .we-gridTable thead th,
+  .we-gridTable tbody td{
+    padding: 7px 8px;
+  }
+  .we-cellEllip,
+  .we-cellMono{
+    font-size: 11px;
+  }
+}

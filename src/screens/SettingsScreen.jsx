@@ -421,7 +421,7 @@ export function SettingsScreen({ user, onLogout }) {
 }
 
 const css = `
-.we-s-root{ display:grid; gap:12px; }
+.we-s-root{ display:grid; gap:12px; padding-bottom: 8px; }
 .we-s-kicker{ font-size:12px; opacity:.75; }
 .we-s-title{ font-size:26px; font-weight:950; color:#fff; margin-top:2px; line-height:1.1; }
 .we-s-sub{ margin-top:6px; font-size:12px; color: rgba(226,232,240,.75); }

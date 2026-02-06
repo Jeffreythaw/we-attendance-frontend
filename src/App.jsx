@@ -33,7 +33,7 @@ function AuthedApp({ user, logout }) {
       ? [
           { key: "dashboard", label: "Dashboard", icon: "📊" },
           { key: "employees", label: "Employees", icon: "🧑‍💼" },
-          { key: "quotations", label: "Quotations", icon: "🧾" },
+          { key: "quotations", label: "Quotes", icon: "🧾" },
           { key: "settings", label: "Settings", icon: "⚙️" },
         ]
       : [

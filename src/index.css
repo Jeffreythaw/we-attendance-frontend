@@ -28,6 +28,8 @@ body {
   background: var(--bg0);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 #root {

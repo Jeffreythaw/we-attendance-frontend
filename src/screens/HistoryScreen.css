@@ -269,14 +269,34 @@
   display: grid;
   gap: 14px;
 }
+.we-h-donutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.we-h-donutCard {
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.26));
+}
+.we-h-donutCardWide {
+  grid-column: 1 / -1;
+}
+.we-h-donutCardTitle {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
 .we-h-donut {
   display: flex;
   justify-content: center;
   padding-top: 2px;
 }
 .we-h-donutRing {
-  width: 160px;
-  height: 160px;
+  width: 136px;
+  height: 136px;
   border-radius: 999px;
   background: conic-gradient(rgba(34, 197, 94, 0.95) var(--pct), rgba(255, 255, 255, 0.1) 0);
   position: relative;
@@ -284,10 +304,19 @@
   place-items: center;
   box-shadow: inset 0 0 0 10px rgba(0, 0, 0, 0.1);
 }
+.we-h-donutRing.blue {
+  background: conic-gradient(rgba(56, 189, 248, 0.95) var(--pct), rgba(255, 255, 255, 0.1) 0);
+}
+.we-h-donutRing.amber {
+  background: conic-gradient(rgba(251, 191, 36, 0.95) var(--pct), rgba(255, 255, 255, 0.1) 0);
+}
+.we-h-donutRing.slate {
+  background: conic-gradient(rgba(148, 163, 184, 0.95) var(--pct), rgba(255, 255, 255, 0.1) 0);
+}
 .we-h-donutRing::before {
   content: "";
   position: absolute;
-  inset: 14px;
+  inset: 12px;
   border-radius: 999px;
   background: rgba(11, 18, 32, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -300,7 +329,7 @@
   padding: 8px 10px;
 }
 .we-h-donutPct {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 950;
   color: #fff;
   line-height: 1;
@@ -388,140 +417,123 @@
   background: linear-gradient(180deg, rgba(253, 186, 116, 0.98), rgba(249, 115, 22, 0.98));
 }
 
-.we-h-bars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.we-h-dailyDonutGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  height: 150px;
-  padding: 18px 10px 8px;
+  padding: 10px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.45), rgba(2, 6, 23, 0.55));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
-  overflow: hidden;
 }
-.we-h-bars::before {
+.we-h-dayCard {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.45);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+.we-h-dayCard.off {
+  background: rgba(30, 41, 59, 0.42);
+}
+.we-h-dayCard.has-ot {
+  border-color: rgba(249, 115, 22, 0.35);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.12) inset;
+}
+.we-h-dayDonut {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: conic-gradient(
+    rgba(16, 185, 129, 0.95) var(--workEnd),
+    rgba(249, 115, 22, 0.95) var(--workEnd) var(--otEnd),
+    rgba(255, 255, 255, 0.14) var(--otEnd) 100%
+  );
+  position: relative;
+}
+.we-h-dayDonut.off {
+  background: conic-gradient(rgba(148, 163, 184, 0.7) 0 100%);
+}
+.we-h-dayDonut.has-ot.off {
+  background: conic-gradient(
+    rgba(249, 115, 22, 0.95) var(--otEnd),
+    rgba(148, 163, 184, 0.6) var(--otEnd) 100%
+  );
+}
+.we-h-dayDonut::before {
   content: "";
   position: absolute;
-  inset: 10px 10px 18px;
-  background-image:
-    linear-gradient(to top, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-  background-size: 100% 28px, calc(100% / 7) 100%;
-  border-radius: 12px;
-  pointer-events: none;
-}
-.we-h-barCol {
-  flex: 1;
-  max-width: 64px;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  min-width: 0;
-  align-content: end;
-  position: relative;
-  z-index: 1;
-}
-
-.we-h-barWrap {
-  position: relative;
-  width: 100%;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 10px 24px rgba(0, 0, 0, 0.35);
-  transform-origin: bottom;
-  animation: weBarGrow 0.7s ease-out both;
-}
-.we-h-barWrap.off {
-  background: rgba(226, 232, 240, 0.06);
-  border-color: rgba(226, 232, 240, 0.12);
-}
-
-.we-h-barEmpty {
-  height: 100%;
-  opacity: 0.35;
-}
-.we-h-barOff {
-  height: 100%;
-  background: linear-gradient(180deg, rgba(226, 232, 240, 0.2), rgba(148, 163, 184, 0.12));
-}
-.we-h-barOn {
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.95), rgba(16, 185, 129, 0.85));
-}
-.we-h-barLate {
-  background: linear-gradient(180deg, rgba(196, 181, 253, 0.95), rgba(139, 92, 246, 0.85));
-}
-
-/* ✅ OT cap works for both workday + offday */
-.we-h-barOTCap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  background: linear-gradient(180deg, rgba(255, 210, 128, 1), rgba(249, 115, 22, 0.95));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.45);
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
-}
-
-.we-h-barLbl {
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.95;
-  padding: 3px 8px;
+  inset: 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.we-h-barNum {
-  font-size: 10px;
-  opacity: 0.85;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.we-h-barOffTxt {
-  font-size: 9px;
-  opacity: 0.72;
+.we-h-dayCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  z-index: 1;
+}
+.we-h-dayCount {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 950;
+  color: #fff;
+}
+.we-h-dayUnit {
+  font-size: 10px;
+  opacity: 0.74;
+  font-weight: 800;
+}
+.we-h-dayMeta {
+  display: grid;
+  gap: 4px;
+}
+.we-h-dayLabel {
+  font-size: 11px;
+  font-weight: 900;
+}
+.we-h-dayRate,
+.we-h-dayOt,
+.we-h-dayOff {
+  font-size: 10px;
+  opacity: 0.78;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.we-h-dayOff {
+  color: #e2e8f0;
+}
+.we-h-dayOt.active {
+  color: rgba(255, 210, 128, 0.98);
+  font-weight: 900;
+}
+.we-h-dayCard.has-late .we-h-dayLabel::after {
+  content: " • late";
+  color: rgba(196, 181, 253, 0.95);
+  font-weight: 900;
+}
+.we-h-dayOtBar {
+  height: 5px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.we-h-dayOtBar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.95), rgba(249, 115, 22, 0.95));
 }
 .we-h-kpiSub b{
   font-weight: 950;
   color: #fff;
-}
-
-.we-h-barCol:hover .we-h-barWrap {
-  filter: brightness(1.05);
-}
-
-.we-h-barCol:nth-child(1) .we-h-barWrap { animation-delay: 0.02s; }
-.we-h-barCol:nth-child(2) .we-h-barWrap { animation-delay: 0.06s; }
-.we-h-barCol:nth-child(3) .we-h-barWrap { animation-delay: 0.1s; }
-.we-h-barCol:nth-child(4) .we-h-barWrap { animation-delay: 0.14s; }
-.we-h-barCol:nth-child(5) .we-h-barWrap { animation-delay: 0.18s; }
-.we-h-barCol:nth-child(6) .we-h-barWrap { animation-delay: 0.22s; }
-.we-h-barCol:nth-child(7) .we-h-barWrap { animation-delay: 0.26s; }
-
-@keyframes weBarGrow {
-  from {
-    transform: scaleY(0.2);
-    opacity: 0.2;
-  }
-  to {
-    transform: scaleY(1);
-    opacity: 1;
-  }
 }
 
 /* ---------- Search ---------- */
@@ -697,5 +709,31 @@
     width: 100%;
     text-align: left;
     margin-top: 4px;
+  }
+  .we-h-donutGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .we-h-donutCardWide {
+    grid-column: 1 / -1;
+  }
+  .we-h-donutRing {
+    width: 118px;
+    height: 118px;
+  }
+  .we-h-donutPct {
+    font-size: 21px;
+  }
+  .we-h-kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .we-h-kpiCard.wide {
+    grid-column: 1 / -1;
+  }
+  .we-h-dailyDonutGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .we-h-dayDonut {
+    width: 78px;
+    height: 78px;
   }
 }
