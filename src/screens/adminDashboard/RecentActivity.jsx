@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 
+const SG_TZ = "Asia/Singapore";
+
 function localIsoDate(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -75,6 +77,119 @@ function pickWhen(row) {
     row?.workDate ??
     null
   );
+}
+
+function pickInAt(row) {
+  return row?.checkInAt ?? row?.inAt ?? row?.clockInAt ?? row?.startAt ?? row?.timeIn ?? null;
+}
+
+function pickOutAt(row) {
+  return row?.checkOutAt ?? row?.outAt ?? row?.clockOutAt ?? row?.endAt ?? row?.timeOut ?? null;
+}
+
+function formatTimeOnly(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+function toFiniteNumber(...values) {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function sgIsoDate(value) {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SG_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const y = parts.find((p) => p.type === "year")?.value || "0000";
+  const m = parts.find((p) => p.type === "month")?.value || "01";
+  const day = parts.find((p) => p.type === "day")?.value || "01";
+  return `${y}-${m}-${day}`;
+}
+
+function sgCutoffUtcMs(iso, hour24) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const SG_OFFSET = 8;
+  return Date.UTC(y, m - 1, d, hour24 - SG_OFFSET, 0, 0, 0);
+}
+
+function roundOtDisplayMinutes(mins) {
+  const n = Math.max(0, Math.round(Number(mins) || 0));
+  if (n <= 0) return 0;
+  const block = 15;
+  return Math.round(n / block) * block;
+}
+
+function calcOtMins(row) {
+  const backend = toFiniteNumber(
+    row?.otMinutes,
+    row?.otMins,
+    row?.overtimeMinutes,
+    row?.overtimeMins,
+    row?.totalOtMinutes,
+    row?.ot,
+  );
+  if (backend != null) return Math.max(0, Math.round(backend));
+
+  const inAt = pickInAt(row);
+  const outAt = pickOutAt(row);
+  const inD = inAt ? new Date(inAt) : null;
+  const outD = outAt ? new Date(outAt) : null;
+  const inOk = inD && !Number.isNaN(inD.getTime());
+  const outOk = outD && !Number.isNaN(outD.getTime());
+
+  const workedFromBackend = toFiniteNumber(
+    row?.workedMinutes,
+    row?.totalWorkedMinutes,
+    row?.minutesWorked,
+  );
+  const regularFromBackend = toFiniteNumber(
+    row?.regularMinutes,
+    row?.normalMinutes,
+    row?.baseMinutes,
+  );
+  if (workedFromBackend != null && regularFromBackend != null) {
+    return Math.max(0, Math.round(workedFromBackend - regularFromBackend));
+  }
+  if (workedFromBackend != null && regularFromBackend == null && outOk) {
+    const dayIsoFromOut = sgIsoDate(outD);
+    const cutoffFromOut = sgCutoffUtcMs(dayIsoFromOut, 17);
+    if (cutoffFromOut != null) {
+      return Math.max(0, Math.round((outD.getTime() - cutoffFromOut) / 60000));
+    }
+  }
+
+  if (!outOk) return 0;
+  const dayIso = sgIsoDate(inOk ? inD : outD);
+  const cutoffMs = sgCutoffUtcMs(dayIso, 17);
+  if (cutoffMs == null) return 0;
+
+  return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
+}
+
+function formatOt(row) {
+  const mins = roundOtDisplayMinutes(calcOtMins(row));
+  if (mins <= 0) return "0m";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h <= 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 function safeMapUrl(row) {
@@ -251,6 +366,8 @@ export default function RecentActivity({
                   const name = pickEmpName(r, employeeMap);
                   const department = pickDept(r, employeeMap);
                   const t = pickType(r);
+                  const inAt = pickInAt(r);
+                  const outAt = pickOutAt(r);
                   const when = pickWhen(r);
                   const tone = t.includes("OUT") ? "out" : t.includes("IN") ? "in" : t.includes("EDIT") ? "edit" : "neutral";
 
@@ -272,17 +389,28 @@ export default function RecentActivity({
                             {t ? <span className={`we-raType ${tone}`}>{t}</span> : null}
                           </div>
 
-                          <div className="we-raMeta">
-                            <span className="we-raDept">{department}</span>
-                            <span className="we-raDot">•</span>
-                            <span className="we-raWhen">
-                              {fmtDateTime ? fmtDateTime(when) : String(when || "—")}
-                            </span>
+                          <div className="we-raMeta we-raMetaGrid">
+                            <div className="we-raMetaCell">
+                              <span className="we-raMetaLabel">Dept</span>
+                              <span className="we-raMetaValue">{department}</span>
+                            </div>
+                            <div className="we-raMetaCell">
+                              <span className="we-raMetaLabel">In</span>
+                              <span className="we-raMetaValue">{formatTimeOnly(inAt)}</span>
+                            </div>
+                            <div className="we-raMetaCell">
+                              <span className="we-raMetaLabel">Out</span>
+                              <span className="we-raMetaValue">{formatTimeOnly(outAt)}</span>
+                            </div>
+                            <div className="we-raMetaCell">
+                              <span className="we-raMetaLabel">OT</span>
+                              <span className="we-raMetaValue">{formatOt(r)}</span>
+                            </div>
                             {r?.locationName ? (
-                              <>
-                                <span className="we-raDot">•</span>
-                                <span className="we-raLoc">{r.locationName}</span>
-                              </>
+                              <div className="we-raMetaCell wide">
+                                <span className="we-raMetaLabel">Location</span>
+                                <span className="we-raMetaValue">{r.locationName}</span>
+                              </div>
                             ) : null}
                           </div>
 

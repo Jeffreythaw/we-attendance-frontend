@@ -11,7 +11,7 @@
   .we-summaryGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px){
-  .we-summaryGrid{ grid-template-columns: 1fr; }
+  .we-summaryGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .we-summaryTile{

@@ -113,3 +113,89 @@ body {
 }
 
 .we-muted{ color: var(--muted); }
+/* App typography standardization */
+:root {
+  --fs-title-desktop: 26px;
+  --fs-title-mobile: 21px;
+  --fs-section-desktop: 14px;
+  --fs-section-mobile: 12px;
+  --fs-body-desktop: 12px;
+  --fs-body-mobile: 11px;
+  --fs-caption-desktop: 11px;
+  --fs-caption-mobile: 10px;
+}
+
+@media (max-width: 520px) {
+  body {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .we-admin-title,
+  .we-h-title,
+  .we-s-title {
+    font-size: var(--fs-title-mobile) !important;
+  }
+
+  .we-admin-sectionTitle,
+  .we-h-cardTitle,
+  .we-s-cardTitle,
+  .we-admin-cardTitle,
+  .we-qi-panelTitle,
+  .we-admin-chartTitle {
+    font-size: var(--fs-section-mobile) !important;
+  }
+
+  .we-admin-sub,
+  .we-h-sub,
+  .we-s-sub,
+  .we-admin-sectionMeta,
+  .we-h-cardHint,
+  .we-s-cardSub,
+  .we-gridSub,
+  .we-qi-panelSub,
+  .we-admin-donutNote,
+  .we-h-donutSub,
+  .we-h-kpiSub,
+  .we-raMetaValue,
+  .we-raMetaLabel,
+  .we-s-key,
+  .we-s-val,
+  .we-s-leaveMeta,
+  .we-s-leaveReason,
+  .we-qi-label,
+  .we-qi-kpiLabel,
+  .we-qi-kpiValue {
+    font-size: var(--fs-body-mobile) !important;
+  }
+
+  .we-admin-kicker,
+  .we-h-kicker,
+  .we-s-kicker,
+  .we-daySub,
+  .we-gridHint,
+  .we-h-searchHint,
+  .we-admin-donutCenter .k,
+  .we-admin-donutDayChip,
+  .we-chip,
+  .we-btn-chip,
+  .we-s-pill,
+  .we-s-btn,
+  .we-raType,
+  .we-raLabel,
+  .we-qi-dot,
+  .we-qi-barLabel,
+  .we-qi-barValue,
+  .we-qi-miniLegend {
+    font-size: var(--fs-caption-mobile) !important;
+  }
+
+  .we-admin-donutCenter .v,
+  .we-h-donutPct,
+  .we-qi-donutPct,
+  .we-summaryValue,
+  .we-kpiValue,
+  .we-h-kpiValue {
+    font-size: 16px !important;
+  }
+}

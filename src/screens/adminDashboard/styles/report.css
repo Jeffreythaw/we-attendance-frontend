@@ -282,12 +282,12 @@
   }
 
   .we-reportSearch {
-    height: 40px;
+    height: 32px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 12px;
-    border-radius: 14px;
+    gap: 6px;
+    padding: 0 10px;
+    border-radius: 12px;
     background: rgba(15, 23, 42, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.12);
   }

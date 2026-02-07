@@ -3,7 +3,7 @@ import { listEmployees } from "../api/employees";
 import { apiFetch } from "../api/client";
 import { fmtDateTime, fmtDateOnly } from "../utils/datetime";
 
-import { SUMMARY_ENDPOINT, INSIGHTS_ENDPOINT } from "./adminDashboard/constants";
+import { SUMMARY_ENDPOINT } from "./adminDashboard/constants";
 import { toIsoRangeParams } from "./adminDashboard/timezone";
 
 import AttendanceReport from "./adminDashboard/AttendanceReport";
@@ -112,6 +112,39 @@ function isLate(checkInAt) {
   return hh > 8 || (hh === 8 && mm > 15);
 }
 
+function isWorkdayIso(iso, holidaySet) {
+  if (!iso) return false;
+  if (holidaySet?.has?.(iso)) return false;
+  const d = new Date(`${iso}T12:00:00Z`);
+  const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(d);
+  return dow !== "Sun";
+}
+
+function sgCutoffUtcMs(iso, hour) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const SG_OFFSET_HOURS = 8;
+  return Date.UTC(y, m - 1, d, hour - SG_OFFSET_HOURS, 0, 0, 0);
+}
+
+function otAfter5pmMins(row) {
+  const backendOt = Number(row?.otMinutes);
+  if (Number.isFinite(backendOt)) return Math.max(0, backendOt);
+
+  const inAt = row?.checkInAt ?? row?.inAt ?? row?.clockInAt ?? row?.startAt ?? row?.timeIn ?? null;
+  const outAt = row?.checkOutAt ?? row?.outAt ?? row?.clockOutAt ?? row?.endAt ?? row?.timeOut ?? null;
+  if (!inAt || !outAt) return 0;
+
+  const inD = new Date(inAt);
+  const outD = new Date(outAt);
+  if (Number.isNaN(inD.getTime()) || Number.isNaN(outD.getTime())) return 0;
+
+  const dayIso = localIsoDate(inD);
+  const cutoffMs = sgCutoffUtcMs(dayIso, 17);
+  if (!cutoffMs) return 0;
+  return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
+}
+
 function SummaryTile({ label, value, hint, pillClass, pillText }) {
   return (
     <div className="we-summaryTile">
@@ -132,7 +165,6 @@ export default function AdminDashboard({ onAuthError }) {
   const [employees, setEmployees] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [insights, setInsights] = useState(null);
   const [overnightPending, setOvernightPending] = useState([]);
   const [overnightBusy, setOvernightBusy] = useState(false);
   const [preApprovals, setPreApprovals] = useState([]);
@@ -171,13 +203,12 @@ export default function AdminDashboard({ onAuthError }) {
       const t = from && to && from > to ? from : to;
 
       const qs = toIsoRangeParams(f, t);
-      const [emps, sum, ins, pending, pre] = await Promise.all([
+      const [emps, sum, pending, pre] = await Promise.all([
         listEmployees(true),
         apiFetch(`${SUMMARY_ENDPOINT}?${qs.toString()}`, {
           method: "GET",
           auth: true,
         }),
-        apiFetch(INSIGHTS_ENDPOINT, { method: "GET", auth: true }),
         apiFetch("/api/Attendance/overnight/pending", { method: "GET", auth: true }),
         apiFetch(`/api/Attendance/overnight/preapprove?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`, { method: "GET", auth: true }),
       ]);
@@ -185,7 +216,6 @@ export default function AdminDashboard({ onAuthError }) {
       if (!mountedRef.current) return;
       setEmployees(Array.isArray(emps) ? emps : []);
       setSummary(sum || null);
-      setInsights(ins || null);
       setOvernightPending(Array.isArray(pending) ? pending : []);
       setPreApprovals(Array.isArray(pre) ? pre : []);
     } catch (e) {
@@ -271,7 +301,6 @@ export default function AdminDashboard({ onAuthError }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openSessions = useMemo(() => summary?.openSessions ?? [], [summary]);
   const recentActivity = useMemo(() => summary?.recentActivity ?? [], [summary]);
 
   const employeeMap = useMemo(() => {
@@ -287,35 +316,165 @@ export default function AdminDashboard({ onAuthError }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [employees]);
 
-  const totalEmployees = useMemo(() => {
-    return typeof summary?.totalEmployees === "number"
-      ? summary.totalEmployees
-      : employees.length;
-  }, [summary, employees]);
 
-  const openCount = openSessions.length;
-  const notClockedIn = Math.max(0, totalEmployees - openCount);
-
-  const glance = useMemo(() => {
+  const employeeInsights = useMemo(() => {
     const rows = Array.isArray(recentActivity) ? recentActivity : [];
-    let late = 0;
-    let missingIn = 0;
-    let missingOut = 0;
+    const f = from || localIsoDate(new Date());
+    const t = to || f;
+    const start = f <= t ? f : t;
+    const end = f <= t ? t : f;
+
+    const days = [];
+    const cursor = new Date(`${start}T00:00:00`);
+    const endDate = new Date(`${end}T00:00:00`);
+    while (!Number.isNaN(cursor.getTime()) && cursor <= endDate) {
+      days.push(localIsoDate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const totalDays = Math.max(1, days.length);
+    const holidays = new Set((summary?.holidays || []).map((h) => String(h?.date ?? h?.Date ?? "").slice(0, 10)).filter(Boolean));
+    const workdaySet = new Set(days.filter((d) => isWorkdayIso(d, holidays)));
+    const expectedWorkdays = Math.max(1, workdaySet.size);
+
+    const presentDaysByEmp = new Map();
+    const lateDaysByEmp = new Map();
+    const otByEmp = new Map();
+    const workedByEmp = new Map();
 
     for (const r of rows) {
+      const empId = Number(r?.employeeId ?? r?.empId ?? r?.staffId ?? r?.userId ?? NaN);
+      if (!Number.isFinite(empId)) continue;
+
       const inAt = r?.checkInAt ?? r?.inAt ?? r?.clockInAt ?? r?.startAt ?? r?.timeIn ?? null;
       const outAt = r?.checkOutAt ?? r?.outAt ?? r?.clockOutAt ?? r?.endAt ?? r?.timeOut ?? null;
       const dayKey = toDateKey(r?.date ?? r?.day ?? r?.workDate ?? inAt ?? outAt);
-      if (!dayKey) continue;
-      if (dayKey < from || dayKey > to) continue;
+      if (!dayKey || dayKey < start || dayKey > end) continue;
 
-      if (inAt && !outAt) missingOut += 1;
-      if (!inAt && outAt) missingIn += 1;
-      if (inAt && isLate(inAt)) late += 1;
+      if (inAt) {
+        if (!presentDaysByEmp.has(empId)) presentDaysByEmp.set(empId, new Set());
+        presentDaysByEmp.get(empId).add(dayKey);
+      }
+
+      const regMins = Number(r?.regularMinutes);
+      const otMins = Number(r?.otMinutes);
+      if (Number.isFinite(regMins) || Number.isFinite(otMins)) {
+        const totalMins = Math.max(0, (Number.isFinite(regMins) ? regMins : 0) + (Number.isFinite(otMins) ? otMins : 0));
+        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + totalMins);
+        otByEmp.set(empId, (otByEmp.get(empId) || 0) + otAfter5pmMins(r));
+        continue;
+      }
+
+      const inD = inAt ? new Date(inAt) : null;
+      const outD = outAt ? new Date(outAt) : null;
+      if (inD && outD && !Number.isNaN(inD.getTime()) && !Number.isNaN(outD.getTime())) {
+        const mins = Math.max(0, Math.round((outD.getTime() - inD.getTime()) / 60000));
+        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + mins);
+        otByEmp.set(empId, (otByEmp.get(empId) || 0) + otAfter5pmMins(r));
+      } else if (inAt) {
+        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + (8 * 60));
+      }
+
+      if (inAt && isLate(inAt)) {
+        if (!lateDaysByEmp.has(empId)) lateDaysByEmp.set(empId, new Set());
+        lateDaysByEmp.get(empId).add(dayKey);
+      }
     }
 
-    return { late, missingIn, missingOut };
-  }, [recentActivity, from, to]);
+    const palette = ["#22c55e", "#38bdf8", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6", "#eab308"];
+
+    return employees
+      .map((e, idx) => {
+        const empId = Number(e.id);
+        const presentDays = presentDaysByEmp.get(empId)?.size || 0;
+        const lateDays = (lateDaysByEmp.get(empId)?.size || 0);
+        const workedWorkdays = Array.from(presentDaysByEmp.get(empId) || []).filter((d) => workdaySet.has(d)).length;
+        const absentDays = Math.max(0, expectedWorkdays - workedWorkdays);
+        const employeeWorked = workedByEmp.get(empId) || 0;
+        const employeeOt = otByEmp.get(empId) || 0;
+        return {
+          id: e.id,
+          name: e.name || `Employee #${e.id}`,
+          presentDays,
+          workedWorkdays,
+          lateDays,
+          absentDays,
+          employeeWorked,
+          employeeOt,
+          totalDays,
+          expectedWorkdays,
+          color: palette[idx % palette.length],
+        };
+      })
+      .sort((a, b) => b.presentDays - a.presentDays || a.name.localeCompare(b.name));
+  }, [employees, recentActivity, from, to, summary]);
+
+  const insightBreakdown = useMemo(() => {
+    const totalDays = Math.max(1, (() => {
+      const f = from || localIsoDate(new Date());
+      const t = to || f;
+      const start = f <= t ? f : t;
+      const end = f <= t ? t : f;
+      const cursor = new Date(`${start}T00:00:00`);
+      const endDate = new Date(`${end}T00:00:00`);
+      let d = 0;
+      while (!Number.isNaN(cursor.getTime()) && cursor <= endDate) {
+        d += 1;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return d;
+    })());
+
+    const empCount = Math.max(1, employeeInsights.length || employees.length || 1);
+    const denom = empCount * totalDays;
+
+    const totalWorked = employeeInsights.reduce((a, x) => a + (x.employeeWorked || 0), 0);
+    const totalOt = employeeInsights.reduce((a, x) => a + (x.employeeOt || 0), 0);
+    const otPctById = new Map();
+
+    const attendanceSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.presentDays / denom) * 100 }));
+    const lateSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.lateDays / denom) * 100 }));
+    const absentSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.absentDays / denom) * 100 }));
+    const otSegments = employeeInsights.map((x) => {
+      const value = totalWorked > 0 ? (x.employeeOt / totalWorked) * 100 : 0;
+      const otShare = totalOt > 0 ? Math.round((x.employeeOt / totalOt) * 100) : 0;
+      otPctById.set(x.id, otShare);
+      return { color: x.color, value };
+    });
+
+    const attendanceRate = Math.max(0, Math.min(100, Math.round(attendanceSegments.reduce((a, x) => a + x.value, 0))));
+    const lateRate = Math.max(0, Math.min(100, Math.round(lateSegments.reduce((a, x) => a + x.value, 0))));
+    const absentRate = Math.max(0, Math.min(100, Math.round(absentSegments.reduce((a, x) => a + x.value, 0))));
+    const overtimeRate = totalWorked > 0 ? Math.max(0, Math.min(100, Math.round((totalOt / totalWorked) * 100))) : 0;
+
+    const buildRing = (segments, fallbackColor = "#22c55e") => {
+      const valid = segments.filter((x) => x.value > 0.02);
+      if (valid.length === 0) return "conic-gradient(rgba(226,232,240,.14) 0 100%)";
+      const total = valid.reduce((a, x) => a + x.value, 0);
+      let cursor = 0;
+      const parts = [];
+      for (const s of valid) {
+        const pct = (s.value / total) * Math.min(100, total);
+        const fromPct = cursor;
+        cursor += pct;
+        parts.push(`${s.color || fallbackColor} ${fromPct.toFixed(2)}% ${cursor.toFixed(2)}%`);
+      }
+      parts.push(`rgba(226,232,240,.14) ${cursor.toFixed(2)}% 100%`);
+      return `conic-gradient(${parts.join(", ")})`;
+    };
+
+    return {
+      attendanceRate,
+      lateRate,
+      absentRate,
+      overtimeRate,
+      attendanceRing: buildRing(attendanceSegments, "#22c55e"),
+      lateRing: buildRing(lateSegments, "#f59e0b"),
+      absentRing: buildRing(absentSegments, "#ef4444"),
+      overtimeRing: buildRing(otSegments, "#f97316"),
+      otPctById,
+    };
+  }, [employeeInsights, employees.length, from, to]);
 
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -404,40 +563,42 @@ export default function AdminDashboard({ onAuthError }) {
               <div className="we-admin-sectionTitle">Attendance Insights</div>
               <div className="we-admin-sectionMeta">Donut overview (last 7 days)</div>
             </div>
-            <div className="we-admin-kpiMini">
-              <div className="k">Employees</div><div className="v">{totalEmployees}</div>
-              <div className="k">Present</div><div className="v">{openCount}</div>
-              <div className="k">Absent</div><div className="v">{notClockedIn}</div>
-              <div className="k">Late</div><div className="v">{glance.late}</div>
-            </div>
           </div>
           <div className="we-admin-donutGrid">
             {(() => {
-              const active = insights?.activeEmployees || 0;
-              const abs7 = (insights?.absenteesLast7Days || []).reduce((a, d) => a + (d.value || 0), 0);
-              const late7 = (insights?.lateLast7Days || []).reduce((a, d) => a + (d.value || 0), 0);
-              const totalDays = (insights?.absenteesLast7Days || []).length || 1;
-              const maxPossible = active * totalDays;
-              const attendanceRate = maxPossible > 0 ? Math.round(((maxPossible - abs7) / maxPossible) * 100) : 0;
-              const lateRate = maxPossible > 0 ? Math.round((late7 / maxPossible) * 100) : 0;
-              const absentRate = maxPossible > 0 ? Math.round((abs7 / maxPossible) * 100) : 0;
+              const attendanceRate = insightBreakdown.attendanceRate;
+              const lateRate = insightBreakdown.lateRate;
+              const absentRate = insightBreakdown.absentRate;
+              const overtimeRate = insightBreakdown.overtimeRate;
               return (
                 <>
                   <div className="we-admin-donutCard">
                     <div className="we-admin-chartTitle">Attendance rate</div>
                     <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut" style={{ '--pct': `${attendanceRate}%` }} />
+                      <div className="we-admin-donut" style={{ background: insightBreakdown.attendanceRing }} />
                       <div className="we-admin-donutCenter">
                         <div className="v">{attendanceRate}%</div>
                         <div className="k">Present</div>
                       </div>
                     </div>
-                    <div className="we-admin-donutNote">Based on last 7 days</div>
+                    <div className="we-admin-donutDayChips">
+                      {employeeInsights.map((item) => (
+                        <span
+                          key={item.id}
+                          className="we-admin-donutDayChip"
+                          style={{ borderColor: `${item.color}99`, color: item.color }}
+                          title={`${item.name}: ${item.presentDays}d`}
+                        >
+                          <i style={{ background: item.color }} />
+                          {item.presentDays}d
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div className="we-admin-donutCard">
                     <div className="we-admin-chartTitle">Late rate</div>
                     <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut warn" style={{ '--pct': `${lateRate}%` }} />
+                      <div className="we-admin-donut warn" style={{ background: insightBreakdown.lateRing }} />
                       <div className="we-admin-donutCenter">
                         <div className="v">{lateRate}%</div>
                         <div className="k">Late</div>
@@ -448,13 +609,37 @@ export default function AdminDashboard({ onAuthError }) {
                   <div className="we-admin-donutCard">
                     <div className="we-admin-chartTitle">Absence rate</div>
                     <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut alt" style={{ '--pct': `${absentRate}%` }} />
+                      <div className="we-admin-donut alt" style={{ background: insightBreakdown.absentRing }} />
                       <div className="we-admin-donutCenter">
                         <div className="v">{absentRate}%</div>
                         <div className="k">Absent</div>
                       </div>
                     </div>
                     <div className="we-admin-donutNote">Active staff only</div>
+                  </div>
+                  <div className="we-admin-donutCard">
+                    <div className="we-admin-chartTitle">OT rate</div>
+                    <div className="we-admin-donutWrap">
+                      <div className="we-admin-donut ot" style={{ background: insightBreakdown.overtimeRing }} />
+                      <div className="we-admin-donutCenter">
+                        <div className="v">{overtimeRate}%</div>
+                        <div className="k">OT share</div>
+                      </div>
+                    </div>
+                    <div className="we-admin-donutNote">OT minutes / total worked minutes</div>
+                    <div className="we-admin-donutDayChips">
+                      {employeeInsights.map((item) => (
+                        <span
+                          key={item.id}
+                          className="we-admin-donutDayChip"
+                          style={{ borderColor: `${item.color}99`, color: item.color }}
+                          title={`${item.name}: ${insightBreakdown.otPctById.get(item.id) || 0}%`}
+                        >
+                          <i style={{ background: item.color }} />
+                          {insightBreakdown.otPctById.get(item.id) || 0}%
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </>
               );
@@ -546,7 +731,7 @@ export default function AdminDashboard({ onAuthError }) {
           <div className="we-admin-sectionHead">
             <div>
               <div className="we-admin-sectionTitle">Overnight OT approvals</div>
-              <div className="we-admin-sectionMeta">Pending checkouts after midnight</div>
+              <div className="we-admin-sectionMeta">Pending overnight requests (no approval - auto-close at 17:00 next day)</div>
             </div>
             <div className="we-admin-sectionMeta">{overnightPending.length} pending</div>
           </div>

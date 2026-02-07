@@ -534,10 +534,14 @@ export function ClockScreen({ onAuthError }) {
                     ⛔ No OT — Check out
                   </button>
                   <div className="we-clock-noOtHint">
-                    Use this if you are not claiming OT. We'll use standard end time (no OT).
+                    Use this if you are not claiming OT. Checkout between 16:30-17:30 is stored as 17:00.
                   </div>
                 </div>
               ) : null}
+
+              <div className="we-fieldHint" style={{ marginTop: 10 }}>
+                Clock-out policy: 16:30-17:30 records as 17:00, after 17:30 counts as OT. If still open next day without overnight approval, system auto-closes at 17:00 (remark: Forget Clock out).
+              </div>
             </>
           )}
 

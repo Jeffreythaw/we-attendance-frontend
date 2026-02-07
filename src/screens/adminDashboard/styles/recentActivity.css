@@ -102,7 +102,7 @@
   opacity: .95;
 }
 
-.we-dayList{ display:grid; gap:10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.we-dayList{ display:grid; gap:10px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 
 .we-dayPill {
   font-size: 11px;
@@ -194,6 +194,40 @@
   opacity: 0.85;
 }
 
+.we-raMetaGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:8px;
+}
+
+.we-raMetaCell{
+  min-width:0;
+  padding:6px 8px;
+  border-radius:10px;
+  background: rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  display:grid;
+  gap:2px;
+}
+
+.we-raMetaCell.wide{
+  grid-column: 1 / -1;
+}
+
+.we-raMetaLabel{
+  font-size:10px;
+  font-weight:900;
+  opacity:.7;
+}
+
+.we-raMetaValue{
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
 .we-raDot {
   opacity: 0.6;
 }
@@ -223,6 +257,11 @@
   .we-raActions {
     justify-content: flex-start;
   }
+}
+
+@media (max-width: 520px){
+  .we-dayList{ grid-template-columns: 1fr; }
+  .we-raMetaGrid{ grid-template-columns: 1fr; }
 }
 
 .we-raType.in{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); color:#bbf7d0; }
