@@ -127,8 +127,8 @@ export function ClockScreen({ onAuthError }) {
     }).formatToParts(now);
     const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
     const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
-    // OT after 17:00 (include 17:00 and above)
-    return h > 17 || (h === 17 && m >= 0);
+    // OT after 17:30 (include 17:30 and above)
+    return h > 17 || (h === 17 && m >= 30);
   }, [now]);
 
   // ✅ OT detection (time OR sunday OR holiday)

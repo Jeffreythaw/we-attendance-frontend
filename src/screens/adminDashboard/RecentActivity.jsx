@@ -125,7 +125,9 @@ function sgCutoffUtcMs(iso, hour24) {
   const [y, m, d] = String(iso || "").split("-").map(Number);
   if (!y || !m || !d) return null;
   const SG_OFFSET = 8;
-  return Date.UTC(y, m - 1, d, hour24 - SG_OFFSET, 0, 0, 0);
+  const whole = Math.floor(hour24);
+  const mins = Math.round((hour24 - whole) * 60);
+  return Date.UTC(y, m - 1, d, whole - SG_OFFSET, mins, 0, 0);
 }
 
 function roundOtDisplayMinutes(mins) {
@@ -168,7 +170,7 @@ function calcOtMins(row) {
   }
   if (workedFromBackend != null && regularFromBackend == null && outOk) {
     const dayIsoFromOut = sgIsoDate(outD);
-    const cutoffFromOut = sgCutoffUtcMs(dayIsoFromOut, 17);
+    const cutoffFromOut = sgCutoffUtcMs(dayIsoFromOut, 17.5);
     if (cutoffFromOut != null) {
       return Math.max(0, Math.round((outD.getTime() - cutoffFromOut) / 60000));
     }
@@ -176,7 +178,7 @@ function calcOtMins(row) {
 
   if (!outOk) return 0;
   const dayIso = sgIsoDate(inOk ? inD : outD);
-  const cutoffMs = sgCutoffUtcMs(dayIso, 17);
+  const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
   if (cutoffMs == null) return 0;
 
   return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));

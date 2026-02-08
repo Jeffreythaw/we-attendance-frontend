@@ -1003,6 +1003,20 @@
   display:inline-block;
 }
 
+.we-admin-insightsLegend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin: 2px 0 10px;
+}
+
+.we-admin-donutDayChipName .n{
+  max-width: 180px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
 @media (max-width: 980px){
   .we-admin-donutGrid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1067,6 +1081,10 @@
   .we-admin-donutDayChip{
     font-size: 10px;
     padding: 2px 6px;
+  }
+
+  .we-admin-donutDayChipName .n{
+    max-width: 90px;
   }
 
   .we-admin-sectionTitle{

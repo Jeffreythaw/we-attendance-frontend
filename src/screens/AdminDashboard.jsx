@@ -124,7 +124,9 @@ function sgCutoffUtcMs(iso, hour) {
   const [y, m, d] = String(iso || "").split("-").map(Number);
   if (!y || !m || !d) return null;
   const SG_OFFSET_HOURS = 8;
-  return Date.UTC(y, m - 1, d, hour - SG_OFFSET_HOURS, 0, 0, 0);
+  const whole = Math.floor(hour);
+  const mins = Math.round((hour - whole) * 60);
+  return Date.UTC(y, m - 1, d, whole - SG_OFFSET_HOURS, mins, 0, 0);
 }
 
 function otAfter5pmMins(row) {
@@ -140,7 +142,7 @@ function otAfter5pmMins(row) {
   if (Number.isNaN(inD.getTime()) || Number.isNaN(outD.getTime())) return 0;
 
   const dayIso = localIsoDate(inD);
-  const cutoffMs = sgCutoffUtcMs(dayIso, 17);
+  const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
   if (!cutoffMs) return 0;
   return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
 }
@@ -564,6 +566,21 @@ export default function AdminDashboard({ onAuthError }) {
               <div className="we-admin-sectionMeta">Donut overview (last 7 days)</div>
             </div>
           </div>
+          {employeeInsights.length > 0 ? (
+            <div className="we-admin-insightsLegend">
+              {employeeInsights.map((item) => (
+                <span
+                  key={`legend-${item.id}`}
+                  className="we-admin-donutDayChip we-admin-donutDayChipName"
+                  style={{ borderColor: `${item.color}99`, color: item.color }}
+                  title={`${item.name} #${item.id}`}
+                >
+                  <i style={{ background: item.color }} />
+                  <span className="n">{item.name}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="we-admin-donutGrid">
             {(() => {
               const attendanceRate = insightBreakdown.attendanceRate;

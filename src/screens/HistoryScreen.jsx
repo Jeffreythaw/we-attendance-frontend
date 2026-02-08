@@ -195,7 +195,7 @@ function getOtMinutesFromRow(r, isWorkdayDay) {
   const r0 = sgDayRangeUtcMs(inIso);
   if (!r0) return 0;
 
-  const cutoffUtcMs = r0.startUtcMs + 17 * 60 * 60 * 1000; // 17:00 SG
+  const cutoffUtcMs = r0.startUtcMs + (17 * 60 + 30) * 60 * 1000; // 17:30 SG
   const extra = Math.max(0, outD.getTime() - cutoffUtcMs);
   return Math.round(extra / 60000);
 }
