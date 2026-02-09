@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 /** local YYYY-MM-DD (not UTC) */
@@ -150,23 +150,11 @@ function pickEmpName(row, employeeMap) {
   );
 }
 
-function shortDayLabel(iso) {
-  if (!iso) return "—";
-  const parts = iso.split("-");
-  return `${parts[1]}/${parts[2]}`;
-}
-
 function dayLabel(iso) {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
-}
-
-function monthDay(iso) {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 }
 
 function clamp(n, a, b) {
@@ -230,6 +218,7 @@ export default function EmployeeInOutMatrix({
   expectedOut = "17:00",
   lateAfterMinutes = 15,
   earlyBeforeMinutes = 0,
+  onEdit,
 }) {
   const days = useMemo(() => eachDayInclusive(from, to), [from, to]);
 
@@ -384,17 +373,48 @@ export default function EmployeeInOutMatrix({
     [employeesList, selected]
   );
 
+  const latestCellForEmp = useCallback((empId) => {
+    if (!days || !days.length) return null;
+    for (let i = days.length - 1; i >= 0; i -= 1) {
+      const k = `${empId}|${days[i]}`;
+      const cell = byEmpDay.get(k);
+      if (cell && (cell.inAt || cell.outAt)) return cell;
+    }
+    return null;
+  }, [days, byEmpDay]);
+
+  const cellBadges = useCallback((inAt, outAt) => {
+    const badges = [];
+    if (inAt && !outAt) {
+      badges.push({ key: "missingout", label: "MISSING OUT", tone: "warn" });
+    }
+    if (!inAt && outAt) {
+      badges.push({ key: "missingin", label: "MISSING IN", tone: "warn" });
+    }
+
+    const inMin = timeToMinutesOfDay(inAt);
+    const outMin = timeToMinutesOfDay(outAt);
+
+    if (inMin != null && inMin > expectedInMin + lateAfterMinutes) {
+      badges.push({ key: "late", label: "LATE", tone: "bad" });
+    }
+    if (outMin != null && outMin < expectedOutMin - earlyBeforeMinutes) {
+      badges.push({ key: "early", label: "EARLY", tone: "bad" });
+    }
+    return badges;
+  }, [expectedInMin, expectedOutMin, lateAfterMinutes, earlyBeforeMinutes]);
+
   const visibleEmployees = useMemo(() => {
     if (!problemsOnly) return selectedEmployees;
     return selectedEmployees.filter((emp) => {
-      const latest = latestCellForEmp(emp.empId, days, byEmpDay);
+      const latest = latestCellForEmp(emp.empId);
       if (!latest) return false;
       const inAt = latest?.inAt || null;
       const outAt = latest?.outAt || null;
       const badges = cellBadges(inAt, outAt);
       return badges.length > 0;
     });
-  }, [problemsOnly, selectedEmployees, days, byEmpDay]);
+  }, [problemsOnly, selectedEmployees, latestCellForEmp, cellBadges]);
   const selectedCount = selectedEmployees.length;
 
   const rangeLabel = useMemo(() => {
@@ -413,17 +433,7 @@ export default function EmployeeInOutMatrix({
     return clamp(Math.round((mins / workDayMinutes) * 100), 0, 100);
   }
 
-  function latestCellForEmp(empId, days, byEmpDay) {
-  if (!days || !days.length) return null;
-  for (let i = days.length - 1; i >= 0; i -= 1) {
-    const k = `${empId}|${days[i]}`;
-    const cell = byEmpDay.get(k);
-    if (cell && (cell.inAt || cell.outAt)) return cell;
-  }
-  return null;
-}
-
-function hoursLabel(inAt, outAt) {
+  function hoursLabel(inAt, outAt) {
     const mins = workedMinutes(
       inAt,
       outAt,
@@ -437,25 +447,7 @@ function hoursLabel(inAt, outAt) {
   }
 
   function badgeKeyList(badges) {
-  return (badges || []).map((b) => b.label);
-}
-
-function cellBadges(inAt, outAt) {
-    const badges = [];
-    if (inAt && !outAt)
-      badges.push({ key: "missingout", label: "MISSING OUT", tone: "warn" });
-    if (!inAt && outAt)
-      badges.push({ key: "missingin", label: "MISSING IN", tone: "warn" });
-
-    const inMin = timeToMinutesOfDay(inAt);
-    const outMin = timeToMinutesOfDay(outAt);
-
-    if (inMin != null && inMin > expectedInMin + lateAfterMinutes)
-      badges.push({ key: "late", label: "LATE", tone: "bad" });
-    if (outMin != null && outMin < expectedOutMin - earlyBeforeMinutes)
-      badges.push({ key: "early", label: "EARLY", tone: "bad" });
-
-    return badges;
+    return (badges || []).map((b) => b.label);
   }
 
   return (
@@ -504,7 +496,7 @@ function cellBadges(inAt, outAt) {
           <div className="we-presenceGrid">
             {visibleEmployees.map((emp) => {
               const trend = trendByEmp.get(emp.empId) || [];
-              const latest = latestCellForEmp(emp.empId, days, byEmpDay);
+              const latest = latestCellForEmp(emp.empId);
               const inAt = latest?.inAt || null;
               const outAt = latest?.outAt || null;
               const latestRow = latest?.row || null;

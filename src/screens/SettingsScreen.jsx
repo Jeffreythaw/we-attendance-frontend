@@ -4,6 +4,8 @@ import { leaveApi } from "../api/leave";
 import { apiFetch } from "../api/client";
 
 const REQUIRED_ATTACH_CODES = new Set(["MC", "HL"]);
+const MAX_LEAVE_ATTACHMENT_BYTES = 2_000_000;
+const ALLOWED_LEAVE_ATTACHMENT_EXT = new Set(["pdf", "jpg", "jpeg", "png"]);
 
 export function SettingsScreen({ user }) {
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
@@ -68,6 +70,15 @@ export function SettingsScreen({ user }) {
     if (!leaveTypeId) return setLeaveErr("Please select leave type.");
     if (!startDate || !endDate) return setLeaveErr("Please select start/end date.");
     if (requiresAttachment && !file) return setLeaveErr("Attachment required for this leave type.");
+    if (file && file.size > MAX_LEAVE_ATTACHMENT_BYTES) {
+      return setLeaveErr("Attachment too large. Max 2MB.");
+    }
+    if (file) {
+      const ext = String(file.name || "").split(".").pop()?.toLowerCase() || "";
+      if (!ALLOWED_LEAVE_ATTACHMENT_EXT.has(ext)) {
+        return setLeaveErr("Unsupported attachment type. Use PDF/JPG/PNG.");
+      }
+    }
 
     setLeaveBusy(true);
     try {
@@ -276,10 +287,15 @@ export function SettingsScreen({ user }) {
 
               <label className="we-s-label">
                 Attachment {requiresAttachment ? "(required)" : "(optional)"}
-                <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={leaveBusy} />
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  disabled={leaveBusy}
+                />
               </label>
 
-              <div className="we-s-hint">Max 2MB. Allowed: PDF, JPG, PNG.</div>
+              <div className="we-s-hint">Max 2MB. Allowed: PDF, JPG, PNG. Stored on server at Documents/KJ_Attendance.</div>
 
               <button className="we-s-apply" type="submit" disabled={leaveBusy}>
                 {leaveBusy ? "Submitting…" : "Apply Leave"}

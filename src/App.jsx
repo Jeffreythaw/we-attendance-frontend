@@ -10,6 +10,7 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 import AdminDashboard from "./screens/AdminDashboard";
 import AdminEmployees from "./pages/AdminEmployees";
 import AdminQuotations from "./screens/AdminQuotations";
+import weWordmark from "./assets/WE_Eng.png";
 
 import { Tabs } from "./components/Tabs";
 
@@ -67,26 +68,24 @@ function AuthedApp({ user, logout }) {
           }}
         >
           <div className="we-app-brand" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, rgba(99,102,241,0.85), rgba(236,72,153,0.75))",
-                boxShadow: "0 12px 24px rgba(0,0,0,0.25)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                flex: "0 0 auto",
-              }}
+            <img
+              src={weWordmark}
+              alt="WE Engineering"
+              className="we-app-brandMark"
             />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 950, lineHeight: 1.1, color: "#fff" }}>
-                WE Attendance
-              </div>
-              <div style={{ fontSize: 12 }} className="we-muted">
+              <div
+                className="we-app-brandTextSub we-muted"
+                style={{ fontSize: 12 }}
+              >
                 {user?.username} • {user?.role}
               </div>
             </div>
           </div>
+
+          <button type="button" className="we-app-logout" onClick={logout}>
+            Log out
+          </button>
         </div>
 
         {/* Screens */}
@@ -139,6 +138,37 @@ const cssBg = `
 
 
 .we-app-header{ position:relative; z-index:2; }
+.we-app-brandMark{
+  width: 140px;
+  height: 44px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(15,23,42,.4);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+  padding: 4px 6px;
+  flex: 0 0 auto;
+}
+.we-app-logout{
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(15,23,42,.55);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.we-app-logout:hover{
+  background: rgba(30,41,59,.72);
+  border-color: rgba(255,255,255,.3);
+}
+.we-app-logout:active{
+  transform: translateY(1px);
+}
 @media (max-width: 520px){
   .we-app-header.is-employee{
     margin-bottom: 6px !important;
@@ -151,18 +181,15 @@ const cssBg = `
   .we-app-header.is-employee .we-app-brand{
     gap: 8px;
   }
-  .we-app-header.is-employee .we-app-brand > div:first-child{
-    width: 28px !important;
-    height: 28px !important;
+  .we-app-header.is-employee .we-app-brandMark{
+    width: 112px !important;
+    height: 34px !important;
     border-radius: 10px !important;
+    padding: 3px 5px !important;
   }
-  .we-app-header.is-employee .we-app-brand > div:last-child > div:first-child{
-    font-size: 14px !important;
-    line-height: 1.1 !important;
-  }
-  .we-app-header.is-employee .we-app-brand > div:last-child > div:last-child{
-    font-size: 11px !important;
-    opacity: 0.8;
+  .we-app-header.is-employee .we-app-brandTextSub{
+    font-size: 10px !important;
+    opacity: 0.7;
   }
   .we-app-header.is-employee .we-app-logout{
     padding: 6px 10px !important;

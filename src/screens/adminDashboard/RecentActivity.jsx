@@ -111,78 +111,110 @@ function toFiniteNumber(...values) {
   return null;
 }
 
-function sgIsoDate(value) {
-  if (!value) return "";
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("en-CA", {
+function roundOtDisplayMinutes(mins) {
+  const n = Math.max(0, Math.round(Number(mins) || 0));
+  if (n <= 0) return 0;
+  const block = 30;
+  return Math.floor(n / block) * block;
+}
+
+function toSgWallClockDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: SG_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   }).formatToParts(d);
-  const y = parts.find((p) => p.type === "year")?.value || "0000";
-  const m = parts.find((p) => p.type === "month")?.value || "01";
-  const day = parts.find((p) => p.type === "day")?.value || "01";
-  return `${y}-${m}-${day}`;
+
+  const y = Number(parts.find((p) => p.type === "year")?.value ?? "0");
+  const m = Number(parts.find((p) => p.type === "month")?.value ?? "0");
+  const day = Number(parts.find((p) => p.type === "day")?.value ?? "0");
+  const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  const ss = Number(parts.find((p) => p.type === "second")?.value ?? "0");
+
+  if (!y || !m || !day) return null;
+  return new Date(Date.UTC(y, m - 1, day, hh, mm, ss, 0));
 }
 
-function sgCutoffUtcMs(iso, hour24) {
-  const [y, m, d] = String(iso || "").split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const SG_OFFSET = 8;
-  const whole = Math.floor(hour24);
-  const mins = Math.round((hour24 - whole) * 60);
-  return Date.UTC(y, m - 1, d, whole - SG_OFFSET, mins, 0, 0);
+function floorMinutesDiff(a, b) {
+  if (!(a instanceof Date) || !(b instanceof Date)) return 0;
+  const diff = b.getTime() - a.getTime();
+  if (!Number.isFinite(diff) || diff <= 0) return 0;
+  return Math.floor(diff / 60000);
 }
 
-function roundOtDisplayMinutes(mins) {
-  const n = Math.max(0, Math.round(Number(mins) || 0));
-  if (n <= 0) return 0;
-  const block = 15;
-  return Math.round(n / block) * block;
+function deriveOtMinutesByPolicy(row, holidaySet = null) {
+  const inAt = pickInAt(row);
+  const outAt = pickOutAt(row);
+  const inWall = toSgWallClockDate(inAt);
+  const outWall = toSgWallClockDate(outAt);
+  if (!inWall || !outWall) return null;
+  if (outWall <= inWall) return 0;
+
+  const inDayKey = toDateKey(inAt);
+  const isHoliday = !!(inDayKey && holidaySet?.has?.(inDayKey));
+  const isSunday = inWall.getUTCDay() === 0;
+  const isWorkday = !isSunday && !isHoliday;
+
+  if (!isWorkday) {
+    const total = floorMinutesDiff(inWall, outWall);
+    const noon = new Date(Date.UTC(
+      inWall.getUTCFullYear(),
+      inWall.getUTCMonth(),
+      inWall.getUTCDate(),
+      12, 0, 0, 0
+    ));
+    const twoPm = new Date(Date.UTC(
+      inWall.getUTCFullYear(),
+      inWall.getUTCMonth(),
+      inWall.getUTCDate(),
+      14, 0, 0, 0
+    ));
+    const lunch = inWall <= noon && outWall >= twoPm ? 60 : 0;
+    return roundOtDisplayMinutes(Math.max(0, total - lunch));
+  }
+
+  const fivePm = new Date(Date.UTC(
+    inWall.getUTCFullYear(),
+    inWall.getUTCMonth(),
+    inWall.getUTCDate(),
+    17, 0, 0, 0
+  ));
+  const otStart = new Date(Date.UTC(
+    inWall.getUTCFullYear(),
+    inWall.getUTCMonth(),
+    inWall.getUTCDate(),
+    17, 30, 0, 0
+  ));
+
+  const effectiveOut = outWall >= fivePm && outWall < otStart ? fivePm : outWall;
+  const otRaw = effectiveOut >= otStart ? floorMinutesDiff(fivePm, effectiveOut) : 0;
+  return roundOtDisplayMinutes(Math.max(0, otRaw));
 }
 
 function calcOtMins(row, holidaySet = null) {
-  const inAt = pickInAt(row);
-  const outAt = pickOutAt(row);
-  const inD = inAt ? new Date(inAt) : null;
-  const outD = outAt ? new Date(outAt) : null;
-  const inOk = inD && !Number.isNaN(inD.getTime());
-  const outOk = outD && !Number.isNaN(outD.getTime());
-
-  // When we have both times, always recalc from policy so legacy OT values stay consistent with current rule.
-  if (inOk && outOk && outD.getTime() > inD.getTime()) {
-    const dayIso = sgIsoDate(inD);
-    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(inD);
-    const isSunday = dow === "Sun";
-    const isHoliday = !!(holidaySet && dayIso && holidaySet.has(dayIso));
-    const isOffDay = isSunday || isHoliday;
-
-    const total = Math.max(0, Math.floor((outD.getTime() - inD.getTime()) / 60000));
-
-    if (isOffDay) {
-      const noonUtc = sgCutoffUtcMs(dayIso, 12);
-      const twoPmUtc = sgCutoffUtcMs(dayIso, 14);
-      const lunch = noonUtc != null && twoPmUtc != null && inD.getTime() <= noonUtc && outD.getTime() >= twoPmUtc ? 60 : 0;
-      return Math.max(0, total - lunch);
-    }
-
-    const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
-    if (cutoffMs == null) return 0;
-    return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
-  }
-
-  // Fallback for malformed/partial rows.
   const backend = toFiniteNumber(
     row?.otMinutes,
+    row?.OtMinutes,
     row?.otMins,
     row?.overtimeMinutes,
     row?.overtimeMins,
     row?.totalOtMinutes,
     row?.ot,
   );
-  if (backend != null) return Math.max(0, Math.round(backend));
+  if (backend != null) return roundOtDisplayMinutes(Math.max(0, Math.round(backend)));
+
+  const derived = deriveOtMinutesByPolicy(row, holidaySet);
+  if (derived != null) return roundOtDisplayMinutes(derived);
   return 0;
 }
 

@@ -408,29 +408,6 @@ export function AdminScreen({ onAuthError }) {
     }
   }
 
-  async function downloadLeaveAttachment(id) {
-    setErr("");
-    setLrBusy(true);
-    try {
-      const { blob, contentDisposition } = await apiFetchBlob(`/api/Leave/${encodeURIComponent(id)}/attachment`, { method: "GET", auth: true });
-      const nameMatch = /filename="?([^";]+)"?/i.exec(contentDisposition || "");
-      const name = nameMatch?.[1] || `leave_${id}`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      const msg = e?.message || "Failed to download attachment";
-      setErr(msg);
-    } finally {
-      setLrBusy(false);
-    }
-  }
-
   const sortedLeaveRequests = useMemo(() => {
     const rows = [...(leaveRequests || [])];
     rows.sort((a, b) => {
@@ -1463,7 +1440,7 @@ export function AdminScreen({ onAuthError }) {
               )}
             </Card>
           </div>
-        ) : null
+        ) : null}
 
 {/* ========== TAB: BALANCES (OPTIONAL) ========== */}
         {tab === "balances" ? (

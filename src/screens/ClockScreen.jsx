@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { attendanceApi } from "../api/attendance";
-import { getCurrentLocation } from "../utils/location";
+import { getCurrentLocationDetails } from "../utils/location";
 import { fmtDateTime, parseApiDate } from "../utils/datetime";
 import WELogo from "../assets/WE.png";
 import "./ClockScreen.css";
@@ -230,10 +230,15 @@ export function ClockScreen({ onAuthError }) {
     setGeoWarn("");
 
     try {
-      const location = await getCurrentLocation();
-      if (!location) {
-        setGeoWarn("Location is off — please enable it for accurate check-in.");
+      const loc = await getCurrentLocationDetails();
+      if (!loc.ok || !loc.location) {
+        if (loc.code === "DENIED") setGeoPerm("denied");
+        setGeoWarn(loc.message || "Location is off — please enable it for accurate check-in.");
+        setErr("Location is required for check-in. Please enable location and retry.");
+        return;
       }
+      setGeoPerm("granted");
+      const location = loc.location;
 
       await attendanceApi.checkIn(note, location);
 
@@ -258,12 +263,17 @@ export function ClockScreen({ onAuthError }) {
     setGeoWarn("");
 
     try {
-      const location = await getCurrentLocation();
-      if (!location) {
+      const loc = await getCurrentLocationDetails();
+      if (!loc.ok || !loc.location) {
+        if (loc.code === "DENIED") setGeoPerm("denied");
         setGeoWarn(
-          "Location is off — please enable it for accurate check-out."
+          loc.message || "Location is off — please enable it for accurate check-out."
         );
+        setErr("Location is required for check-out. Please enable location and retry.");
+        return;
       }
+      setGeoPerm("granted");
+      const location = loc.location;
 
       const project = (otProjectName || "").trim();
       const noOt = forceNoOt === true;
@@ -463,6 +473,27 @@ export function ClockScreen({ onAuthError }) {
             </div>
           ) : (
             <>
+              <div className="we-clock-btnRow">
+                <button
+                  className="we-btn danger"
+                  onClick={checkOut}
+                  disabled={busy}
+                >
+                  {busy ? (
+                    <span className="we-btn-spin">
+                      <span className="spinner" />
+                      Checking out…
+                    </span>
+                  ) : (
+                    <>⏹️ Check out</>
+                  )}
+                </button>
+
+                <button className="we-btn-soft" onClick={refresh} disabled={busy}>
+                  🔄 Refresh
+                </button>
+              </div>
+
               {/* OT field (auto show if OT likely OR manual open) */}
               {showOtField ? (
                 <label className="we-clock-label">
@@ -502,27 +533,6 @@ export function ClockScreen({ onAuthError }) {
                 </div>
               )}
 
-              <div className="we-clock-btnRow">
-                <button
-                  className="we-btn danger"
-                  onClick={checkOut}
-                  disabled={busy || !otProjectOk}
-                >
-                  {busy ? (
-                    <span className="we-btn-spin">
-                      <span className="spinner" />
-                      Checking out…
-                    </span>
-                  ) : (
-                    <>⏹️ Check out</>
-                  )}
-                </button>
-
-                <button className="we-btn-soft" onClick={refresh} disabled={busy}>
-                  🔄 Refresh
-                </button>
-              </div>
-
               {canNoOtCheckout ? (
                 <div className="we-clock-noOt">
                   <button
@@ -534,13 +544,13 @@ export function ClockScreen({ onAuthError }) {
                     ⛔ No OT — Check out
                   </button>
                   <div className="we-clock-noOtHint">
-                    Use this if you are not claiming OT. Checkout between 16:30-17:30 is stored as 17:00.
+                    Use this if you are not claiming OT. Checkout between 17:00-17:29 is stored as 17:00.
                   </div>
                 </div>
               ) : null}
 
               <div className="we-fieldHint" style={{ marginTop: 10 }}>
-                Clock-out policy: 16:30-17:30 records as 17:00, after 17:30 counts as OT. If still open next day without overnight approval, system auto-closes at 17:00 (remark: Forget Clock out).
+                Clock-out policy: 17:00-17:29 records as 17:00, 17:30 and later counts as OT. If still open next day without overnight approval, system auto-closes at 17:00 (remark: Forget Clock out).
               </div>
             </>
           )}

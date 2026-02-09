@@ -50,4 +50,16 @@ export const attendanceApi = {
         : "";
     return apiFetch(`/api/Attendance/employee/${encodeURIComponent(employeeId)}${qs}`, { method: "GET" });
   },
+
+  adminRecalculateMinutes({ from, to, employeeId } = {}) {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (employeeId) qs.set("employeeId", String(employeeId));
+    const query = qs.toString();
+    const path = query
+      ? `/api/Attendance/admin/recalculate-minutes?${query}`
+      : "/api/Attendance/admin/recalculate-minutes";
+    return apiFetch(path, { method: "POST" });
+  },
 };

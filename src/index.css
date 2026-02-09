@@ -324,3 +324,207 @@ body {
     font-size: 15px !important;
   }
 }
+
+/* Unified cross-page typography and control sizing */
+:root {
+  --we-font-desktop-title: 1.5rem;     /* 24px */
+  --we-font-desktop-section: 0.95rem;  /* 15px */
+  --we-font-desktop-body: 0.875rem;    /* 14px */
+  --we-font-desktop-meta: 0.75rem;     /* 12px */
+
+  --we-font-mobile-title: 1.18rem;     /* ~19px */
+  --we-font-mobile-section: 0.86rem;   /* ~14px */
+  --we-font-mobile-body: 0.76rem;      /* ~12px */
+  --we-font-mobile-meta: 0.68rem;      /* ~11px */
+
+  --we-control-h-desktop: 38px;
+  --we-control-h-mobile: 32px;
+}
+
+body {
+  font-size: var(--we-font-desktop-body);
+  line-height: 1.4;
+}
+
+.we-admin-title,
+.we-h-title,
+.we-s-title,
+.we-clock-title {
+  font-size: var(--we-font-desktop-title) !important;
+}
+
+.we-admin-sectionTitle,
+.we-h-cardTitle,
+.we-s-cardTitle,
+.we-admin-cardTitle,
+.we-qi-panelTitle,
+.we-admin-chartTitle,
+.we-clock-recentTitle {
+  font-size: var(--we-font-desktop-section) !important;
+}
+
+.we-admin-sub,
+.we-h-sub,
+.we-s-sub,
+.we-admin-sectionMeta,
+.we-h-cardHint,
+.we-s-cardSub,
+.we-gridSub,
+.we-qi-panelSub,
+.we-admin-donutNote,
+.we-h-donutSub,
+.we-h-kpiSub,
+.we-raMetaValue,
+.we-raMetaLabel,
+.we-s-key,
+.we-s-val,
+.we-s-leaveMeta,
+.we-s-leaveReason,
+.we-qi-label,
+.we-qi-kpiLabel,
+.we-qi-kpiValue,
+.we-clock-sub,
+.we-clock-statusMeta,
+.we-clock-recentMeta {
+  font-size: var(--we-font-desktop-body) !important;
+}
+
+.we-admin-kicker,
+.we-h-kicker,
+.we-s-kicker,
+.we-daySub,
+.we-gridHint,
+.we-h-searchHint,
+.we-admin-donutCenter .k,
+.we-admin-donutDayChip,
+.we-chip,
+.we-btn-chip,
+.we-s-pill,
+.we-s-btn,
+.we-raType,
+.we-raLabel,
+.we-qi-dot,
+.we-qi-barLabel,
+.we-qi-barValue,
+.we-qi-miniLegend,
+.we-clock-kicker,
+.we-clock-chip,
+.we-clock-pill,
+.we-clock-itemGrid,
+.we-clock-itemNote {
+  font-size: var(--we-font-desktop-meta) !important;
+}
+
+.we-gridTable,
+.we-gridTable tbody td,
+.we-gridTable thead th,
+.we-admin-table,
+.we-admin-table tbody td,
+.we-admin-table thead th {
+  font-size: 0.76rem !important;
+}
+
+@media (max-width: 860px) {
+  body {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 520px) {
+  body {
+    font-size: var(--we-font-mobile-body);
+    line-height: 1.32;
+  }
+
+  .we-admin-title,
+  .we-h-title,
+  .we-s-title,
+  .we-clock-title {
+    font-size: var(--we-font-mobile-title) !important;
+  }
+
+  .we-admin-sectionTitle,
+  .we-h-cardTitle,
+  .we-s-cardTitle,
+  .we-admin-cardTitle,
+  .we-qi-panelTitle,
+  .we-admin-chartTitle,
+  .we-clock-recentTitle {
+    font-size: var(--we-font-mobile-section) !important;
+  }
+
+  .we-admin-sub,
+  .we-h-sub,
+  .we-s-sub,
+  .we-admin-sectionMeta,
+  .we-h-cardHint,
+  .we-s-cardSub,
+  .we-gridSub,
+  .we-qi-panelSub,
+  .we-admin-donutNote,
+  .we-h-donutSub,
+  .we-h-kpiSub,
+  .we-raMetaValue,
+  .we-raMetaLabel,
+  .we-s-key,
+  .we-s-val,
+  .we-s-leaveMeta,
+  .we-s-leaveReason,
+  .we-qi-label,
+  .we-qi-kpiLabel,
+  .we-qi-kpiValue,
+  .we-clock-sub,
+  .we-clock-statusMeta,
+  .we-clock-recentMeta {
+    font-size: var(--we-font-mobile-body) !important;
+  }
+
+  .we-admin-kicker,
+  .we-h-kicker,
+  .we-s-kicker,
+  .we-daySub,
+  .we-gridHint,
+  .we-h-searchHint,
+  .we-admin-donutCenter .k,
+  .we-admin-donutDayChip,
+  .we-chip,
+  .we-btn-chip,
+  .we-s-pill,
+  .we-s-btn,
+  .we-raType,
+  .we-raLabel,
+  .we-qi-dot,
+  .we-qi-barLabel,
+  .we-qi-barValue,
+  .we-qi-miniLegend,
+  .we-clock-kicker,
+  .we-clock-chip,
+  .we-clock-pill,
+  .we-clock-itemGrid,
+  .we-clock-itemNote {
+    font-size: var(--we-font-mobile-meta) !important;
+  }
+
+  .we-input,
+  .we-raSearch,
+  .we-reportSearch,
+  .we-admin-filterLabel input,
+  .we-admin-filterLabel select,
+  .we-s-form input,
+  .we-s-form select,
+  .we-h-dateInput[type="date"],
+  .we-h-chip,
+  .we-btn,
+  .we-btn-soft {
+    min-height: var(--we-control-h-mobile) !important;
+  }
+
+  .we-gridTable,
+  .we-gridTable tbody td,
+  .we-gridTable thead th,
+  .we-admin-table,
+  .we-admin-table tbody td,
+  .we-admin-table thead th {
+    font-size: 0.66rem !important;
+  }
+}

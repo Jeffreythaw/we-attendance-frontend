@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { apiBase, getToken } from "../../api/client";
 import { REPORT_ENDPOINT } from "./constants";
 import { attendanceApi } from "../../api/attendance";
-import { parseContentDispositionFilename, parseCsvText } from "./csv";
+import { parseCsvText } from "./csv";
 
 /**
  * UI table columns (ONLY for display on screen)
@@ -12,10 +12,9 @@ function formatOtHours(value) {
   if (value == null || value === "") return "—";
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
-  const minutes = Math.round(n * 60);
-  const rounded = Math.round(minutes / 15) * 15;
-  const h = Math.floor(rounded / 60);
-  const mm = rounded % 60;
+  const minutes = Math.max(0, Math.round(n * 60));
+  const h = Math.floor(minutes / 60);
+  const mm = minutes % 60;
   if (h <= 0) return `${mm}m`;
   if (mm === 0) return `${h}h`;
   return `${h}h ${mm}m`;
@@ -99,7 +98,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
     return () => { cancelled = true; };
   }, [from, to]);
 
-  async function loadReport({ downloadCsv = false } = {}) {
+  async function loadReport() {
     setReportErr("");
     setReportBusy(true);
 
@@ -133,20 +132,11 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
         throw new Error(t || `HTTP ${res.status}`);
       }
 
-      const cd = res.headers.get("content-disposition");
-      const serverFilename = parseContentDispositionFilename(cd);
-
       const text = await res.text();
 
       const parsed = parseCsvText(text);
       setReportRows(parsed.rows || []);
       setReportHeaders(parsed.headers || []);
-
-      if (downloadCsv) {
-        const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
-        const fileName = serverFilename || `WE_Attendance_${from}_to_${to}.csv`;
-        downloadBlob(blob, fileName);
-      }
     } catch (e) {
       setReportErr(e?.message || "Failed to load report");
     } finally {
@@ -174,12 +164,13 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
     return rows;
   }, [reportRows, reportSearch, reportOnlyMissing]);
 
+  const totalRows = Array.isArray(reportRows) ? reportRows.length : 0;
   async function downloadExcel() {
     try {
       setReportErr("");
 
       if (!reportRows?.length) {
-        await loadReport({ downloadCsv: false });
+        await loadReport();
       }
 
       const headers = reportHeaders?.length
@@ -233,7 +224,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       setReportErr("");
 
       if (!reportRows?.length) {
-        await loadReport({ downloadCsv: false });
+        await loadReport();
       }
 
       const headers = reportHeaders?.length
@@ -287,7 +278,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
               Employee status (Attendance Report)
             </div>
             <div className="we-admin-sectionMeta">
-              {uiRowsCount} rows • CSV from ReportsController
+              {totalRows > 0 ? `${uiRowsCount}/${totalRows} rows` : "0 rows"} • source: ReportsController
             </div>
           </div>
 
@@ -298,19 +289,10 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
             <button
               className="we-btn"
               type="button"
-              onClick={() => loadReport({ downloadCsv: false })}
+              onClick={loadReport}
               disabled={reportBusy || disabled}
             >
               {reportBusy ? "Loading…" : "Load Report"}
-            </button>
-
-            <button
-              className="we-btn-soft"
-              type="button"
-              onClick={() => loadReport({ downloadCsv: true })}
-              disabled={reportBusy || disabled}
-            >
-              Download CSV
             </button>
 
             <button
@@ -333,43 +315,47 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
           </div>
         </div>
 
-        {/* Search + checkbox row */}
-        <div className="we-reportSearchRow">
-          <label className="we-reportCheck">
-            <input
-              type="checkbox"
-              checked={reportOnlyMissing}
-              onChange={(e) => setReportOnlyMissing(e.target.checked)}
-              disabled={reportBusy || disabled}
-            />
-            Only missing checkout
-          </label>
+        {/* Search + checkbox row (only when report has rows) */}
+        {totalRows > 0 ? (
+          <div className="we-reportSearchRow">
+            <label className="we-reportCheck">
+              <input
+                type="checkbox"
+                checked={reportOnlyMissing}
+                onChange={(e) => setReportOnlyMissing(e.target.checked)}
+                disabled={reportBusy || disabled}
+              />
+              Only missing checkout
+            </label>
 
-          <div className="we-reportSearch">
-            <span className="we-admin-searchIcon" aria-hidden="true">
-              🔎
-            </span>
-            <input
-              value={reportSearch}
-              onChange={(e) => setReportSearch(e.target.value)}
-              placeholder="Search staff / FIN / No."
-              disabled={reportBusy || disabled}
-            />
+            <div className="we-reportSearch">
+              <span className="we-admin-searchIcon" aria-hidden="true">
+                🔎
+              </span>
+              <input
+                value={reportSearch}
+                onChange={(e) => setReportSearch(e.target.value)}
+                placeholder="Search staff / FIN / No."
+                disabled={reportBusy || disabled}
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       {reportErr ? <div className="we-error">{reportErr}</div> : null}
 
       {reportOpen ? (
         <>
-          {uiRowsCount === 0 ? (
+          {totalRows === 0 ? (
             <div className="we-reportEmpty">
               <div className="we-reportEmptyTitle">No report loaded</div>
-              <div className="we-reportEmptySub">Select a range and click Load Report.</div>
-              <button className="we-btn" type="button" onClick={() => loadReport({ downloadCsv: false })} disabled={reportBusy || disabled}>
-                {reportBusy ? "Loading…" : "Load Report"}
-              </button>
+              <div className="we-reportEmptySub">Select a range and use the top Load Report button.</div>
+            </div>
+          ) : uiRowsCount === 0 ? (
+            <div className="we-reportEmpty">
+              <div className="we-reportEmptyTitle">No matches</div>
+              <div className="we-reportEmptySub">Try clearing search or disable “Only missing checkout”.</div>
             </div>
           ) : (
             <div className="we-admin-tableWrap">

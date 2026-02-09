@@ -175,29 +175,9 @@ function isLate(checkInAt) {
   return hh > ON_TIME_HOUR || (hh === ON_TIME_HOUR && mm > ON_TIME_MINUTE);
 }
 
-/**
- * ✅ Use backend OT minutes if provided.
- * Fallback only if old records don't have it.
- */
-function getOtMinutesFromRow(r, isWorkdayDay) {
-  if (typeof r?.otMinutes === "number") return Math.max(0, r.otMinutes);
-
-  const inD = parseApiDate(r?.checkInAt);
-  const outD = parseApiDate(r?.checkOutAt);
-  if (!inD || !outD) return 0;
-
-  if (!isWorkdayDay) {
-    const diff = Math.max(0, outD.getTime() - inD.getTime());
-    return Math.round(diff / 60000);
-  }
-
-  const inIso = isoDateInSg(inD);
-  const r0 = sgDayRangeUtcMs(inIso);
-  if (!r0) return 0;
-
-  const cutoffUtcMs = r0.startUtcMs + (17 * 60 + 30) * 60 * 1000; // 17:30 SG
-  const extra = Math.max(0, outD.getTime() - cutoffUtcMs);
-  return Math.round(extra / 60000);
+function getOtMinutesFromRow(r) {
+  const ot = Number(r?.otMinutes);
+  return Number.isFinite(ot) ? Math.max(0, ot) : 0;
 }
 
 /**
@@ -208,20 +188,13 @@ function getWorkedMinutesFromRow(r) {
   const reg = typeof r?.regularMinutes === "number" ? r.regularMinutes : null;
   const ot = typeof r?.otMinutes === "number" ? r.otMinutes : null;
   if (reg != null && ot != null) return Math.max(0, reg + ot);
-
-  const inD = parseApiDate(r?.checkInAt);
-  const outD = parseApiDate(r?.checkOutAt);
-  if (!inD || !outD) return null;
-
-  const mins = Math.round((outD.getTime() - inD.getTime()) / 60000);
-  return mins >= 0 ? mins : null;
+  return null;
 }
 
 function formatHm(mins) {
-  const m0 = Math.max(0, mins || 0);
-  const rounded = Math.round(m0 / 15) * 15;
-  const h = Math.floor(rounded / 60);
-  const mm = rounded % 60;
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
   if (h <= 0) return `${mm}m`;
   if (mm === 0) return `${h}h`;
   return `${h}h ${mm}m`;
@@ -440,7 +413,7 @@ export function HistoryScreen({ onAuthError }) {
       }
 
       if (r.checkOutAt) {
-        const ot = getOtMinutesFromRow(r, wd);
+        const ot = getOtMinutesFromRow(r);
         overtimeAll += ot;
         if (wd) overtimeWorkdays += ot;
         else overtimeOffDays += ot;
@@ -560,7 +533,7 @@ export function HistoryScreen({ onAuthError }) {
 
       if (r0.checkOutAt) {
         bucket.workedMins += Math.max(0, getWorkedMinutesFromRow(r0) || 0);
-        bucket.otMins += getOtMinutesFromRow(r0, !bucket.isOff);
+        bucket.otMins += getOtMinutesFromRow(r0);
       }
     }
 
@@ -933,14 +906,10 @@ export function HistoryScreen({ onAuthError }) {
           ) : (
             <div className="we-h-list">
               {filtered.map((r) => {
-                const inD = parseApiDate(r.checkInAt);
-                const dayIso = inD ? isoDateInSg(inD) : "";
-                const wd = dayIso ? isWorkdayIso(dayIso) : true;
-
                 const isOpen = !r.checkOutAt;
 
                 const worked = getWorkedMinutesFromRow(r);
-                const ot = r.checkOutAt ? getOtMinutesFromRow(r, wd) : 0;
+                const ot = r.checkOutAt ? getOtMinutesFromRow(r) : 0;
 
                 return (
                   <div key={r.id} className="we-h-item">

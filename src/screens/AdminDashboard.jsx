@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listEmployees } from "../api/employees";
+import { attendanceApi } from "../api/attendance";
 import { apiFetch } from "../api/client";
 import { fmtDateTime } from "../utils/datetime";
 
@@ -27,6 +28,21 @@ function parseIsoDateInput(iso) {
   const [y, m, d] = iso.split("-").map((x) => Number(x));
   if (!y || !m || !d) return null;
   return { y, m, d };
+}
+
+function daysBetweenInclusiveIso(fromIso, toIso) {
+  const out = [];
+  const a = parseIsoDateInput(fromIso);
+  const b = parseIsoDateInput(toIso);
+  if (!a || !b) return out;
+
+  let cur = new Date(Date.UTC(a.y, a.m - 1, a.d, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(b.y, b.m - 1, b.d, 0, 0, 0, 0));
+  while (cur.getTime() <= end.getTime()) {
+    out.push(`${cur.getUTCFullYear()}-${pad2(cur.getUTCMonth() + 1)}-${pad2(cur.getUTCDate())}`);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
 }
 
 function pad2(n) {
@@ -120,39 +136,18 @@ function isWorkdayIso(iso, holidaySet) {
   return dow !== "Sun";
 }
 
-function sgCutoffUtcMs(iso, hour) {
-  const [y, m, d] = String(iso || "").split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const SG_OFFSET_HOURS = 8;
-  const whole = Math.floor(hour);
-  const mins = Math.round((hour - whole) * 60);
-  return Date.UTC(y, m - 1, d, whole - SG_OFFSET_HOURS, mins, 0, 0);
+function formatHm(mins) {
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h <= 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  return `${h}h ${mm}m`;
 }
 
-function otAfter5pmMins(row) {
-  const backendOt = Number(row?.otMinutes);
-  if (Number.isFinite(backendOt)) return Math.max(0, backendOt);
-
-  const inAt = row?.checkInAt ?? row?.inAt ?? row?.clockInAt ?? row?.startAt ?? row?.timeIn ?? null;
-  const outAt = row?.checkOutAt ?? row?.outAt ?? row?.clockOutAt ?? row?.endAt ?? row?.timeOut ?? null;
-  if (!inAt || !outAt) return 0;
-
-  const inD = new Date(inAt);
-  const outD = new Date(outAt);
-  if (Number.isNaN(inD.getTime()) || Number.isNaN(outD.getTime())) return 0;
-
-  const dayIso = localIsoDate(inD);
-  const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
-  if (!cutoffMs) return 0;
-  return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
-}
-
-function shortEmployeeName(name, fallbackId) {
-  const raw = String(name || "").trim();
-  if (!raw) return `#${fallbackId}`;
-  const parts = raw.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[1]}`;
+function finiteNumberOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 export default function AdminDashboard({ onAuthError }) {
@@ -167,6 +162,8 @@ export default function AdminDashboard({ onAuthError }) {
   const [preApproveDate, setPreApproveDate] = useState(() => sgWeekRangeIso(new Date()).fromIso);
   const [preApproveNote, setPreApproveNote] = useState("");
   const [preApproveBusy, setPreApproveBusy] = useState(false);
+  const [recalcBusy, setRecalcBusy] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState("");
 
   const mountedRef = useRef(true);
 
@@ -297,6 +294,32 @@ export default function AdminDashboard({ onAuthError }) {
     }
   }
 
+  async function handleRecalculateMinutes() {
+    setErr("");
+    setRecalcMsg("");
+    setRecalcBusy(true);
+    try {
+      const rawFrom = fromRef.current;
+      const rawTo = toRef.current;
+      const f = rawFrom && rawTo && rawFrom > rawTo ? rawTo : rawFrom;
+      const t = rawFrom && rawTo && rawFrom > rawTo ? rawFrom : rawTo;
+
+      const result = await attendanceApi.adminRecalculateMinutes({ from: f, to: t });
+      if (!mountedRef.current) return;
+
+      const scanned = Number(result?.scanned ?? 0);
+      const updated = Number(result?.updated ?? 0);
+      setRecalcMsg(`Policy recalculation done: ${updated}/${scanned} logs updated.`);
+      await load({ from: f, to: t });
+    } catch (e) {
+      const msg = e?.message || "Failed to recalculate minutes";
+      if (String(msg).includes("401") || String(msg).includes("403")) return onAuthError?.();
+      if (mountedRef.current) setErr(msg);
+    } finally {
+      if (mountedRef.current) setRecalcBusy(false);
+    }
+  }
+
   useEffect(() => {
     mountedRef.current = true;
     load({ from: fromRef.current, to: toRef.current });
@@ -332,29 +355,37 @@ export default function AdminDashboard({ onAuthError }) {
 
   const employeeInsights = useMemo(() => {
     const rows = Array.isArray(recentActivity) ? recentActivity : [];
+    const statsRows = Array.isArray(summary?.employeeStats) ? summary.employeeStats : [];
+    const statsByEmp = new Map(
+      statsRows
+        .map((s) => [Number(s?.employeeId), s])
+        .filter(([id]) => Number.isFinite(id))
+    );
+
     const f = from || localIsoDate(new Date());
     const t = to || f;
     const start = f <= t ? f : t;
     const end = f <= t ? t : f;
 
-    const days = [];
-    const cursor = new Date(`${start}T00:00:00`);
-    const endDate = new Date(`${end}T00:00:00`);
-    while (!Number.isNaN(cursor.getTime()) && cursor <= endDate) {
-      days.push(localIsoDate(cursor));
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
+    const days = daysBetweenInclusiveIso(start, end);
     const totalDays = Math.max(1, days.length);
-    const holidays = new Set((summary?.holidays || []).map((h) => String(h?.date ?? h?.Date ?? "").slice(0, 10)).filter(Boolean));
+    const holidays = new Set(
+      (summary?.holidays || [])
+        .map((h) => String(h?.date ?? h?.Date ?? "").slice(0, 10))
+        .filter(Boolean)
+    );
     const workdaySet = new Set(days.filter((d) => isWorkdayIso(d, holidays)));
     const expectedWorkdays = Math.max(1, workdaySet.size);
 
     const presentDaysByEmp = new Map();
     const lateDaysByEmp = new Map();
+    const totalWorkedByEmp = new Map();
     const otByEmp = new Map();
-    const workedByEmp = new Map();
+    const normalOtByEmp = new Map();
+    const sunPhOtByEmp = new Map();
+    const overnightOtByEmp = new Map();
 
+    // Fallback values from recent activity (only used when summary.employeeStats lacks fields)
     for (const r of rows) {
       const empId = Number(r?.employeeId ?? r?.empId ?? r?.staffId ?? r?.userId ?? NaN);
       if (!Number.isFinite(empId)) continue;
@@ -369,94 +400,106 @@ export default function AdminDashboard({ onAuthError }) {
         presentDaysByEmp.get(empId).add(dayKey);
       }
 
-      const regMins = Number(r?.regularMinutes);
-      const otMins = Number(r?.otMinutes);
-      if (Number.isFinite(regMins) || Number.isFinite(otMins)) {
-        const totalMins = Math.max(0, (Number.isFinite(regMins) ? regMins : 0) + (Number.isFinite(otMins) ? otMins : 0));
-        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + totalMins);
-        otByEmp.set(empId, (otByEmp.get(empId) || 0) + otAfter5pmMins(r));
-        continue;
-      }
-
-      const inD = inAt ? new Date(inAt) : null;
-      const outD = outAt ? new Date(outAt) : null;
-      if (inD && outD && !Number.isNaN(inD.getTime()) && !Number.isNaN(outD.getTime())) {
-        const mins = Math.max(0, Math.round((outD.getTime() - inD.getTime()) / 60000));
-        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + mins);
-        otByEmp.set(empId, (otByEmp.get(empId) || 0) + otAfter5pmMins(r));
-      } else if (inAt) {
-        workedByEmp.set(empId, (workedByEmp.get(empId) || 0) + (8 * 60));
-      }
-
-      if (inAt && isLate(inAt)) {
+      if (inAt && workdaySet.has(dayKey) && isLate(inAt)) {
         if (!lateDaysByEmp.has(empId)) lateDaysByEmp.set(empId, new Set());
         lateDaysByEmp.get(empId).add(dayKey);
+      }
+
+      const regMins = finiteNumberOrNull(r?.regularMinutes);
+      const otMins = finiteNumberOrNull(r?.otMinutes);
+      const safeOtMins = Math.max(0, Math.round(otMins ?? 0));
+      const totalMins = Math.max(0, Math.round((regMins ?? 0) + safeOtMins));
+      totalWorkedByEmp.set(empId, (totalWorkedByEmp.get(empId) || 0) + totalMins);
+      otByEmp.set(empId, (otByEmp.get(empId) || 0) + safeOtMins);
+
+      if (safeOtMins > 0) {
+        const offDay = !workdaySet.has(dayKey);
+        const outDayKey = toDateKey(outAt);
+        const overnight = !!(outDayKey && outDayKey !== dayKey);
+        if (offDay) sunPhOtByEmp.set(empId, (sunPhOtByEmp.get(empId) || 0) + safeOtMins);
+        else normalOtByEmp.set(empId, (normalOtByEmp.get(empId) || 0) + safeOtMins);
+        if (overnight) overnightOtByEmp.set(empId, (overnightOtByEmp.get(empId) || 0) + safeOtMins);
       }
     }
 
     const palette = ["#22c55e", "#38bdf8", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6", "#eab308"];
+    const orderedEmployees = [...employees].sort((a, b) => {
+      const an = String(a?.name || "");
+      const bn = String(b?.name || "");
+      const byName = an.localeCompare(bn);
+      if (byName !== 0) return byName;
+      return Number(a?.id || 0) - Number(b?.id || 0);
+    });
 
-    return employees
-      .map((e, idx) => {
-        const empId = Number(e.id);
-        const presentDays = presentDaysByEmp.get(empId)?.size || 0;
-        const lateDays = (lateDaysByEmp.get(empId)?.size || 0);
-        const workedWorkdays = Array.from(presentDaysByEmp.get(empId) || []).filter((d) => workdaySet.has(d)).length;
-        const absentDays = Math.max(0, expectedWorkdays - workedWorkdays);
-        const employeeWorked = workedByEmp.get(empId) || 0;
-        const employeeOt = otByEmp.get(empId) || 0;
-        return {
-          id: e.id,
-          name: e.name || `Employee #${e.id}`,
-          presentDays,
-          workedWorkdays,
-          lateDays,
-          absentDays,
-          employeeWorked,
-          employeeOt,
-          totalDays,
-          expectedWorkdays,
-          color: palette[idx % palette.length],
-        };
-      })
-      .sort((a, b) => b.presentDays - a.presentDays || a.name.localeCompare(b.name));
+    return orderedEmployees.map((e, idx) => {
+      const empId = Number(e.id);
+      const stat = statsByEmp.get(empId) || null;
+
+      const fallbackPresentDays = presentDaysByEmp.get(empId)?.size || 0;
+      const fallbackWorkdaysWorked = Array.from(presentDaysByEmp.get(empId) || []).filter((d) => workdaySet.has(d)).length;
+      const fallbackLateDays = lateDaysByEmp.get(empId)?.size || 0;
+
+      const presentDays = finiteNumberOrNull(stat?.daysWorked) ?? fallbackPresentDays;
+      const workedWorkdays = finiteNumberOrNull(stat?.workdaysWorked) ?? fallbackWorkdaysWorked;
+      const lateDays = finiteNumberOrNull(stat?.lateDays) ?? fallbackLateDays;
+      const totalWorkedMinutes = finiteNumberOrNull(stat?.totalWorkedMinutes) ?? (totalWorkedByEmp.get(empId) || 0);
+      const employeeOtMinutes = finiteNumberOrNull(stat?.overtimeMinutes) ?? (otByEmp.get(empId) || 0);
+      const normalOtMinutes = finiteNumberOrNull(stat?.normalOtMinutes) ?? (normalOtByEmp.get(empId) || 0);
+      const sunPhOtMinutes = finiteNumberOrNull(stat?.sundayPhOtMinutes ?? stat?.sunPhOtMinutes) ?? (sunPhOtByEmp.get(empId) || 0);
+      const overnightOtMinutes = finiteNumberOrNull(stat?.overnightOtMinutes) ?? (overnightOtByEmp.get(empId) || 0);
+      const absentDays = Math.max(0, expectedWorkdays - workedWorkdays);
+
+      return {
+        id: e.id,
+        name: e.name || `Employee #${e.id}`,
+        presentDays,
+        workedWorkdays,
+        lateDays,
+        absentDays,
+        totalWorkedMinutes,
+        employeeOtMinutes,
+        normalOtMinutes,
+        sunPhOtMinutes,
+        overnightOtMinutes,
+        totalDays,
+        expectedWorkdays,
+        color: palette[idx % palette.length],
+      };
+    });
   }, [employees, recentActivity, from, to, summary]);
 
   const insightBreakdown = useMemo(() => {
-    const totalDays = Math.max(1, (() => {
-      const f = from || localIsoDate(new Date());
-      const t = to || f;
-      const start = f <= t ? f : t;
-      const end = f <= t ? t : f;
-      const cursor = new Date(`${start}T00:00:00`);
-      const endDate = new Date(`${end}T00:00:00`);
-      let d = 0;
-      while (!Number.isNaN(cursor.getTime()) && cursor <= endDate) {
-        d += 1;
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return d;
-    })());
-
+    const totalDays = Math.max(1, Number(employeeInsights?.[0]?.totalDays || 0) || 1);
+    const expectedWorkdays = Math.max(1, Number(employeeInsights?.[0]?.expectedWorkdays || 0) || totalDays);
     const empCount = Math.max(1, employeeInsights.length || employees.length || 1);
-    const denom = empCount * totalDays;
+    const attendanceDenom = Math.max(1, empCount * totalDays);
+    const absenceDenom = Math.max(1, empCount * expectedWorkdays);
 
-    const totalWorked = employeeInsights.reduce((a, x) => a + (x.employeeWorked || 0), 0);
-    const totalOt = employeeInsights.reduce((a, x) => a + (x.employeeOt || 0), 0);
+    const totalWorked = employeeInsights.reduce((a, x) => a + (x.totalWorkedMinutes || 0), 0);
+    const totalOt = employeeInsights.reduce((a, x) => a + (x.employeeOtMinutes || 0), 0);
     const otPctById = new Map();
 
-    const attendanceSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.presentDays / denom) * 100 }));
-    const lateSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.lateDays / denom) * 100 }));
-    const absentSegments = employeeInsights.map((x) => ({ color: x.color, value: (x.absentDays / denom) * 100 }));
+    const attendanceSegments = employeeInsights.map((x) => ({
+      color: x.color,
+      value: (x.presentDays / attendanceDenom) * 100,
+    }));
+    const otTimeSegments = employeeInsights.map((x) => {
+      const share = totalOt > 0 ? (x.employeeOtMinutes / totalOt) * 100 : 0;
+      return { color: x.color, value: share };
+    });
+    const absentSegments = employeeInsights.map((x) => ({
+      color: x.color,
+      value: (x.absentDays / absenceDenom) * 100,
+    }));
     const otSegments = employeeInsights.map((x) => {
-      const value = totalWorked > 0 ? (x.employeeOt / totalWorked) * 100 : 0;
-      const otShare = totalOt > 0 ? Math.round((x.employeeOt / totalOt) * 100) : 0;
+      const value = totalWorked > 0 ? (x.employeeOtMinutes / totalWorked) * 100 : 0;
+      const otShare = totalOt > 0 ? Math.round((x.employeeOtMinutes / totalOt) * 100) : 0;
       otPctById.set(x.id, otShare);
       return { color: x.color, value };
     });
 
     const attendanceRate = Math.max(0, Math.min(100, Math.round(attendanceSegments.reduce((a, x) => a + x.value, 0))));
-    const lateRate = Math.max(0, Math.min(100, Math.round(lateSegments.reduce((a, x) => a + x.value, 0))));
+    const otTimeRate = Math.max(0, Math.min(100, Math.round(otTimeSegments.reduce((a, x) => a + x.value, 0))));
     const absentRate = Math.max(0, Math.min(100, Math.round(absentSegments.reduce((a, x) => a + x.value, 0))));
     const overtimeRate = totalWorked > 0 ? Math.max(0, Math.min(100, Math.round((totalOt / totalWorked) * 100))) : 0;
 
@@ -478,16 +521,19 @@ export default function AdminDashboard({ onAuthError }) {
 
     return {
       attendanceRate,
-      lateRate,
+      otTimeRate,
       absentRate,
       overtimeRate,
       attendanceRing: buildRing(attendanceSegments, "#22c55e"),
-      lateRing: buildRing(lateSegments, "#f59e0b"),
+      otTimeRing: buildRing(otTimeSegments, "#f59e0b"),
       absentRing: buildRing(absentSegments, "#ef4444"),
       overtimeRing: buildRing(otSegments, "#f97316"),
       otPctById,
+      totalOtMinutes: totalOt,
     };
-  }, [employeeInsights, employees.length, from, to]);
+  }, [employeeInsights, employees.length]);
+
+  const insightLegend = useMemo(() => employeeInsights, [employeeInsights]);
 
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -564,7 +610,11 @@ export default function AdminDashboard({ onAuthError }) {
             <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This Week</button>
             <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This Month</button>
             <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last Month</button>
+            <button className="we-btn-chip ghost" type="button" onClick={handleRecalculateMinutes} disabled={busy || recalcBusy}>
+              {recalcBusy ? "Recalculating..." : "Recalculate OT/Hours"}
+            </button>
           </div>
+          {recalcMsg ? <div className="we-admin-sectionMeta" style={{ marginTop: 8 }}>{recalcMsg}</div> : null}
         </div>
 
         {err ? <div className="we-error">{err}</div> : null}
@@ -574,29 +624,28 @@ export default function AdminDashboard({ onAuthError }) {
           <div className="we-admin-chartsHead">
             <div>
               <div className="we-admin-sectionTitle">Attendance Insights</div>
-              <div className="we-admin-sectionMeta">Donut overview (last 7 days)</div>
+              <div className="we-admin-sectionMeta">
+                Donut overview (selected range) • each color segment maps to one employee
+              </div>
             </div>
           </div>
-          {employeeInsights.length > 0 ? (
-            <div className="we-admin-insightsLegend">
-              <span className="we-admin-insightsLegendLabel">Color key:</span>
-              {employeeInsights.map((item) => (
-                <span
-                  key={`legend-${item.id}`}
-                  className="we-admin-donutDayChip we-admin-donutDayChipName"
-                  style={{ borderColor: `${item.color}99`, color: item.color }}
-                  title={`${item.name} #${item.id}`}
-                >
-                  <i style={{ background: item.color }} />
-                  <span className="n">{item.name} #{item.id}</span>
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <div className="we-admin-insightsLegend">
+            <span className="we-admin-insightsLegendLabel">Employee color map</span>
+            {insightLegend.map((item, idx) => (
+              <span
+                key={`legend-${item.id}`}
+                className="we-admin-donutDayChip we-admin-donutDayChipName"
+                style={{ borderColor: `${item.color}99`, color: item.color }}
+                title={`${idx + 1}. ${item.name}`}
+              >
+                <i style={{ background: item.color }} />
+                <span className="n">{idx + 1}. {item.name}</span>
+              </span>
+            ))}
+          </div>
           <div className="we-admin-donutGrid">
             {(() => {
               const attendanceRate = insightBreakdown.attendanceRate;
-              const lateRate = insightBreakdown.lateRate;
               const absentRate = insightBreakdown.absentRate;
               const overtimeRate = insightBreakdown.overtimeRate;
               return (
@@ -611,39 +660,39 @@ export default function AdminDashboard({ onAuthError }) {
                       </div>
                     </div>
                     <div className="we-admin-donutDayChips">
-                      {employeeInsights.map((item) => (
+                      {insightLegend.map((item, idx) => (
                         <span
                           key={item.id}
                           className="we-admin-donutDayChip"
                           style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${item.name}: ${item.presentDays}d`}
+                          title={`${idx + 1}. ${item.name}: ${item.presentDays}d`}
                         >
                           <i style={{ background: item.color }} />
-                          {shortEmployeeName(item.name, item.id)} {item.presentDays}d
+                          {idx + 1}. {item.name} • {item.presentDays}d
                         </span>
                       ))}
                     </div>
                   </div>
                   <div className="we-admin-donutCard">
-                    <div className="we-admin-chartTitle">Late rate</div>
+                    <div className="we-admin-chartTitle">OT time</div>
                     <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut warn" style={{ background: insightBreakdown.lateRing }} />
+                      <div className="we-admin-donut warn" style={{ background: insightBreakdown.otTimeRing }} />
                       <div className="we-admin-donutCenter">
-                        <div className="v">{lateRate}%</div>
-                        <div className="k">Late</div>
+                        <div className="v">{formatHm(insightBreakdown.totalOtMinutes)}</div>
+                        <div className="k">Total OT</div>
                       </div>
                     </div>
-                    <div className="we-admin-donutNote">Late after 08:15</div>
+                    <div className="we-admin-donutNote">Split by employee (normal OT, Sunday/PH OT, overnight OT)</div>
                     <div className="we-admin-donutDayChips">
-                      {employeeInsights.map((item) => (
+                      {insightLegend.map((item, idx) => (
                         <span
                           key={item.id}
                           className="we-admin-donutDayChip"
                           style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${item.name}: ${item.lateDays}d`}
+                          title={`${idx + 1}. ${item.name}: N ${formatHm(item.normalOtMinutes)} • S/PH ${formatHm(item.sunPhOtMinutes)} • ON ${formatHm(item.overnightOtMinutes)}`}
                         >
                           <i style={{ background: item.color }} />
-                          {shortEmployeeName(item.name, item.id)} {item.lateDays}d
+                          {idx + 1}. {item.name} • N {formatHm(item.normalOtMinutes)} • S {formatHm(item.sunPhOtMinutes)} • ON {formatHm(item.overnightOtMinutes)}
                         </span>
                       ))}
                     </div>
@@ -659,15 +708,15 @@ export default function AdminDashboard({ onAuthError }) {
                     </div>
                     <div className="we-admin-donutNote">Active staff only</div>
                     <div className="we-admin-donutDayChips">
-                      {employeeInsights.map((item) => (
+                      {insightLegend.map((item, idx) => (
                         <span
                           key={item.id}
                           className="we-admin-donutDayChip"
                           style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${item.name}: ${item.absentDays}d`}
+                          title={`${idx + 1}. ${item.name}: ${item.absentDays}d`}
                         >
                           <i style={{ background: item.color }} />
-                          {shortEmployeeName(item.name, item.id)} {item.absentDays}d
+                          {idx + 1}. {item.name} • {item.absentDays}d
                         </span>
                       ))}
                     </div>
@@ -683,15 +732,15 @@ export default function AdminDashboard({ onAuthError }) {
                     </div>
                     <div className="we-admin-donutNote">OT minutes / total worked minutes</div>
                     <div className="we-admin-donutDayChips">
-                      {employeeInsights.map((item) => (
+                      {insightLegend.map((item, idx) => (
                         <span
                           key={item.id}
                           className="we-admin-donutDayChip"
                           style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${item.name}: ${insightBreakdown.otPctById.get(item.id) || 0}%`}
+                          title={`${idx + 1}. ${item.name}: ${insightBreakdown.otPctById.get(item.id) || 0}%`}
                         >
                           <i style={{ background: item.color }} />
-                          {shortEmployeeName(item.name, item.id)} {insightBreakdown.otPctById.get(item.id) || 0}%
+                          {idx + 1}. {item.name} • {insightBreakdown.otPctById.get(item.id) || 0}%
                         </span>
                       ))}
                     </div>
