@@ -85,20 +85,21 @@
 
 /* Search bar */
 .we-reportSearch {
-  flex: 1 1 240px;
+  flex: 0 1 240px;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 10px;
-  height: 28px;
-  min-height: 28px;
-  max-height: 28px;
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.12);
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  align-self: flex-start;
 }
 .we-reportSearch input {
   border: 0;
@@ -293,6 +294,8 @@
   }
 
   .we-reportSearch {
+    flex: 0 0 auto;
+    width: 100%;
     height: 30px;
     min-height: 30px;
     max-height: 30px;

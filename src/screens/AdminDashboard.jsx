@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listEmployees } from "../api/employees";
 import { apiFetch } from "../api/client";
-import { fmtDateTime, fmtDateOnly } from "../utils/datetime";
+import { fmtDateTime } from "../utils/datetime";
 
 import { SUMMARY_ENDPOINT } from "./adminDashboard/constants";
 import { toIsoRangeParams } from "./adminDashboard/timezone";
@@ -147,19 +147,12 @@ function otAfter5pmMins(row) {
   return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
 }
 
-function SummaryTile({ label, value, hint, pillClass, pillText }) {
-  return (
-    <div className="we-summaryTile">
-      <div className="we-summaryTop">
-        <div className="we-summaryLabel">{label}</div>
-        {pillText ? (
-          <span className={`we-admin-pill ${pillClass || ""}`}>{pillText}</span>
-        ) : null}
-      </div>
-      <div className="we-summaryValue">{value}</div>
-      {hint ? <div className="we-summaryHint">{hint}</div> : null}
-    </div>
-  );
+function shortEmployeeName(name, fallbackId) {
+  const raw = String(name || "").trim();
+  if (!raw) return `#${fallbackId}`;
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1]}`;
 }
 
 export default function AdminDashboard({ onAuthError }) {
@@ -196,13 +189,22 @@ export default function AdminDashboard({ onAuthError }) {
 
   const [from, setFrom] = useState(() => sgWeekRangeIso(new Date()).fromIso);
   const [to, setTo] = useState(() => sgWeekRangeIso(new Date()).toIso);
+  const fromRef = useRef(from);
+  const toRef = useRef(to);
 
-  async function load() {
+  useEffect(() => {
+    fromRef.current = from;
+    toRef.current = to;
+  }, [from, to]);
+
+  const load = useCallback(async (range = null) => {
     setErr("");
     setBusy(true);
     try {
-      const f = from && to && from > to ? to : from;
-      const t = from && to && from > to ? from : to;
+      const rawFrom = range?.from ?? fromRef.current;
+      const rawTo = range?.to ?? toRef.current;
+      const f = rawFrom && rawTo && rawFrom > rawTo ? rawTo : rawFrom;
+      const t = rawFrom && rawTo && rawFrom > rawTo ? rawFrom : rawTo;
 
       const qs = toIsoRangeParams(f, t);
       const [emps, sum, pending, pre] = await Promise.all([
@@ -228,7 +230,7 @@ export default function AdminDashboard({ onAuthError }) {
     } finally {
       if (mountedRef.current) setBusy(false);
     }
-  }
+  }, [onAuthError]);
 
   async function handleCreatePreApproval() {
     const empId = Number(preApproveEmployeeId);
@@ -245,15 +247,16 @@ export default function AdminDashboard({ onAuthError }) {
         auth: true,
         body: { employeeId: empId, date, note: preApproveNote || null },
       });
+      if (!mountedRef.current) return;
       setPreApproveNote("");
-      await load();
+      await load({ from, to });
     } catch (e) {
       const msg = e?.message || "Failed to create pre-approval";
       if (String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
-      setErr(msg);
+      if (mountedRef.current) setErr(msg);
     } finally {
-      setPreApproveBusy(false);
+      if (mountedRef.current) setPreApproveBusy(false);
     }
   }
 
@@ -264,14 +267,14 @@ export default function AdminDashboard({ onAuthError }) {
         method: "DELETE",
         auth: true,
       });
-      await load();
+      await load({ from, to });
     } catch (e) {
       const msg = e?.message || "Failed to remove pre-approval";
       if (String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
-      setErr(msg);
+      if (mountedRef.current) setErr(msg);
     } finally {
-      setPreApproveBusy(false);
+      if (mountedRef.current) setPreApproveBusy(false);
     }
   }
 
@@ -283,25 +286,24 @@ export default function AdminDashboard({ onAuthError }) {
         auth: true,
         body: { approve },
       });
-      await load();
+      await load({ from, to });
     } catch (e) {
       const msg = e?.message || "Failed to update overnight approval";
       if (String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
-      setErr(msg);
+      if (mountedRef.current) setErr(msg);
     } finally {
-      setOvernightBusy(false);
+      if (mountedRef.current) setOvernightBusy(false);
     }
   }
 
   useEffect(() => {
     mountedRef.current = true;
-    load();
+    load({ from: fromRef.current, to: toRef.current });
     return () => {
       mountedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   const recentActivity = useMemo(() => summary?.recentActivity ?? [], [summary]);
 
@@ -317,6 +319,15 @@ export default function AdminDashboard({ onAuthError }) {
       if (e?.department) set.add(String(e.department).trim());
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [employees]);
+
+  const holidayIsoSet = useMemo(() => {
+    const out = new Set();
+    for (const h of summary?.holidays || []) {
+      const iso = String(h?.date ?? h?.Date ?? "").slice(0, 10);
+      if (iso) out.add(iso);
+    }
+    return out;
+  }, [summary]);
 
 
   const employeeInsights = useMemo(() => {
@@ -511,7 +522,7 @@ export default function AdminDashboard({ onAuthError }) {
               </div>
             </div>
 
-            <button className="we-btn" onClick={load} disabled={busy}>
+            <button className="we-btn" onClick={() => load({ from, to })} disabled={busy}>
               {busy ? "Loading…" : "Refresh"}
             </button>
           </div>
@@ -541,7 +552,7 @@ export default function AdminDashboard({ onAuthError }) {
 
             <button
               className="we-btn-soft"
-              onClick={load}
+              onClick={() => load({ from, to })}
               disabled={busy}
               type="button"
             >
@@ -568,6 +579,7 @@ export default function AdminDashboard({ onAuthError }) {
           </div>
           {employeeInsights.length > 0 ? (
             <div className="we-admin-insightsLegend">
+              <span className="we-admin-insightsLegendLabel">Color key:</span>
               {employeeInsights.map((item) => (
                 <span
                   key={`legend-${item.id}`}
@@ -576,7 +588,7 @@ export default function AdminDashboard({ onAuthError }) {
                   title={`${item.name} #${item.id}`}
                 >
                   <i style={{ background: item.color }} />
-                  <span className="n">{item.name}</span>
+                  <span className="n">{item.name} #{item.id}</span>
                 </span>
               ))}
             </div>
@@ -607,7 +619,7 @@ export default function AdminDashboard({ onAuthError }) {
                           title={`${item.name}: ${item.presentDays}d`}
                         >
                           <i style={{ background: item.color }} />
-                          {item.presentDays}d
+                          {shortEmployeeName(item.name, item.id)} {item.presentDays}d
                         </span>
                       ))}
                     </div>
@@ -622,6 +634,19 @@ export default function AdminDashboard({ onAuthError }) {
                       </div>
                     </div>
                     <div className="we-admin-donutNote">Late after 08:15</div>
+                    <div className="we-admin-donutDayChips">
+                      {employeeInsights.map((item) => (
+                        <span
+                          key={item.id}
+                          className="we-admin-donutDayChip"
+                          style={{ borderColor: `${item.color}99`, color: item.color }}
+                          title={`${item.name}: ${item.lateDays}d`}
+                        >
+                          <i style={{ background: item.color }} />
+                          {shortEmployeeName(item.name, item.id)} {item.lateDays}d
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div className="we-admin-donutCard">
                     <div className="we-admin-chartTitle">Absence rate</div>
@@ -633,6 +658,19 @@ export default function AdminDashboard({ onAuthError }) {
                       </div>
                     </div>
                     <div className="we-admin-donutNote">Active staff only</div>
+                    <div className="we-admin-donutDayChips">
+                      {employeeInsights.map((item) => (
+                        <span
+                          key={item.id}
+                          className="we-admin-donutDayChip"
+                          style={{ borderColor: `${item.color}99`, color: item.color }}
+                          title={`${item.name}: ${item.absentDays}d`}
+                        >
+                          <i style={{ background: item.color }} />
+                          {shortEmployeeName(item.name, item.id)} {item.absentDays}d
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div className="we-admin-donutCard">
                     <div className="we-admin-chartTitle">OT rate</div>
@@ -653,7 +691,7 @@ export default function AdminDashboard({ onAuthError }) {
                           title={`${item.name}: ${insightBreakdown.otPctById.get(item.id) || 0}%`}
                         >
                           <i style={{ background: item.color }} />
-                          {insightBreakdown.otPctById.get(item.id) || 0}%
+                          {shortEmployeeName(item.name, item.id)} {insightBreakdown.otPctById.get(item.id) || 0}%
                         </span>
                       ))}
                     </div>
@@ -817,11 +855,10 @@ export default function AdminDashboard({ onAuthError }) {
           employees={employees}
           allDepartments={allDepartments}
           employeeMap={employeeMap}
+          holidaySet={holidayIsoSet}
           busy={busy}
           onEdit={openEdit}
           onlyTodayByDefault={true}
-          fmtDateTime={fmtDateTime}
-          fmtDateOnly={fmtDateOnly}
         />
 
         {/* Attendance report */}

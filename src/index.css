@@ -28,7 +28,7 @@ body {
   background: var(--bg0);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -197,5 +197,130 @@ body {
   .we-kpiValue,
   .we-h-kpiValue {
     font-size: 16px !important;
+  }
+
+  /* Compact mobile table typography across admin pages */
+  .we-gridTable,
+  .we-gridTable tbody td,
+  .we-gridTable thead th,
+  .we-admin-table,
+  .we-admin-table tbody td,
+  .we-admin-table thead th {
+    font-size: 10.5px !important;
+  }
+
+  /* Keep common controls compact and consistent on small screens */
+  .we-raSearch,
+  .we-input,
+  .we-admin-filterLabel input,
+  .we-admin-filterLabel select {
+    min-height: 36px;
+  }
+}
+
+/* Global responsive type scale for Admin/Employee screens */
+.we-admin-title,
+.we-h-title,
+.we-s-title,
+.we-clock-title {
+  font-size: var(--fs-title-desktop);
+}
+
+.we-admin-sectionTitle,
+.we-h-cardTitle,
+.we-s-cardTitle,
+.we-admin-cardTitle,
+.we-qi-panelTitle,
+.we-admin-chartTitle,
+.we-clock-recentTitle {
+  font-size: var(--fs-section-desktop);
+}
+
+.we-admin-sub,
+.we-h-sub,
+.we-s-sub,
+.we-admin-sectionMeta,
+.we-h-cardHint,
+.we-s-cardSub,
+.we-gridSub,
+.we-qi-panelSub,
+.we-admin-donutNote,
+.we-h-donutSub,
+.we-h-kpiSub,
+.we-raMetaValue,
+.we-raMetaLabel,
+.we-s-key,
+.we-s-val,
+.we-s-leaveMeta,
+.we-s-leaveReason,
+.we-qi-label,
+.we-qi-kpiLabel,
+.we-qi-kpiValue,
+.we-clock-sub,
+.we-clock-statusMeta,
+.we-clock-recentMeta {
+  font-size: var(--fs-body-desktop);
+}
+
+.we-admin-kicker,
+.we-h-kicker,
+.we-s-kicker,
+.we-daySub,
+.we-gridHint,
+.we-h-searchHint,
+.we-admin-donutCenter .k,
+.we-admin-donutDayChip,
+.we-chip,
+.we-btn-chip,
+.we-s-pill,
+.we-s-btn,
+.we-raType,
+.we-raLabel,
+.we-qi-dot,
+.we-qi-barLabel,
+.we-qi-barValue,
+.we-qi-miniLegend,
+.we-clock-kicker,
+.we-clock-chip,
+.we-clock-pill,
+.we-clock-itemGrid,
+.we-clock-itemNote {
+  font-size: var(--fs-caption-desktop);
+}
+
+.we-clock-statusValue {
+  font-size: 24px;
+}
+
+.we-gridTable,
+.we-gridTable tbody td,
+.we-gridTable thead th,
+.we-admin-table,
+.we-admin-table tbody td,
+.we-admin-table thead th {
+  font-size: 11.5px;
+}
+
+@media (max-width: 520px) {
+  .we-gridTable,
+  .we-gridTable tbody td,
+  .we-gridTable thead th,
+  .we-admin-table,
+  .we-admin-table tbody td,
+  .we-admin-table thead th {
+    font-size: 10px !important;
+  }
+
+  .we-raName,
+  .we-clock-statusValue,
+  .we-clock-title {
+    font-size: 20px !important;
+  }
+
+  .we-clock-itemId,
+  .we-raName,
+  .we-h-kpiValue,
+  .we-qi-donutPct {
+    font-size: 15px !important;
   }
 }

@@ -4,13 +4,21 @@ export function toIsoRangeParams(fromDateStr, toDateStr) {
   const qs = new URLSearchParams();
 
   if (fromDateStr) {
-    const d = new Date(`${fromDateStr}T00:00:00`);
-    qs.set("from", d.toISOString());
+    if (FIXED_OFFSET) {
+      qs.set("from", `${fromDateStr}T00:00:00${FIXED_OFFSET}`);
+    } else {
+      const d = new Date(`${fromDateStr}T00:00:00`);
+      qs.set("from", d.toISOString());
+    }
   }
   if (toDateStr) {
-    const d = new Date(`${toDateStr}T00:00:00`);
-    d.setHours(23, 59, 59, 999);
-    qs.set("to", d.toISOString());
+    if (FIXED_OFFSET) {
+      qs.set("to", `${toDateStr}T23:59:59.999${FIXED_OFFSET}`);
+    } else {
+      const d = new Date(`${toDateStr}T00:00:00`);
+      d.setHours(23, 59, 59, 999);
+      qs.set("to", d.toISOString());
+    }
   }
 
   return qs;

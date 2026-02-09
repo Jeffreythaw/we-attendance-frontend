@@ -3,9 +3,15 @@ import React, { useMemo, useState } from "react";
 const SG_TZ = "Asia/Singapore";
 
 function localIsoDate(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SG_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const y = parts.find((p) => p.type === "year")?.value || "0000";
+  const m = parts.find((p) => p.type === "month")?.value || "01";
+  const day = parts.find((p) => p.type === "day")?.value || "01";
   return `${y}-${m}-${day}`;
 }
 
@@ -137,7 +143,37 @@ function roundOtDisplayMinutes(mins) {
   return Math.round(n / block) * block;
 }
 
-function calcOtMins(row) {
+function calcOtMins(row, holidaySet = null) {
+  const inAt = pickInAt(row);
+  const outAt = pickOutAt(row);
+  const inD = inAt ? new Date(inAt) : null;
+  const outD = outAt ? new Date(outAt) : null;
+  const inOk = inD && !Number.isNaN(inD.getTime());
+  const outOk = outD && !Number.isNaN(outD.getTime());
+
+  // When we have both times, always recalc from policy so legacy OT values stay consistent with current rule.
+  if (inOk && outOk && outD.getTime() > inD.getTime()) {
+    const dayIso = sgIsoDate(inD);
+    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(inD);
+    const isSunday = dow === "Sun";
+    const isHoliday = !!(holidaySet && dayIso && holidaySet.has(dayIso));
+    const isOffDay = isSunday || isHoliday;
+
+    const total = Math.max(0, Math.floor((outD.getTime() - inD.getTime()) / 60000));
+
+    if (isOffDay) {
+      const noonUtc = sgCutoffUtcMs(dayIso, 12);
+      const twoPmUtc = sgCutoffUtcMs(dayIso, 14);
+      const lunch = noonUtc != null && twoPmUtc != null && inD.getTime() <= noonUtc && outD.getTime() >= twoPmUtc ? 60 : 0;
+      return Math.max(0, total - lunch);
+    }
+
+    const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
+    if (cutoffMs == null) return 0;
+    return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
+  }
+
+  // Fallback for malformed/partial rows.
   const backend = toFiniteNumber(
     row?.otMinutes,
     row?.otMins,
@@ -147,45 +183,11 @@ function calcOtMins(row) {
     row?.ot,
   );
   if (backend != null) return Math.max(0, Math.round(backend));
-
-  const inAt = pickInAt(row);
-  const outAt = pickOutAt(row);
-  const inD = inAt ? new Date(inAt) : null;
-  const outD = outAt ? new Date(outAt) : null;
-  const inOk = inD && !Number.isNaN(inD.getTime());
-  const outOk = outD && !Number.isNaN(outD.getTime());
-
-  const workedFromBackend = toFiniteNumber(
-    row?.workedMinutes,
-    row?.totalWorkedMinutes,
-    row?.minutesWorked,
-  );
-  const regularFromBackend = toFiniteNumber(
-    row?.regularMinutes,
-    row?.normalMinutes,
-    row?.baseMinutes,
-  );
-  if (workedFromBackend != null && regularFromBackend != null) {
-    return Math.max(0, Math.round(workedFromBackend - regularFromBackend));
-  }
-  if (workedFromBackend != null && regularFromBackend == null && outOk) {
-    const dayIsoFromOut = sgIsoDate(outD);
-    const cutoffFromOut = sgCutoffUtcMs(dayIsoFromOut, 17.5);
-    if (cutoffFromOut != null) {
-      return Math.max(0, Math.round((outD.getTime() - cutoffFromOut) / 60000));
-    }
-  }
-
-  if (!outOk) return 0;
-  const dayIso = sgIsoDate(inOk ? inD : outD);
-  const cutoffMs = sgCutoffUtcMs(dayIso, 17.5);
-  if (cutoffMs == null) return 0;
-
-  return Math.max(0, Math.round((outD.getTime() - cutoffMs) / 60000));
+  return 0;
 }
 
-function formatOt(row) {
-  const mins = roundOtDisplayMinutes(calcOtMins(row));
+function formatOt(row, holidaySet = null) {
+  const mins = roundOtDisplayMinutes(calcOtMins(row, holidaySet));
   if (mins <= 0) return "0m";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -217,10 +219,10 @@ export default function RecentActivity({
   employees = [],
   allDepartments = [],
   employeeMap,
+  holidaySet = null,
   busy,
   onEdit,
   onlyTodayByDefault = true,
-  fmtDateTime,
   mapUrl,
 }) {
   const [q, setQ] = useState("");
@@ -370,7 +372,6 @@ export default function RecentActivity({
                   const t = pickType(r);
                   const inAt = pickInAt(r);
                   const outAt = pickOutAt(r);
-                  const when = pickWhen(r);
                   const tone = t.includes("OUT") ? "out" : t.includes("IN") ? "in" : t.includes("EDIT") ? "edit" : "neutral";
 
                   const mapLink = (mapUrlFn ? mapUrlFn(r) : null) || safeMapUrl(r);
@@ -406,7 +407,7 @@ export default function RecentActivity({
                             </div>
                             <div className="we-raMetaCell">
                               <span className="we-raMetaLabel">OT</span>
-                              <span className="we-raMetaValue">{formatOt(r)}</span>
+                              <span className="we-raMetaValue">{formatOt(r, holidaySet)}</span>
                             </div>
                             {r?.locationName ? (
                               <div className="we-raMetaCell wide">

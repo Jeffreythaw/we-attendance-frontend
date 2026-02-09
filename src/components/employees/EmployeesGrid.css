@@ -223,11 +223,11 @@
 .we-gridTable{
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .we-gridTable thead th{
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 900;
   letter-spacing: .01em;
   color: rgba(226,232,240,.78);
@@ -238,7 +238,7 @@
 }
 
 .we-gridTable tbody td{
-  font-size: 12px;
+  font-size: 11px;
   padding: 9px 10px;
   border-bottom: 1px solid rgba(255,255,255,.08);
   color: rgba(226,232,240,.95);
@@ -256,7 +256,7 @@
 
 .we-cellEllip,
 .we-cellMono{
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .we-cellMono{
@@ -278,7 +278,7 @@
 
 @media (max-width: 520px){
   .we-gridTable{
-    font-size: 11px;
+    font-size: 10px;
   }
   .we-gridTable thead th,
   .we-gridTable tbody td{
@@ -286,6 +286,6 @@
   }
   .we-cellEllip,
   .we-cellMono{
-    font-size: 11px;
+    font-size: 10px;
   }
 }

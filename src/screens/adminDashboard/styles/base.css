@@ -1010,6 +1010,13 @@
   margin: 2px 0 10px;
 }
 
+.we-admin-insightsLegendLabel{
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(203,213,225,.8);
+  align-self: center;
+}
+
 .we-admin-donutDayChipName .n{
   max-width: 180px;
   overflow:hidden;
@@ -1085,6 +1092,11 @@
 
   .we-admin-donutDayChipName .n{
     max-width: 90px;
+  }
+
+  .we-admin-insightsLegendLabel{
+    width: 100%;
+    font-size: 10px;
   }
 
   .we-admin-sectionTitle{

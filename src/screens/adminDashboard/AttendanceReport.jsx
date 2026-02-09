@@ -67,7 +67,6 @@ function downloadBlob(blob, filename) {
 export default function AttendanceReport({ from, to, disabled, onAuthError }) {
   const [reportBusy, setReportBusy] = useState(false);
   const [reportErr, setReportErr] = useState("");
-  const [reportCsv, setReportCsv] = useState("");
   const [reportRows, setReportRows] = useState([]);
   const [reportHeaders, setReportHeaders] = useState([]);
   const [reportOpen, setReportOpen] = useState(true);
@@ -138,7 +137,6 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       const serverFilename = parseContentDispositionFilename(cd);
 
       const text = await res.text();
-      setReportCsv(text);
 
       const parsed = parseCsvText(text);
       setReportRows(parsed.rows || []);

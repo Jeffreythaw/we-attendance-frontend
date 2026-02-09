@@ -5,7 +5,7 @@ import { apiFetch } from "../api/client";
 
 const REQUIRED_ATTACH_CODES = new Set(["MC", "HL"]);
 
-export function SettingsScreen({ user, onLogout }) {
+export function SettingsScreen({ user }) {
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
 
   const [types, setTypes] = useState([]);
@@ -240,9 +240,6 @@ export function SettingsScreen({ user, onLogout }) {
           </div>
         </div>
 
-        <button className="we-s-logout" onClick={onLogout}>
-          Log out
-        </button>
       </div>
 
       {!isAdmin ? (
