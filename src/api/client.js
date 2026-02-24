@@ -18,12 +18,27 @@ function uniqueBases(values) {
   return out;
 }
 
-const API_BASES = uniqueBases([
+function isLikelyLocalHost() {
+  if (typeof window === "undefined") return false;
+  const h = String(window.location?.hostname || "").toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1" || h.endsWith(".local");
+}
+
+const CONFIGURED_BASES = uniqueBases([
   import.meta.env.VITE_API_BASE_URL,
   import.meta.env.VITE_KJ_API_BASE,
   import.meta.env.VITE_API_BASE,
-  "",
 ]);
+
+const sameOriginFallbackAllowed =
+  String(import.meta.env.VITE_API_ALLOW_SAME_ORIGIN_FALLBACK || "").toLowerCase() === "true" ||
+  !!import.meta.env.DEV ||
+  isLikelyLocalHost() ||
+  CONFIGURED_BASES.length === 0;
+
+const API_BASES = sameOriginFallbackAllowed
+  ? uniqueBases([...CONFIGURED_BASES, ""])
+  : CONFIGURED_BASES;
 
 const API_BASE = API_BASES[0] || "";
 
