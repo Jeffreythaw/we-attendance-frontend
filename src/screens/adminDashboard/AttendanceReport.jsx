@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { apiBase, getToken } from "../../api/client";
+import { apiFetchText } from "../../api/client";
 import { REPORT_ENDPOINT } from "./constants";
 import { attendanceApi } from "../../api/attendance";
 import { parseCsvText } from "./csv";
@@ -109,35 +109,19 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       qs.set("from", from);
       qs.set("to", to);
 
-      const base = apiBase();
-      const url = base
-        ? `${base}${REPORT_ENDPOINT}?${qs.toString()}`
-        : `${REPORT_ENDPOINT}?${qs.toString()}`;
-
-      const token = getToken();
-      const res = await fetch(url, {
+      const text = await apiFetchText(`${REPORT_ENDPOINT}?${qs.toString()}`, {
         method: "GET",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        auth: true,
       });
-
-      if (res.status === 401 || res.status === 403) {
-        onAuthError?.();
-        throw new Error("Unauthorized");
-      }
-
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || `HTTP ${res.status}`);
-      }
-
-      const text = await res.text();
 
       const parsed = parseCsvText(text);
       setReportRows(parsed.rows || []);
       setReportHeaders(parsed.headers || []);
     } catch (e) {
+      const status = Number(e?.status);
+      if (status === 401 || status === 403) {
+        onAuthError?.();
+      }
       setReportErr(e?.message || "Failed to load report");
     } finally {
       setReportBusy(false);
