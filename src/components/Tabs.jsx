@@ -1,9 +1,9 @@
 import React from "react";
 import "./Tabs.css";
 
-export function Tabs({ tab, setTab, items }) {
+export function Tabs({ tab, setTab, items, variant = "fixed" }) {
   return (
-    <div className="we-tabs-shell">
+    <div className={`we-tabs-shell ${variant === "contained" ? "is-contained" : "is-fixed"}`}>
       <div className="we-tabs-inner">
         {items.map((it) => {
           const active = tab === it.key;

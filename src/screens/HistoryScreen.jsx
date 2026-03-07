@@ -175,20 +175,31 @@ function isLate(checkInAt) {
   return hh > ON_TIME_HOUR || (hh === ON_TIME_HOUR && mm > ON_TIME_MINUTE);
 }
 
-function getOtMinutesFromRow(r) {
-  const ot = Number(r?.otMinutes);
-  return Number.isFinite(ot) ? Math.max(0, ot) : 0;
+function asMinutes(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
 }
 
-/**
- * ✅ Duration displayed = net worked minutes if available.
- * Prefer backend: regular + ot (lunch already deducted in those mins)
- */
-function getWorkedMinutesFromRow(r) {
-  const reg = typeof r?.regularMinutes === "number" ? r.regularMinutes : null;
-  const ot = typeof r?.otMinutes === "number" ? r.otMinutes : null;
-  if (reg != null && ot != null) return Math.max(0, reg + ot);
-  return null;
+function backendMetricsFromRow(r) {
+  const hasReport =
+    r?.reportWorkedMinutes != null ||
+    r?.reportOtMinutes != null ||
+    r?.reportMonFriOtMinutes != null ||
+    r?.reportSatOtMinutes != null ||
+    r?.reportSunPhOtMinutes != null ||
+    r?.reportOvernightOtMinutes != null;
+
+  const workedMins = hasReport
+    ? asMinutes(r?.reportWorkedMinutes)
+    : Math.max(0, asMinutes(r?.regularMinutes) + asMinutes(r?.otMinutes));
+
+  const monFriOtMins = hasReport ? asMinutes(r?.reportMonFriOtMinutes) : 0;
+  const satOtMins = hasReport ? asMinutes(r?.reportSatOtMinutes) : 0;
+  const sunPhOtMins = hasReport ? asMinutes(r?.reportSunPhOtMinutes) : 0;
+  const overnightOtMins = hasReport ? asMinutes(r?.reportOvernightOtMinutes) : 0;
+  const otMins = hasReport ? asMinutes(r?.reportOtMinutes) : asMinutes(r?.otMinutes);
+
+  return { workedMins, otMins, monFriOtMins, satOtMins, sunPhOtMins, overnightOtMins };
 }
 
 function formatHm(mins) {
@@ -207,6 +218,11 @@ function formatHShort(mins) {
   if (h === 0) return `${mm}m`;
   if (mm === 0) return `${h}h`;
   return `${h}.${Math.round((mm / 60) * 10)}h`;
+}
+
+function roundOtMinutes(mins) {
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  return Math.floor(m / 30) * 30;
 }
 
 export function HistoryScreen({ onAuthError }) {
@@ -392,9 +408,12 @@ export function HistoryScreen({ onAuthError }) {
 
     let offDaySessions = 0;
     const offDayWorkedKeys = new Set();
-    let overtimeAll = 0;
-    let overtimeOffDays = 0;
-    let overtimeWorkdays = 0;
+    let overtimeAllRaw = 0;
+    let overtimeOffDaysRaw = 0;
+    let overtimeWorkdaysRaw = 0;
+    let monFriOtMinutesRaw = 0;
+    let satOtMinutesRaw = 0;
+    let sunPhOtMinutesRaw = 0;
 
     for (const r of rowsInRange) {
       const inD = parseApiDate(r.checkInAt);
@@ -413,10 +432,13 @@ export function HistoryScreen({ onAuthError }) {
       }
 
       if (r.checkOutAt) {
-        const ot = getOtMinutesFromRow(r);
-        overtimeAll += ot;
-        if (wd) overtimeWorkdays += ot;
-        else overtimeOffDays += ot;
+        const mm = backendMetricsFromRow(r);
+        overtimeAllRaw += mm.otMins;
+        overtimeWorkdaysRaw += mm.monFriOtMins + mm.satOtMins;
+        overtimeOffDaysRaw += mm.sunPhOtMins + mm.overnightOtMins;
+        monFriOtMinutesRaw += mm.monFriOtMins;
+        satOtMinutesRaw += mm.satOtMins;
+        sunPhOtMinutesRaw += mm.sunPhOtMins + mm.overnightOtMins;
       }
     }
 
@@ -432,6 +454,13 @@ export function HistoryScreen({ onAuthError }) {
     const denom = Math.max(1, onTimeWorkdaySessions + lateWorkdaySessions);
     const onTimePct = Math.round((onTimeWorkdaySessions / denom) * 100);
 
+    const overtimeMinutes = roundOtMinutes(overtimeAllRaw);
+    const overtimeWorkMinutes = roundOtMinutes(overtimeWorkdaysRaw);
+    const overtimeOffMinutes = roundOtMinutes(overtimeOffDaysRaw);
+    const monFriOtMinutes = roundOtMinutes(monFriOtMinutesRaw);
+    const satOtMinutes = roundOtMinutes(satOtMinutesRaw);
+    const sunPhOtMinutes = roundOtMinutes(sunPhOtMinutesRaw);
+
     return {
       sessions,
       open,
@@ -441,9 +470,12 @@ export function HistoryScreen({ onAuthError }) {
       onTimeWorkdaySessions,
       lateWorkdaySessions,
       onTimePct,
-      overtimeMinutes: overtimeAll,
-      overtimeWorkMinutes: overtimeWorkdays,
-      overtimeOffMinutes: overtimeOffDays,
+      overtimeMinutes,
+      overtimeWorkMinutes,
+      overtimeOffMinutes,
+      monFriOtMinutes,
+      satOtMinutes,
+      sunPhOtMinutes,
       offDayWorkedDays: offDayWorkedKeys.size,
       offDaySessions,
     };
@@ -532,8 +564,9 @@ export function HistoryScreen({ onAuthError }) {
       }
 
       if (r0.checkOutAt) {
-        bucket.workedMins += Math.max(0, getWorkedMinutesFromRow(r0) || 0);
-        bucket.otMins += getOtMinutesFromRow(r0);
+        const mm = backendMetricsFromRow(r0);
+        bucket.workedMins += mm.workedMins;
+        bucket.otMins += mm.otMins;
       }
     }
 
@@ -785,9 +818,11 @@ export function HistoryScreen({ onAuthError }) {
                 </div>
 
                 <div className="we-h-kpiSub">
-                  Normal OT (Mon–Sat): <b>{formatHm(stats.overtimeWorkMinutes)}</b>
+                  Mon-Fri OT: <b>{formatHm(stats.monFriOtMinutes)}</b>
                   <br />
-                  Sun / PH OT: <b>{formatHm(stats.overtimeOffMinutes)}</b>
+                  Sat OT: <b>{formatHm(stats.satOtMinutes)}</b>
+                  <br />
+                  Sun / PH OT: <b>{formatHm(stats.sunPhOtMinutes)}</b>
                 </div>
               </div>
 
@@ -907,9 +942,15 @@ export function HistoryScreen({ onAuthError }) {
             <div className="we-h-list">
               {filtered.map((r) => {
                 const isOpen = !r.checkOutAt;
-
-                const worked = getWorkedMinutesFromRow(r);
-                const ot = r.checkOutAt ? getOtMinutesFromRow(r) : 0;
+                const mm = backendMetricsFromRow(r);
+                const worked = r.checkOutAt ? mm.workedMins : null;
+                const monFriOt = roundOtMinutes(mm.monFriOtMins);
+                const satOt = roundOtMinutes(mm.satOtMins);
+                const sunPhOt = roundOtMinutes(mm.sunPhOtMins + mm.overnightOtMins);
+                const ot = r.checkOutAt ? monFriOt + satOt + sunPhOt : 0;
+                const otSplit = r.checkOutAt
+                  ? `Mon-Fri ${formatHm(monFriOt)} | Sat ${formatHm(satOt)} | Sun/PH ${formatHm(sunPhOt)}`
+                  : "—";
 
                 return (
                   <div key={r.id} className="we-h-item">
@@ -938,6 +979,10 @@ export function HistoryScreen({ onAuthError }) {
                         <div className="we-h-ioLbl">Overtime</div>
                         <div className="we-h-ioVal strong">{ot ? formatHm(ot) : "—"}</div>
                       </div>
+                    </div>
+                    <div className="we-h-ioRow">
+                      <div className="we-h-ioLbl">OT Split</div>
+                      <div className="we-h-ioVal">{otSplit}</div>
                     </div>
 
                     {r.note ? (

@@ -1,15 +1,25 @@
 .we-tabs-shell{
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+.we-tabs-shell.is-fixed{
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 60;
-  padding-bottom: max(env(safe-area-inset-bottom), 0px);
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid rgba(255,255,255,0.1);
   box-shadow: 0 -10px 30px rgba(0,0,0,0.35);
+}
+
+.we-tabs-shell.is-contained{
+  position: relative;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.9));
+  border-top: 1px solid rgba(255,255,255,0.12);
 }
 
 .we-tabs-inner{
@@ -26,8 +36,8 @@
   min-width: 0;
   min-height: 42px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.07);
   color: #fff;
   cursor: pointer;
   display: inline-flex;
@@ -38,6 +48,9 @@
   font-size: 12px;
   font-weight: 900;
   transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+}
+.we-tab-btn:hover{
+  filter: brightness(1.04);
 }
 
 .we-tab-btn.is-active{

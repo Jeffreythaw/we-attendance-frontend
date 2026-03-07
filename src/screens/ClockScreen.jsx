@@ -2,9 +2,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { attendanceApi } from "../api/attendance";
+import { schedulesApi } from "../api/schedules";
 import { getCurrentLocationDetails } from "../utils/location";
 import { fmtDateTime, parseApiDate } from "../utils/datetime";
 import WELogo from "../assets/WE.png";
+import ScheduleCalendarTab from "./ScheduleCalendarTab";
 import "./ClockScreen.css";
 
 const SG_TZ = "Asia/Singapore";
@@ -46,23 +48,39 @@ function mapUrl(lat, lng) {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
+function mapTileUrl(lat, lng, zoom = 16) {
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return "";
+  const n = 2 ** zoom;
+  const x = Math.floor(((lngNum + 180) / 360) * n);
+  const latRad = (latNum * Math.PI) / 180;
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
+  );
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+}
+
 function fmtLocation(lat, lng, acc) {
   if (!hasLatLng(lat, lng)) return "—";
   const accTxt = typeof acc === "number" ? ` (±${Math.round(acc)}m)` : "";
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}${accTxt}`;
 }
 
-export function ClockScreen({ onAuthError }) {
+export function ClockScreen({ onAuthError, user }) {
   const [open, setOpen] = useState(null);
   const [recent, setRecent] = useState([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [todaySchedules, setTodaySchedules] = useState([]);
+  const [currentGps, setCurrentGps] = useState(null);
 
   // OT
   const [otProjectName, setOtProjectName] = useState("");
   const [holidaySet, setHolidaySet] = useState(() => new Set()); // Set<YYYY-MM-DD>
   const [showOtManual, setShowOtManual] = useState(false);
+  const [viewTab, setViewTab] = useState("clock");
 
   // ✅ Live clock
   const [now, setNow] = useState(() => new Date());
@@ -184,14 +202,40 @@ export function ClockScreen({ onAuthError }) {
   const showLocationWarning =
     geoPerm === "denied" || geoPerm === "prompt" || Boolean(geoWarn);
 
+  async function refreshCurrentGps({ silent = true } = {}) {
+    if (!silent) setGeoWarn("");
+    try {
+      const loc = await getCurrentLocationDetails({
+        timeout: 6000,
+        maximumAge: 30_000,
+        enableHighAccuracy: true,
+      });
+      if (loc?.ok && loc.location) {
+        setCurrentGps(loc.location);
+        return;
+      }
+      if (loc?.code === "DENIED") setGeoPerm("denied");
+      if (!silent && loc?.message) setGeoWarn(loc.message);
+    } catch {
+      if (!silent) setGeoWarn("Unable to capture current GPS.");
+    }
+  }
+
   async function refresh() {
     setErr("");
+    refreshCurrentGps({ silent: true });
     try {
       const o = await attendanceApi.open();
       setOpen(o);
 
       const data = await attendanceApi.me();
       const rows = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
+      try {
+        const sch = await schedulesApi.entries(todayKey, todayKey);
+        setTodaySchedules(Array.isArray(sch) ? sch : []);
+      } catch {
+        setTodaySchedules([]);
+      }
 
       // ✅ Today-only recent activity (timezone-safe)
       const todayRows = (rows || []).filter((r) => {
@@ -221,7 +265,15 @@ export function ClockScreen({ onAuthError }) {
 
   useEffect(() => {
     refresh();
+    refreshCurrentGps({ silent: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      refreshCurrentGps({ silent: true });
+    }, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   async function checkIn() {
@@ -338,6 +390,9 @@ export function ClockScreen({ onAuthError }) {
     return t === "—" ? null : t;
   }, [open]);
 
+  const schedulePreview = useMemo(() => todaySchedules.slice(0, 3), [todaySchedules]);
+  const scheduleMoreCount = Math.max(todaySchedules.length - schedulePreview.length, 0);
+
   const showOtField = Boolean(open) && (otLikely || showOtManual);
 
   return (
@@ -381,6 +436,25 @@ export function ClockScreen({ onAuthError }) {
           </span>
         </div>
 
+        <div className="we-clock-segment">
+          <button
+            type="button"
+            className={`we-clock-segBtn ${viewTab === "clock" ? "is-active" : ""}`}
+            onClick={() => setViewTab("clock")}
+          >
+            Clock
+          </button>
+          <button
+            type="button"
+            className={`we-clock-segBtn ${viewTab === "calendar" ? "is-active" : ""}`}
+            onClick={() => setViewTab("calendar")}
+          >
+            Calendar
+          </button>
+        </div>
+
+        {viewTab === "clock" ? (
+        <>
         {/* location warning */}
         {showLocationWarning ? (
           <div className="we-clock-warn">
@@ -401,9 +475,25 @@ export function ClockScreen({ onAuthError }) {
         <Card className="we-glass-card">
           <div className="we-clock-statusRow">
             <div className="we-clock-statusText">
-              <div className="we-clock-statusLabel">📌 Status</div>
-              <div className="we-clock-statusValue">{statusText}</div>
-              <div className="we-clock-statusMeta">{statusSub}</div>
+              <div className="we-clock-statusTop">
+                <div>
+                  <div className="we-clock-statusLabel">📌 Status</div>
+                  <div className="we-clock-statusValue">{statusText}</div>
+                  <div className="we-clock-statusMeta">{statusSub}</div>
+                </div>
+
+                <div className="we-clock-mini compact">
+                  <div className="we-clock-miniDot" aria-hidden="true">
+                    {open ? "✅" : "⏸️"}
+                  </div>
+                  <div className="we-clock-miniText">
+                    <div className="we-clock-miniTop">{open ? "Working" : "Idle"}</div>
+                    <div className="we-clock-miniBot">
+                      {open ? "Don’t forget to check out" : "Ready when you are"}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {open && openLocText ? (
                 <div className="we-clock-locLine">
@@ -421,19 +511,77 @@ export function ClockScreen({ onAuthError }) {
                   ) : null}
                 </div>
               ) : null}
+              {open && hasLatLng(open.checkInLat, open.checkInLng) ? (
+                <div className="we-clock-mapPreview">
+                  <img
+                    className="we-clock-mapFrame"
+                    src={mapTileUrl(open.checkInLat, open.checkInLng)}
+                    alt="Current check-in map"
+                    loading="lazy"
+                    draggable="false"
+                  />
+                  <span className="we-clock-mapPin" aria-hidden="true" />
+                </div>
+              ) : null}
+              <div className="we-clock-locLine we-clock-locBlock">
+                <span className="we-clock-strong">🗓️ Current work schedule</span>
+                {todaySchedules.length === 0 ? (
+                  <div className="we-clock-locSub">No schedule today</div>
+                ) : (
+                  <>
+                    <ul className="we-clock-scheduleList">
+                      {schedulePreview.map((s) => (
+                        <li key={s.id}>
+                          <span className="time">{s.startTime}-{s.endTime}</span>
+                          <span className="task">{s.workTitle || "Work"}</span>
+                          <span className="place">@ {s.workLocation || "-"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {scheduleMoreCount > 0 ? (
+                      <div className="we-clock-locSub">+{scheduleMoreCount} more</div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              <div className="we-clock-locLine">
+                <span className="we-clock-strong">🧭 Current GPS:</span>{" "}
+                {currentGps
+                  ? fmtLocation(currentGps.latitude, currentGps.longitude, currentGps.accuracyMeters)
+                  : "Unavailable"}
+                {currentGps && hasLatLng(currentGps.latitude, currentGps.longitude) ? (
+                  <a
+                    className="we-clock-mapLink"
+                    href={mapUrl(currentGps.latitude, currentGps.longitude)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Map
+                  </a>
+                ) : null}
+              </div>
+              {currentGps && hasLatLng(currentGps.latitude, currentGps.longitude) ? (
+                <div className="we-clock-mapPreview">
+                  <a
+                    className="we-clock-mapOpen"
+                    href={mapUrl(currentGps.latitude, currentGps.longitude)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open map
+                  </a>
+                  <img
+                    className="we-clock-mapFrame"
+                    src={mapTileUrl(currentGps.latitude, currentGps.longitude)}
+                    alt="Current GPS map"
+                    loading="lazy"
+                    draggable="false"
+                  />
+                  <span className="we-clock-mapPin" aria-hidden="true" />
+                </div>
+              ) : null}
             </div>
 
-            <div className="we-clock-mini">
-              <div className="we-clock-miniDot" aria-hidden="true">
-                {open ? "✅" : "⏸️"}
-              </div>
-              <div className="we-clock-miniText">
-                <div className="we-clock-miniTop">{open ? "Working" : "Idle"}</div>
-                <div className="we-clock-miniBot">
-                  {open ? "Don’t forget to check out" : "Ready when you are"}
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* ACTIONS */}
@@ -609,6 +757,26 @@ export function ClockScreen({ onAuthError }) {
                         </a>
                       ) : null}
                     </div>
+                    {hasLatLng(r.checkInLat, r.checkInLng) ? (
+                      <div className="we-clock-mapPreview recent">
+                        <a
+                          className="we-clock-mapOpen"
+                          href={mapUrl(r.checkInLat, r.checkInLng)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open map
+                        </a>
+                        <img
+                          className="we-clock-mapFrame"
+                          src={mapTileUrl(r.checkInLat, r.checkInLng)}
+                          alt={`Check-in map ${r.id}`}
+                          loading="lazy"
+                          draggable="false"
+                        />
+                        <span className="we-clock-mapPin" aria-hidden="true" />
+                      </div>
+                    ) : null}
 
                     <div className="we-clock-locRow">
                       <span className="we-clock-strong">📍 Out loc:</span>{" "}
@@ -628,12 +796,36 @@ export function ClockScreen({ onAuthError }) {
                         </a>
                       ) : null}
                     </div>
+                    {hasLatLng(r.checkOutLat, r.checkOutLng) ? (
+                      <div className="we-clock-mapPreview recent">
+                        <a
+                          className="we-clock-mapOpen"
+                          href={mapUrl(r.checkOutLat, r.checkOutLng)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open map
+                        </a>
+                        <img
+                          className="we-clock-mapFrame"
+                          src={mapTileUrl(r.checkOutLat, r.checkOutLng)}
+                          alt={`Check-out map ${r.id}`}
+                          loading="lazy"
+                          draggable="false"
+                        />
+                        <span className="we-clock-mapPin" aria-hidden="true" />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </Card>
+        </>
+        ) : (
+          <ScheduleCalendarTab user={user} onAuthError={onAuthError} />
+        )}
       </div>
     </div>
   );

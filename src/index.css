@@ -16,6 +16,16 @@
 
   --gradA: rgba(99,102,241,1);
   --gradB: rgba(236,72,153,1);
+
+  /* Shared UI tokens */
+  --we-radius-card: 16px;
+  --we-radius-control: 12px;
+  --we-radius-pill: 999px;
+  --we-control-h: 40px;
+  --we-space-1: 8px;
+  --we-space-2: 10px;
+  --we-space-3: 12px;
+  --we-space-4: 14px;
 }
 
 /* ---------- App base ---------- */

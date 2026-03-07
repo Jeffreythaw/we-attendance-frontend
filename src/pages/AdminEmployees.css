@@ -1,5 +1,5 @@
 /* src/pages/AdminEmployees.css */
-.we-admin-page{ display:grid; gap:14px; color:#e5e7eb; }
+.we-admin-page{ display:grid; gap:14px; color:#e5e7eb; min-width:0; }
 
 /* Header */
 .we-admin-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:14px; background: rgba(15,23,42,.28); border:1px solid rgba(255,255,255,.12); }
@@ -49,7 +49,7 @@
 }
 
 /* Layout */
-.we-admin-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+.we-admin-grid{ display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap:14px; align-items:start; }
 .we-admin-two{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 .we-admin-more{ display:grid; gap:12px; }
 
@@ -57,22 +57,29 @@
 .we-admin-card{
   background: linear-gradient(180deg, rgba(15,23,42,.40), rgba(15,23,42,.24));
   border:1px solid rgba(255,255,255,.14);
-  border-radius:18px;
+  border-radius:var(--we-radius-card);
   padding:14px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 22px 60px rgba(0,0,0,.38);
 }
-.we-admin-cardTitle{ font-weight:950; color:#fff; margin-bottom:8px; font-size:14px; }
+.we-admin-cardTitle{ font-weight:950; color:#fff; margin-bottom:10px; font-size:14px; letter-spacing:.2px; }
 
 /* Form */
 .we-admin-form{ display:grid; gap:12px; }
-.we-admin-label{ font-size:12px; font-weight:800; opacity:.9; display:grid; gap:8px; }
+.we-form-grid2{ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.we-admin-form .we-btn,
+.we-admin-form .we-btn-soft,
+.we-admin-form .we-admin-check,
+.we-admin-form .we-admin-more{
+  grid-column: 1 / -1;
+}
+.we-admin-label{ font-size:12px; font-weight:800; opacity:.9; display:grid; gap:7px; min-width:0; }
 
 /* Inputs */
 .we-input{
   display:flex; align-items:center; gap:10px;
-  padding:11px 12px; border-radius:12px;
+  padding:11px 12px; border-radius:var(--we-radius-control);
   background: rgba(15,23,42,.45);
   border:1px solid rgba(255,255,255,.12);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
@@ -103,7 +110,7 @@
 
 /* Buttons */
 .we-btn{
-  border:0; border-radius:14px; padding:12px 14px;
+  border:0; border-radius:var(--we-radius-control); padding:12px 14px;
   background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1));
   color:#fff; font-weight:900; font-size:14px;
   cursor:pointer; box-shadow: 0 14px 34px rgba(0,0,0,.35);
@@ -122,7 +129,7 @@
   font-weight:900;
   cursor:pointer;
   transition: background .12s ease, opacity .12s ease;
-  border-radius:14px;
+  border-radius:var(--we-radius-control);
   padding:10px 12px;
 }
 .we-btn-soft:hover{ background: rgba(255,255,255,.14); }
@@ -134,7 +141,7 @@
   color:#fff;
   font-weight:900;
   cursor:pointer;
-  border-radius:999px;
+  border-radius:var(--we-radius-pill);
   padding:8px 10px;
   font-size:12px;
 }
@@ -216,6 +223,7 @@
 @media (max-width: 720px){
   .we-admin-grid{ grid-template-columns: 1fr; }
   .we-admin-two{ grid-template-columns: 1fr; }
+  .we-form-grid2{ grid-template-columns: 1fr; }
   .we-admin-head{ flex-direction: column; align-items: stretch; }
   .we-admin-refresh{ width:100%; }
   .we-admin-hint{ white-space:normal; }
@@ -227,6 +235,5 @@
   }
 }
 
-.we-admin-page{ min-width: 0; }
 .we-admin-card{ min-width: 0; }
 .we-admin-row{ padding:10px; border-radius:12px; background: rgba(15,23,42,.35); border:1px solid rgba(255,255,255,.10); }

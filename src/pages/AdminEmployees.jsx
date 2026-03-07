@@ -1,7 +1,7 @@
 // src/pages/AdminEmployees.jsx
 import { useEffect, useMemo, useState } from "react";
 import { createEmployee, listEmployees } from "../api/employees";
-import { createUser } from "../api/users";
+import { createUser, listUsers, patchUser } from "../api/users";
 import { apiFetch } from "../api/client";
 import "./AdminEmployees.css";
 
@@ -16,6 +16,7 @@ const ENDPOINTS = {
   employees: "/api/Employees",
   employeeById: (id) => `/api/Employees/${id}`,
 };
+const USER_ROLES = ["Employee", "Supervisor", "Admin"];
 
 function fmtDateTime(v) {
   if (!v) return "—";
@@ -111,6 +112,8 @@ export default function AdminEmployees({ onAuthError }) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("Employee");
+  const [users, setUsers] = useState([]);
 
   // list + search
   const [rows, setRows] = useState([]);
@@ -134,8 +137,18 @@ export default function AdminEmployees({ onAuthError }) {
     }
   }
 
+  async function refreshUsers() {
+    try {
+      const data = await listUsers(true);
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      handleErr(e, "Failed to load users");
+    }
+  }
+
   useEffect(() => {
     refreshEmployees();
+    refreshUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -228,11 +241,14 @@ export default function AdminEmployees({ onAuthError }) {
         employeeId: empIdNum,
         username: newUsername.trim(),
         password: newPassword,
+        role: newRole,
       });
 
       setSelectedEmployeeId("");
       setNewUsername("");
       setNewPassword("");
+      setNewRole("Employee");
+      await refreshUsers();
       setMsg("✅ Login user created");
     } catch (e2) {
       handleErr(e2, "Create user failed");
@@ -266,8 +282,20 @@ export default function AdminEmployees({ onAuthError }) {
 
   const [eBoomLiftExpiryDate, setEBoomLiftExpiryDate] = useState("");
   const [eScissorLiftExpiryDate, setEScissorLiftExpiryDate] = useState("");
+  const [eHasLogin, setEHasLogin] = useState(false);
+  const [eUserRole, setEUserRole] = useState("Employee");
+  const [eUserActive, setEUserActive] = useState(true);
 
-  function openEdit(emp) {
+  function findLinkedUser(employeeId, list = users) {
+    const empId = Number(employeeId);
+    if (!Number.isFinite(empId) || empId <= 0) return null;
+    const matched = (Array.isArray(list) ? list : [])
+      .filter((u) => Number(u?.employeeId) === empId)
+      .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+    return matched[0] || null;
+  }
+
+  async function openEdit(emp) {
     setEditErr("");
     setEditRow(emp);
     setEditOpen(true);
@@ -294,6 +322,21 @@ export default function AdminEmployees({ onAuthError }) {
 
     setEBoomLiftExpiryDate(fromApiDateToInput(emp?.boomLiftExpiryDate || emp?.boom_lift_expiry_date));
     setEScissorLiftExpiryDate(fromApiDateToInput(emp?.scissorLiftExpiryDate || emp?.scissor_lift_expiry_date));
+
+    let user = findLinkedUser(emp?.id, users);
+    if (!user) {
+      try {
+        const data = await listUsers(true);
+        const list = Array.isArray(data) ? data : [];
+        setUsers(list);
+        user = findLinkedUser(emp?.id, list);
+      } catch {
+        // keep modal open; user controls will stay disabled if not found
+      }
+    }
+    setEHasLogin(Boolean(user));
+    setEUserRole(String(user?.role || "Employee"));
+    setEUserActive(Boolean(user?.active ?? true));
   }
 
   function closeEdit() {
@@ -336,7 +379,22 @@ export default function AdminEmployees({ onAuthError }) {
         body: payload,
       });
 
+      const latestUsers = await listUsers(true);
+      const latestList = Array.isArray(latestUsers) ? latestUsers : [];
+      setUsers(latestList);
+      const linkedUser = findLinkedUser(editRow.id, latestList);
+
+      if (linkedUser?.id) {
+        await patchUser(linkedUser.id, {
+          active: !!eUserActive,
+          role: eUserRole,
+        });
+      } else if (eHasLogin) {
+        throw new Error("Linked login user not found. Please refresh and try again.");
+      }
+
       await refreshEmployees();
+      await refreshUsers();
       setMsg("✅ Employee updated");
       closeEdit();
     } catch (e) {
@@ -522,6 +580,10 @@ export default function AdminEmployees({ onAuthError }) {
   }
 
   useEffect(() => {
+    if (tab === "employees") {
+      refreshEmployees();
+      refreshUsers();
+    }
     if (tab === "holidays") loadHolidays();
     if (tab === "leaveTypes") loadLeaveTypes();
     if (tab === "approvals") loadPendingLeaves();
@@ -544,7 +606,10 @@ export default function AdminEmployees({ onAuthError }) {
         <button
           className="we-btn-soft we-admin-refresh"
           onClick={() => {
-            if (tab === "employees") refreshEmployees();
+            if (tab === "employees") {
+              refreshEmployees();
+              refreshUsers();
+            }
             if (tab === "holidays") loadHolidays();
             if (tab === "leaveTypes") loadLeaveTypes();
             if (tab === "approvals") loadPendingLeaves();
@@ -589,7 +654,7 @@ export default function AdminEmployees({ onAuthError }) {
             <div className="we-admin-card">
               <div className="we-admin-cardTitle">Create Login (Username / Password)</div>
 
-              <form onSubmit={onCreateLogin} className="we-admin-form">
+              <form onSubmit={onCreateLogin} className="we-admin-form we-form-grid2">
                 <label className="we-admin-label">
                   Employee
                   <div className="we-input">
@@ -625,6 +690,22 @@ export default function AdminEmployees({ onAuthError }) {
                   </div>
                 </label>
 
+                <label className="we-admin-label">
+                  Role
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">🧩</span>
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value)}
+                      className="we-admin-select"
+                    >
+                      {USER_ROLES.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
                 <button className="we-btn" disabled={loading}>
                   {loading ? (
                     <span className="we-btn-spin">
@@ -642,7 +723,7 @@ export default function AdminEmployees({ onAuthError }) {
             <div className="we-admin-card">
               <div className="we-admin-cardTitle">Create Employee</div>
 
-              <form onSubmit={onCreateEmployee} className="we-admin-form">
+              <form onSubmit={onCreateEmployee} className="we-admin-form we-form-grid2">
                 <label className="we-admin-label">
                   Name
                   <div className="we-input">
@@ -818,6 +899,36 @@ export default function AdminEmployees({ onAuthError }) {
 
                   <div className="we-admin-two">
                     <label className="we-admin-label">
+                      Login Role
+                      <div className="we-input">
+                        <span className="we-icon" aria-hidden="true">🧩</span>
+                        <select
+                          value={eUserRole}
+                          onChange={(ev) => setEUserRole(ev.target.value)}
+                          className="we-admin-select"
+                          disabled={!eHasLogin}
+                        >
+                          {USER_ROLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </label>
+
+                    <label className="we-admin-check">
+                      <input
+                        type="checkbox"
+                        checked={eUserActive}
+                        onChange={(ev) => setEUserActive(ev.target.checked)}
+                        disabled={!eHasLogin}
+                      />
+                      Login Active
+                    </label>
+                  </div>
+                  {!eHasLogin ? <div className="we-admin-hint">No login account linked for this employee yet.</div> : null}
+
+                  <div className="we-admin-two">
+                    <label className="we-admin-label">
                       Fin No.
                       <div className="we-input">
                         <span className="we-icon" aria-hidden="true">🪪</span>
@@ -920,7 +1031,7 @@ export default function AdminEmployees({ onAuthError }) {
         <>
           <div className="we-admin-card">
             <div className="we-admin-cardTitle">Create Public Holiday</div>
-            <form onSubmit={addHoliday} className="we-admin-form">
+            <form onSubmit={addHoliday} className="we-admin-form we-form-grid2">
               <label className="we-admin-label">
                 Date
                 <div className="we-input">
@@ -981,7 +1092,7 @@ export default function AdminEmployees({ onAuthError }) {
           <div className="we-admin-card">
             <div className="we-admin-cardTitle">Create Leave Type</div>
 
-            <form onSubmit={addLeaveType} className="we-admin-form">
+            <form onSubmit={addLeaveType} className="we-admin-form we-form-grid2">
               <label className="we-admin-label">
                 Code
                 <div className="we-input">

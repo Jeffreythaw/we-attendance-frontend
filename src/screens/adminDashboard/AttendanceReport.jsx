@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { apiFetchText } from "../../api/client";
+import { apiFetchBlob, apiFetchText } from "../../api/client";
 import { REPORT_ENDPOINT } from "./constants";
 import { attendanceApi } from "../../api/attendance";
-import { parseCsvText } from "./csv";
+import { parseContentDispositionFilename, parseCsvText } from "./csv";
 
 /**
  * UI table columns (ONLY for display on screen)
@@ -20,7 +20,13 @@ function formatOtHours(value) {
   return `${h}h ${mm}m`;
 }
 
-const OT_COLUMNS = new Set(["Normal day OT", "Sunday OT", "Public Holiday OT", "Total OT"]);
+const OT_COLUMNS = new Set([
+  "Mon~Fri OT (1.5x)",
+  "Sat OT (1.5x)",
+  "Sun/PH OT (2.0x)",
+  "Overnight OT (2.0x)",
+  "Total OT",
+]);
 
 const DISPLAY_COLUMNS = [
   { label: "No.", key: "No." },
@@ -30,9 +36,10 @@ const DISPLAY_COLUMNS = [
   { label: "PH in range", key: "Public Holiday" },
   { label: "TTLW hour", key: "Total Working hour" },
   { label: "Act W", key: "Actual Worked Hours" },
-  { label: "N OT", key: "Normal day OT" },
-  { label: "S OT", key: "Sunday OT" },
-  { label: "PH OT", key: "Public Holiday OT" },
+  { label: "M~F OT", key: "Mon~Fri OT (1.5x)" },
+  { label: "Sat OT", key: "Sat OT (1.5x)" },
+  { label: "Sun/PH OT", key: "Sun/PH OT (2.0x)" },
+  { label: "Overnight OT", key: "Overnight OT (2.0x)" },
   { label: "TTL OT", key: "Total OT" },
   { label: "Leave", key: "Total Leave" },
 ];
@@ -61,6 +68,15 @@ function downloadBlob(blob, filename) {
   a.click();
   a.remove();
   URL.revokeObjectURL(a.href);
+}
+
+function getValueByAliases(row, aliases) {
+  for (const name of aliases) {
+    if (Object.prototype.hasOwnProperty.call(row || {}, name)) {
+      return row?.[name];
+    }
+  }
+  return "";
 }
 
 export default function AttendanceReport({ from, to, disabled, onAuthError }) {
@@ -135,7 +151,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
     if (s) {
       rows = rows.filter((r) => {
         const name = String(r["Staff Name"] || "").toLowerCase();
-        const fin = String(r["Fin No."] || "").toLowerCase();
+        const fin = String(getValueByAliases(r, ["Fin No.", "Fin No"]) || "").toLowerCase();
         const no = String(r["No."] || "").toLowerCase();
         return name.includes(s) || fin.includes(s) || no.includes(s);
       });
@@ -152,52 +168,23 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
   async function downloadExcel() {
     try {
       setReportErr("");
+      if (!from || !to) throw new Error("Please select From and To dates.");
 
-      if (!reportRows?.length) {
-        await loadReport();
-      }
+      const qs = new URLSearchParams();
+      qs.set("from", from);
+      qs.set("to", to);
+      qs.set("format", "xlsx");
 
-      const headers = reportHeaders?.length
-        ? reportHeaders
-        : Object.keys(reportRows?.[0] || {});
-      if (!headers.length) throw new Error("No data to export.");
+      const { blob, contentDisposition } = await apiFetchBlob(
+        `${REPORT_ENDPOINT}?${qs.toString()}`,
+        { method: "GET", auth: true }
+      );
 
-      const rowsToExport = filteredReportRows;
+      const filename =
+        parseContentDispositionFilename(contentDisposition) ||
+        `WE_Attendance_${from}_to_${to}.xlsx`;
 
-      const ExcelJS = (await import("exceljs")).default;
-
-      const wb = new ExcelJS.Workbook();
-      const ws = wb.addWorksheet("Attendance", {
-        views: [{ state: "frozen", ySplit: 1 }],
-      });
-
-      ws.addTable({
-        name: "AttendanceTable",
-        ref: "A1",
-        headerRow: true,
-        totalsRow: false,
-        style: {
-          theme: "TableStyleMedium9",
-          showRowStripes: true,
-        },
-        columns: headers.map((h) => ({ name: h, filterButton: true })),
-        rows: rowsToExport.map((r) => headers.map((h) => r?.[h] ?? "")),
-      });
-
-      headers.forEach((h, i) => {
-        const maxLen = Math.max(
-          String(h).length,
-          ...rowsToExport.slice(0, 200).map((r) => String(r?.[h] ?? "").length)
-        );
-        ws.getColumn(i + 1).width = Math.min(Math.max(maxLen + 2, 10), 45);
-      });
-
-      const buf = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      downloadBlob(blob, `WE_Attendance_${from}_to_${to}.xlsx`);
+      downloadBlob(blob, filename);
     } catch (e) {
       setReportErr(e?.message || "Failed to download Excel");
     }

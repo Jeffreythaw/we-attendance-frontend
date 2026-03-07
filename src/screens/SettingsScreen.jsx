@@ -9,6 +9,7 @@ const ALLOWED_LEAVE_ATTACHMENT_EXT = new Set(["pdf", "jpg", "jpeg", "png"]);
 
 export function SettingsScreen({ user }) {
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+  const [settingsTab, setSettingsTab] = useState(() => (isAdmin ? "account" : "leave"));
 
   const [types, setTypes] = useState([]);
   const [myLeaves, setMyLeaves] = useState([]);
@@ -27,6 +28,10 @@ export function SettingsScreen({ user }) {
   const [lrStatus, setLrStatus] = useState("Pending");
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingId, setRejectingId] = useState(null);
+
+  useEffect(() => {
+    setSettingsTab(isAdmin ? "account" : "leave");
+  }, [isAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -122,7 +127,7 @@ export function SettingsScreen({ user }) {
     }
   }
 
-  async function downloadAttachment(id) {
+  async function downloadLeaveAttachmentCommon(id, onNotFoundReload) {
     setLeaveErr("");
     try {
       const { blob, contentDisposition } = await leaveApi.downloadAttachment(id);
@@ -140,7 +145,7 @@ export function SettingsScreen({ user }) {
       const msg = e2?.message || "Failed to download attachment";
       setLeaveErr(msg);
       if (String(msg).toLowerCase().includes("not found")) {
-        await reloadLeaves();
+        await onNotFoundReload?.();
       }
     }
   }
@@ -199,29 +204,6 @@ export function SettingsScreen({ user }) {
     }
   }
 
-  async function downloadLeaveAttachment(id) {
-    setLeaveErr("");
-    try {
-      const { blob, contentDisposition } = await leaveApi.downloadAttachment(id);
-      const nameMatch = /filename="?([^";]+)"?/i.exec(contentDisposition || "");
-      const name = nameMatch?.[1] || `leave_${id}`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e2) {
-      const msg = e2?.message || "Failed to download attachment";
-      setLeaveErr(msg);
-      if (String(msg).toLowerCase().includes("not found")) {
-        await loadLeaveRequests();
-      }
-    }
-  }
-
   return (
     <div className="we-s-root">
       <div className="we-s-head">
@@ -233,33 +215,53 @@ export function SettingsScreen({ user }) {
       </div>
 
       <div className="we-glass-card">
-        <div className="we-s-cardTitle">Account</div>
-        <div className="we-s-cardSub">Signed in</div>
-
-        <div className="we-s-list">
-          <div className="we-s-row">
-            <span className="we-s-key">Username</span>
-            <span className="we-s-val">{user?.username || "—"}</span>
-          </div>
-          <div className="we-s-row">
-            <span className="we-s-key">Role</span>
-            <span className="we-s-val">{user?.role || "—"}</span>
-          </div>
-          <div className="we-s-row">
-            <span className="we-s-key">EmployeeId</span>
-            <span className="we-s-val">{user?.employeeId ?? "—"}</span>
-          </div>
+        <div className="we-s-tabs">
+          <button
+            type="button"
+            className={`we-s-tab ${settingsTab === "account" ? "is-active" : ""}`}
+            onClick={() => setSettingsTab("account")}
+          >
+            Account
+          </button>
+          <button
+            type="button"
+            className={`we-s-tab ${settingsTab === "leave" ? "is-active" : ""}`}
+            onClick={() => setSettingsTab("leave")}
+          >
+            {isAdmin ? "Leave Approvals" : "Leave"}
+          </button>
         </div>
-
       </div>
 
-      {!isAdmin ? (
-        <>
+      {settingsTab === "account" ? (
+        <div className="we-glass-card">
+          <div className="we-s-cardTitle">Account</div>
+          <div className="we-s-cardSub">Signed in</div>
+
+          <div className="we-s-list">
+            <div className="we-s-row">
+              <span className="we-s-key">Username</span>
+              <span className="we-s-val">{user?.username || "—"}</span>
+            </div>
+            <div className="we-s-row">
+              <span className="we-s-key">Role</span>
+              <span className="we-s-val">{user?.role || "—"}</span>
+            </div>
+            <div className="we-s-row">
+              <span className="we-s-key">EmployeeId</span>
+              <span className="we-s-val">{user?.employeeId ?? "—"}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {settingsTab === "leave" && !isAdmin ? (
+        <div className="we-s-grid">
           <div className="we-glass-card">
             <div className="we-s-cardTitle">Apply Leave</div>
             <div className="we-s-cardSub">Submit leave request with attachment (MC/HL required)</div>
 
-            <form onSubmit={applyLeave} className="we-s-form">
+            <form onSubmit={applyLeave} className="we-s-form we-s-form-grid2">
               <label className="we-s-label">
                 Leave Type
                 <select value={leaveTypeId} onChange={(e) => setLeaveTypeId(e.target.value)} disabled={leaveBusy}>
@@ -280,12 +282,12 @@ export function SettingsScreen({ user }) {
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={leaveBusy} />
               </label>
 
-              <label className="we-s-label">
+              <label className="we-s-label we-s-span2">
                 Reason (optional)
                 <input value={reason} onChange={(e) => setReason(e.target.value)} disabled={leaveBusy} placeholder="e.g. medical appointment" />
               </label>
 
-              <label className="we-s-label">
+              <label className="we-s-label we-s-span2">
                 Attachment {requiresAttachment ? "(required)" : "(optional)"}
                 <input
                   type="file"
@@ -295,9 +297,9 @@ export function SettingsScreen({ user }) {
                 />
               </label>
 
-              <div className="we-s-hint">Max 2MB. Allowed: PDF, JPG, PNG. Stored on server at Documents/KJ_Attendance.</div>
+              <div className="we-s-hint we-s-span2">Max 2MB. Allowed: PDF, JPG, PNG. Stored on server at Documents/KJ_Attendance/leave_attachments.</div>
 
-              <button className="we-s-apply" type="submit" disabled={leaveBusy}>
+              <button className="we-s-apply we-s-span2" type="submit" disabled={leaveBusy}>
                 {leaveBusy ? "Submitting…" : "Apply Leave"}
               </button>
             </form>
@@ -324,7 +326,7 @@ export function SettingsScreen({ user }) {
 
                     <div className="we-s-leaveActions">
                       {r.hasAttachment ? (
-                        <button type="button" className="we-s-btn" onClick={() => downloadAttachment(r.id)}>
+                        <button type="button" className="we-s-btn" onClick={() => downloadLeaveAttachmentCommon(r.id, reloadLeaves)}>
                           Download attachment
                         </button>
                       ) : null}
@@ -339,8 +341,10 @@ export function SettingsScreen({ user }) {
               </div>
             )}
           </div>
-        </>
-      ) : (
+        </div>
+      ) : null}
+
+      {settingsTab === "leave" && isAdmin ? (
         <div className="we-glass-card">
           <div className="we-s-cardTitle">Leave Approvals</div>
           <div className="we-s-cardSub">Review and approve employee leave requests</div>
@@ -387,7 +391,7 @@ export function SettingsScreen({ user }) {
 
                     <div className="we-s-leaveActions">
                       {r.hasAttachment ? (
-                        <button type="button" className="we-s-btn" onClick={() => downloadLeaveAttachment(r.id)}>
+                        <button type="button" className="we-s-btn" onClick={() => downloadLeaveAttachmentCommon(r.id, loadLeaveRequests)}>
                           Download attachment
                         </button>
                       ) : null}
@@ -426,7 +430,7 @@ export function SettingsScreen({ user }) {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       <style>{css}</style>
     </div>
@@ -435,9 +439,25 @@ export function SettingsScreen({ user }) {
 
 const css = `
 .we-s-root{ display:grid; gap:12px; padding-bottom: 8px; }
+.we-s-grid{ display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items:start; }
 .we-s-kicker{ font-size:12px; opacity:.75; }
 .we-s-title{ font-size:26px; font-weight:950; color:#fff; margin-top:2px; line-height:1.1; }
 .we-s-sub{ margin-top:6px; font-size:12px; color: rgba(226,232,240,.75); }
+.we-s-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+.we-s-tab{
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08);
+  color:#fff;
+  border-radius:var(--we-radius-pill);
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.we-s-tab.is-active{
+  background: linear-gradient(135deg, rgba(99,102,241,.95), rgba(236,72,153,.9));
+  border-color: rgba(255,255,255,.22);
+}
 
 .we-s-cardTitle{ font-weight:950; color:#fff; font-size:14px; }
 .we-s-cardSub{ font-size:12px; color: rgba(226,232,240,.75); margin-top:2px; }
@@ -449,7 +469,7 @@ const css = `
   gap:10px;
   align-items:baseline;
   padding:10px 12px;
-  border-radius:14px;
+  border-radius:var(--we-radius-control);
   background: rgba(15,23,42,.22);
   border:1px solid rgba(255,255,255,.12);
 }
@@ -477,27 +497,38 @@ const css = `
 .we-s-logout:hover{ filter: brightness(1.05); transform: translateY(-1px); }
 
 .we-s-form{ margin-top:12px; display:grid; gap:10px; }
+.we-s-form-grid2{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.we-s-span2{ grid-column: 1 / -1; }
 .we-s-label{ display:grid; gap:6px; font-size:12px; font-weight:900; opacity:.9; }
 .we-s-form input, .we-s-form select{
-  height:38px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+  height:var(--we-control-h); border-radius:var(--we-radius-control); border:1px solid rgba(255,255,255,.14);
   background: rgba(15,23,42,.35); color:#fff; padding:0 10px;
 }
 .we-s-hint{ font-size:11px; opacity:.75; }
-.we-s-apply{ border:0; border-radius:14px; padding:12px 14px; background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1)); color:#fff; font-weight:950; cursor:pointer; }
+.we-s-apply{ border:0; border-radius:var(--we-radius-control); padding:12px 14px; background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1)); color:#fff; font-weight:950; cursor:pointer; }
 .we-s-error{ margin-top:8px; padding:10px 12px; border-radius:12px; background: rgba(244,63,94,.14); border:1px solid rgba(244,63,94,.28); color:#fecdd3; font-size:12px; }
 
 .we-s-empty{ font-size:12px; opacity:.75; margin-top:8px; }
 .we-s-leaveList{ margin-top:12px; display:grid; gap:10px; }
-.we-s-leaveItem{ padding:12px; border-radius:14px; background: rgba(15,23,42,.22); border:1px solid rgba(255,255,255,.12); display:grid; gap:6px; }
+.we-s-leaveItem{ padding:12px; border-radius:var(--we-radius-control); background: rgba(15,23,42,.22); border:1px solid rgba(255,255,255,.12); display:grid; gap:6px; }
 .we-s-leaveTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .we-s-leaveType{ font-weight:900; color:#fff; font-size:13px; }
-.we-s-pill{ padding:4px 8px; border-radius:999px; font-size:11px; font-weight:900; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); }
+.we-s-pill{ padding:4px 8px; border-radius:var(--we-radius-pill); font-size:11px; font-weight:900; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); }
 .we-s-leaveMeta{ font-size:12px; opacity:.8; }
 .we-s-leaveReason{ font-size:12px; opacity:.85; }
 .we-s-leaveActions{ display:flex; gap:8px; flex-wrap:wrap; }
-.we-s-btn{ border-radius:12px; padding:8px 10px; border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color:#fff; font-weight:900; cursor:pointer; }
+.we-s-btn{ border-radius:var(--we-radius-control); padding:8px 10px; border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color:#fff; font-weight:900; cursor:pointer; }
 .we-s-btn.danger{ background: rgba(244,63,94,.16); border-color: rgba(244,63,94,.28); color:#fecdd3; }
 
 .we-approve-head{ display:flex; gap:10px; align-items:center; justify-content:flex-end; margin-top:8px; }
-.we-select{ height:38px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background: rgba(15,23,42,.35); color:#fff; padding:0 10px; }
+.we-select{ height:var(--we-control-h); border-radius:var(--we-radius-control); border:1px solid rgba(255,255,255,.14); background: rgba(15,23,42,.35); color:#fff; padding:0 10px; }
+@media (max-width: 980px){
+  .we-s-grid{ grid-template-columns: 1fr; }
+}
+@media (max-width: 720px){
+  .we-s-form-grid2{ grid-template-columns: 1fr; }
+  .we-approve-head{ justify-content:stretch; flex-wrap:wrap; }
+  .we-approve-head .we-btn-soft,
+  .we-approve-head .we-select{ width:100%; }
+}
 `;

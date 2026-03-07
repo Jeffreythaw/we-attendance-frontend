@@ -495,7 +495,7 @@ export default function AdminQuotations({ onAuthError }) {
             </div>
           </div>
 
-          <form onSubmit={createQuotationInvoice} className="we-a-form we-a-grid2" style={{ marginTop: 12 }}>
+          <form onSubmit={createQuotationInvoice} className="we-a-form we-a-grid3" style={{ marginTop: 12 }}>
             <label className="we-a-label">Quot Ref<div className="we-input"><span className="we-icon">#</span><input value={qiQuotRef} onChange={(e) => setQiQuotRef(e.target.value)} /></div></label>
             <label className="we-a-label">Location<div className="we-input"><span className="we-icon">L</span><input value={qiLocation} onChange={(e) => setQiLocation(e.target.value)} /></div></label>
             <label className="we-a-label">Description<div className="we-input"><span className="we-icon">D</span><input value={qiDescription} onChange={(e) => setQiDescription(e.target.value)} /></div></label>
@@ -534,7 +534,7 @@ export default function AdminQuotations({ onAuthError }) {
             </div>
           </div>
 
-          <div className="we-a-form we-a-grid2" style={{ marginTop: 12 }}>
+          <div className="we-a-form we-a-grid3" style={{ marginTop: 12 }}>
             <label className="we-a-label">Search<div className="we-input"><span className="we-icon">S</span><input value={qiSearch} onChange={(e) => setQiSearch(e.target.value)} /></div></label>
             <label className="we-a-label">Location<div className="we-input"><span className="we-icon">L</span><input value={qiFilterLocation} onChange={(e) => setQiFilterLocation(e.target.value)} /></div></label>
             <label className="we-a-label">Quot Status<select className="we-select" value={qiFilterQuotStatus} onChange={(e) => setQiFilterQuotStatus(e.target.value)}><option value="All">All</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Revise">Revise</option><option value="Rejected">Rejected</option></select></label>
@@ -544,8 +544,8 @@ export default function AdminQuotations({ onAuthError }) {
             <label className="we-a-label">Invoice From<input type="date" value={qiFilterFrom} onChange={(e) => setQiFilterFrom(e.target.value)} /></label>
             <label className="we-a-label">Invoice To<input type="date" value={qiFilterTo} onChange={(e) => setQiFilterTo(e.target.value)} /></label>
             <label className="we-a-label">Report Month<input type="month" value={qiReportMonth} onChange={(e) => setQiReportMonth(e.target.value)} /></label>
-            <button className="we-btn-soft" type="button" onClick={() => downloadQuotationReport("csv")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Download Excel (CSV)"}</button>
-            <button className="we-btn-soft" type="button" onClick={() => downloadQuotationReport("html")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Open PDF (Print)"}</button>
+            <button className="we-btn-soft" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("csv")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Download Excel (CSV)"}</button>
+            <button className="we-btn-soft" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("html")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Open PDF (Print)"}</button>
           </div>
         </div>
 
