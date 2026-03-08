@@ -4,6 +4,7 @@ import { Card } from "../components/Card";
 
 const SG_TZ = "Asia/Singapore";
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const CAL_TONE_COUNT = 6;
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -51,6 +52,21 @@ function gridDays(monthIso) {
   }
   while (out.length % 7 !== 0) out.push(null);
   return out;
+}
+
+function hashToneSeed(value) {
+  const s = String(value || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function toneClassForEntry(entry) {
+  const key = `${entry?.workLocation || ""}|${entry?.workTitle || ""}`;
+  const tone = hashToneSeed(key) % CAL_TONE_COUNT;
+  return `tone-${tone}`;
 }
 
 export default function ScheduleCalendarTab({ user, onAuthError }) {
@@ -229,6 +245,7 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
               return <div key={`empty-${idx}`} className="we-cal-day is-empty" aria-hidden="true" />;
             }
             const dayEntries = byDay.get(d.iso) || [];
+            const dayChips = dayEntries.slice(0, 2);
             const selected = d.iso === selectedDay;
             return (
               <button
@@ -241,6 +258,18 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
                   <span>{d.day}</span>
                   {dayEntries.length > 0 ? <span className="we-cal-badge">{dayEntries.length}</span> : null}
                 </div>
+                {dayChips.length > 0 ? (
+                  <div className="we-cal-dayRows">
+                    {dayChips.map((e) => (
+                      <div key={e.id} className={`we-cal-chip ${toneClassForEntry(e)}`}>
+                        {e.workLocation || e.workTitle || "Work"}
+                      </div>
+                    ))}
+                    {dayEntries.length > dayChips.length ? (
+                      <div className="we-cal-more">+{dayEntries.length - dayChips.length} more</div>
+                    ) : null}
+                  </div>
+                ) : null}
               </button>
             );
           })}
@@ -252,17 +281,17 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
       <Card className="we-glass-card">
         <div className="we-cal-title">Selected Date Schedule • {selectedDay}</div>
         <div className="we-cal-sub">Role: {isAdmin ? "Admin" : isSupervisor ? "Supervisor" : "Worker"} {canEditEntries ? "• Edit allowed" : "• Read only"}</div>
-        <div className="we-cal-list">
+        <div className="we-cal-scheduleGrid">
           {selectedEntries.length === 0 ? (
             <div className="we-clock-empty">No schedules for this day.</div>
           ) : (
-            selectedByLocation.map((group) => (
-              <div key={group.location} className="we-cal-item">
+            selectedByLocation.map((group, groupIdx) => (
+              <div key={group.location} className={`we-cal-item we-cal-locCard tone-${groupIdx % CAL_TONE_COUNT}`}>
                 <div><b>Location:</b> {group.location}</div>
                 <div><b>Workers:</b> {group.workerNames.join(", ") || "-"}</div>
                 <div className="we-cal-list">
                   {group.list.map((e) => (
-                    <div key={e.id} className="we-cal-item">
+                    <div key={e.id} className={`we-cal-item we-cal-entryCard ${toneClassForEntry(e)}`}>
                       <div><b>{e.startTime} - {e.endTime}</b> • {e.employeeName}</div>
                       <div>{e.workTitle || "Work"}</div>
                       {e.note ? <div>Note: {e.note}</div> : null}

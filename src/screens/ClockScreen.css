@@ -698,6 +698,19 @@
 .we-cal-sub { font-size: 12px; opacity: .75; }
 .we-cal-list { display: grid; gap: 8px; }
 .we-cal-item { border: 1px solid rgba(255,255,255,.12); background: rgba(15,23,42,.28); border-radius: 12px; padding: 10px; display: grid; gap: 4px; }
+.we-cal-scheduleGrid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.we-cal-locCard { position: relative; overflow: hidden; }
+.we-cal-locCard::before{
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--cal-tone, rgba(99,102,241,.85));
+}
+.we-cal-entryCard{
+  border-color: color-mix(in srgb, var(--cal-tone, rgba(99,102,241,.85)) 45%, rgba(255,255,255,.15));
+  background: color-mix(in srgb, var(--cal-tone, rgba(99,102,241,.85)) 16%, rgba(15,23,42,.7));
+}
 .we-cal-form { display: grid; gap: 8px; }
 .we-cal-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .we-cal-span2,
@@ -834,6 +847,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.we-cal-chip.tone-0, .we-cal-locCard.tone-0, .we-cal-entryCard.tone-0 { --cal-tone: rgba(59,130,246,.9); }
+.we-cal-chip.tone-1, .we-cal-locCard.tone-1, .we-cal-entryCard.tone-1 { --cal-tone: rgba(34,197,94,.9); }
+.we-cal-chip.tone-2, .we-cal-locCard.tone-2, .we-cal-entryCard.tone-2 { --cal-tone: rgba(245,158,11,.9); }
+.we-cal-chip.tone-3, .we-cal-locCard.tone-3, .we-cal-entryCard.tone-3 { --cal-tone: rgba(236,72,153,.9); }
+.we-cal-chip.tone-4, .we-cal-locCard.tone-4, .we-cal-entryCard.tone-4 { --cal-tone: rgba(139,92,246,.9); }
+.we-cal-chip.tone-5, .we-cal-locCard.tone-5, .we-cal-entryCard.tone-5 { --cal-tone: rgba(20,184,166,.9); }
+.we-cal-chip[class*="tone-"]{
+  background: color-mix(in srgb, var(--cal-tone) 22%, rgba(15,23,42,.9));
+  border-color: color-mix(in srgb, var(--cal-tone) 45%, rgba(255,255,255,.2));
+}
 .we-cal-more { font-size: 10px; opacity: .7; }
 
 /* ================================
@@ -870,6 +893,9 @@
   .we-cal-grid {
     gap: 6px;
   }
+  .we-cal-scheduleGrid {
+    grid-template-columns: 1fr;
+  }
   .we-cal-form-grid {
     grid-template-columns: 1fr;
   }
@@ -886,6 +912,11 @@
   .we-clock-wrap{
     width: min(520px, 100%);
     padding: 0 12px;
+  }
+}
+@media (max-width: 980px){
+  .we-cal-scheduleGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
