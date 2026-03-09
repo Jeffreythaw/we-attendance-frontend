@@ -1,65 +1,876 @@
-/* ---------- Theme tokens ---------- */
 :root {
-  --bg: #f6f7fb;
-  --card: #ffffff;
-  --text: #0f172a;
-  --muted: #64748b;
+  --we-bg: #0f1726;
+  --we-bg-grad: radial-gradient(145% 130% at 0% 0%, #1c2940 0%, #111b2f 45%, #0a1221 100%);
+  --we-blob-1: radial-gradient(circle at 30% 30%, #4f6fa6, transparent 58%);
+  --we-blob-2: radial-gradient(circle at 30% 30%, #3f5f8f, transparent 56%);
+  --we-blob-3: radial-gradient(circle at 30% 30%, #6587b3, transparent 60%);
+  --we-blob-opacity: 0.34;
+  --we-surface: rgba(15, 23, 42, 0.62);
+  --we-surface-2: rgba(15, 23, 42, 0.46);
+  --we-border: rgba(255, 255, 255, 0.16);
+  --we-text: #e6edf8;
+  --we-muted: rgba(203, 213, 225, 0.78);
+  --we-control-bg: rgba(15, 23, 42, 0.52);
+  --we-control-border: rgba(255, 255, 255, 0.18);
+  --we-accent-a: #6e8dff;
+  --we-accent-b: #6aa9ff;
+  --we-primary-grad: linear-gradient(135deg, var(--we-accent-a), var(--we-accent-b));
+  --we-card-shadow: 0 18px 42px rgba(2, 6, 23, 0.34);
+  --we-shadow: 0 16px 40px rgba(2, 6, 23, 0.32);
 
-  --border: rgba(15, 23, 42, 0.12);
-  --shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
-
-  --primary: #0f172a;
-  --primaryText: #ffffff;
-
-  --soft: #e2e8f0;
-  --softText: #0f172a;
-
-  --accent1: #6366f1; /* indigo */
-  --accent2: #ec4899; /* pink */
-
-  --dangerBg: #ffe4e6;
-  --dangerBorder: #fecdd3;
-  --dangerText: #be123c;
-
-  --successBg: #dcfce7;
-  --successBorder: #86efac;
-  --successText: #166534;
+  --we-radius-card: 16px;
+  --we-radius-control: 12px;
+  --we-radius-pill: 999px;
+  --we-space-1: 8px;
+  --we-space-2: 10px;
+  --we-space-3: 12px;
+  --we-space-4: 14px;
 }
 
-/* ---------- App base ---------- */
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: var(--we-bg);
+  color: var(--we-text);
+  font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* IMPORTANT: don’t force dark background/white text here */
 #root {
   max-width: none;
   margin: 0;
   padding: 0;
   text-align: initial;
+  min-height: 100vh;
 }
 
-/* ---------- Card utility (optional but recommended) ---------- */
-.we-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+html.theme-light {
+  --we-bg: #eef3fb;
+  --we-bg-grad: radial-gradient(160% 140% at 0% 0%, #f8fbff 0%, #ebf1fa 47%, #e4ecf8 100%);
+  --we-blob-1: radial-gradient(circle at 30% 30%, #a8bbd9, transparent 58%);
+  --we-blob-2: radial-gradient(circle at 30% 30%, #9bb4d4, transparent 56%);
+  --we-blob-3: radial-gradient(circle at 30% 30%, #c5d4e8, transparent 60%);
+  --we-blob-opacity: 0.24;
+  --we-surface: rgba(255, 255, 255, 0.9);
+  --we-surface-2: rgba(255, 255, 255, 0.8);
+  --we-border: rgba(35, 58, 92, 0.26);
+  --we-text: #132949;
+  --we-muted: rgba(54, 77, 109, 0.8);
+  --we-control-bg: rgba(255, 255, 255, 0.96);
+  --we-control-border: rgba(35, 58, 92, 0.28);
+  --we-accent-a: #4d7dff;
+  --we-accent-b: #5ea8ff;
+  --we-card-shadow: 0 16px 34px rgba(56, 84, 126, 0.18);
+  --we-shadow: 0 12px 30px rgba(58, 84, 129, 0.16);
+}
+
+.we-card,
+.we-glass-card {
+  background: var(--we-surface);
+  border: 1px solid var(--we-border);
   border-radius: 18px;
-  box-shadow: var(--shadow);
-  padding: 16px;
+  box-shadow: var(--we-card-shadow);
 }
 
-/* ---------- Scrollbar (thin) ---------- */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.18); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.28); }
+.we-input {
+  background: var(--we-control-bg);
+  border: 1px solid var(--we-control-border);
+}
 
-a { color: var(--accent1); text-decoration: none; }
-a:hover { text-decoration: underline; }
+.we-input input,
+.we-input select,
+input,
+select,
+textarea {
+  color: var(--we-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--we-muted);
+}
+
+.we-btn {
+  background: var(--we-primary-grad);
+  color: #f8fbff;
+}
+
+:where(
+  .we-admin-page,
+  .we-admin-root,
+  .we-a-root,
+  .we-s-root,
+  .we-h-root,
+  .we-clock-root
+) {
+  color: var(--we-text);
+}
+
+:where(
+  .we-admin-title,
+  .we-admin-cardTitle,
+  .we-admin-name,
+  .we-modalTitle,
+  .we-presenceName,
+  .we-matrixDayTop,
+  .we-matrixEmpHeadTop,
+  .we-qi-donutPct
+) {
+  color: var(--we-text) !important;
+}
+
+:where(
+  .we-admin-sub,
+  .we-admin-kicker,
+  .we-admin-hint,
+  .we-modalSub,
+  .we-presenceMeta,
+  .we-qi-donutLbl,
+  .we-admin-sectionMeta
+) {
+  color: var(--we-muted) !important;
+}
+
+:where(.we-btn, .we-s-apply, .we-a-apply, .we-h-refresh, .we-admin-refresh, .we-reportLoadBtn) {
+  background: var(--we-primary-grad) !important;
+  color: #f8fbff !important;
+  border: 0 !important;
+}
+
+:where(.we-btn.danger, .we-s-btn.danger, .we-a-logout, .we-s-logout) {
+  background: linear-gradient(135deg, #ef476f, #ec4899) !important;
+  color: #fff !important;
+}
+
+.we-btn,
+.we-btn-soft,
+.we-btn-mini,
+.we-s-btn,
+.we-btn-x,
+.we-tab,
+.we-admin-tab,
+.we-tab-btn,
+.we-cal-nav,
+.we-mobile-themeSwitch,
+.we-admin-themeSwitch,
+.we-mobile-logout,
+.we-admin-logout {
+  border-radius: var(--we-radius-control);
+  font-weight: 850;
+  transition: transform .14s ease, filter .14s ease, background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+
+.we-btn:hover,
+.we-btn-soft:hover,
+.we-btn-mini:hover,
+.we-s-btn:hover,
+.we-btn-x:hover,
+.we-tab:hover,
+.we-admin-tab:hover,
+.we-cal-nav:hover,
+.we-mobile-themeSwitch:hover,
+.we-admin-themeSwitch:hover,
+.we-mobile-logout:hover,
+.we-admin-logout:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.we-btn:focus-visible,
+.we-btn-soft:focus-visible,
+.we-btn-mini:focus-visible,
+.we-s-btn:focus-visible,
+.we-btn-x:focus-visible,
+.we-tab:focus-visible,
+.we-admin-tab:focus-visible,
+.we-cal-nav:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--we-accent-a) 70%, #fff);
+  outline-offset: 2px;
+}
+
+.we-btn-soft,
+.we-btn-mini,
+.we-admin-tab,
+.we-admin-logout,
+.we-mobile-logout,
+.we-mobile-themeSwitch,
+.we-admin-themeSwitch,
+.we-tab-btn {
+  color: var(--we-text);
+  background: var(--we-surface-2);
+  border: 1px solid var(--we-border);
+}
+
+:where(.we-btn-soft, .we-btn-mini, .we-s-btn, .we-a-pill, .we-a-state, .we-tab, .we-admin-tab, .we-tab-btn, .we-cal-nav, .we-select) {
+  background: var(--we-surface-2) !important;
+  border-color: var(--we-border) !important;
+  color: var(--we-text) !important;
+}
+
+/* ---------- Global Button Actions ---------- */
+:where(.we-btn--refresh, .we-btn--load, .we-btn--apply) {
+  background: linear-gradient(135deg, #4f7dff, #57a7ff) !important;
+  color: #f8fbff !important;
+  border-color: transparent !important;
+}
+
+:where(.we-btn--save, .we-btn--approve) {
+  background: linear-gradient(135deg, #0ea86a, #22c55e) !important;
+  color: #f8fbff !important;
+  border-color: transparent !important;
+}
+
+:where(.we-btn--edit) {
+  background: linear-gradient(135deg, #b26fff, #7f8cff) !important;
+  color: #f8fbff !important;
+  border-color: transparent !important;
+}
+
+:where(.we-btn--delete) {
+  background: linear-gradient(135deg, #ef476f, #f97316) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+:where(.we-btn-soft.we-btn--refresh, .we-btn-mini.we-btn--refresh, .we-btn-soft.we-btn--load, .we-btn-soft.we-btn--apply) {
+  background: color-mix(in srgb, #5d8dff 28%, var(--we-surface-2)) !important;
+  border-color: color-mix(in srgb, #5d8dff 48%, var(--we-border)) !important;
+}
+
+:where(.we-btn-soft.we-btn--save, .we-btn-mini.we-btn--save, .we-btn-soft.we-btn--approve) {
+  background: color-mix(in srgb, #1eb879 28%, var(--we-surface-2)) !important;
+  border-color: color-mix(in srgb, #1eb879 50%, var(--we-border)) !important;
+}
+
+:where(.we-btn-soft.we-btn--edit, .we-btn-mini.we-btn--edit) {
+  background: color-mix(in srgb, #8d7bff 28%, var(--we-surface-2)) !important;
+  border-color: color-mix(in srgb, #8d7bff 50%, var(--we-border)) !important;
+}
+
+:where(.we-btn-soft.we-btn--delete, .we-btn-mini.we-btn--delete) {
+  background: color-mix(in srgb, #ef476f 26%, var(--we-surface-2)) !important;
+  border-color: color-mix(in srgb, #ef476f 52%, var(--we-border)) !important;
+}
+
+:where(input, select, textarea, .we-input, .we-input input, .we-input select, .we-admin-select, .we-cal-filter) {
+  color: var(--we-text);
+}
+
+:where(
+  .we-select,
+  .we-cal-filter,
+  .we-reportSearch,
+  .we-a-form input,
+  .we-a-form select,
+  .we-a-form textarea,
+  .we-preapprove-form input,
+  .we-preapprove-form select,
+  .we-cal-form input,
+  .we-cal-form select,
+  .we-cal-editGrid input,
+  .we-modalBody input,
+  .we-modalBody select,
+  .we-admin-table input,
+  .we-admin-table select
+) {
+  background: var(--we-control-bg) !important;
+  border-color: var(--we-control-border) !important;
+  color: var(--we-text) !important;
+}
+
+:where(
+  .we-select:focus,
+  .we-cal-filter:focus,
+  .we-a-form input:focus,
+  .we-a-form select:focus,
+  .we-preapprove-form input:focus,
+  .we-preapprove-form select:focus,
+  .we-cal-form input:focus,
+  .we-cal-form select:focus,
+  .we-cal-editGrid input:focus,
+  .we-modalBody input:focus,
+  .we-modalBody select:focus,
+  .we-admin-table input:focus,
+  .we-admin-table select:focus
+) {
+  outline: none;
+  border-color: color-mix(in srgb, var(--we-accent-a) 58%, var(--we-control-border)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--we-accent-a) 20%, transparent) !important;
+}
+
+:where(
+  .we-a-form input::placeholder,
+  .we-preapprove-form input::placeholder,
+  .we-cal-form input::placeholder,
+  .we-cal-editGrid input::placeholder,
+  .we-modalBody input::placeholder,
+  .we-admin-table input::placeholder
+) {
+  color: var(--we-muted) !important;
+}
+
+:where(
+  .we-a-form input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-a-form input[type="month"]::-webkit-calendar-picker-indicator,
+  .we-preapprove-form input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-modalBody input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-admin-table input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-admin-filterLabel input[type="date"]::-webkit-calendar-picker-indicator
+) {
+  filter: invert(1) opacity(.72);
+}
+
+html.theme-light :where(
+  .we-a-form input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-a-form input[type="month"]::-webkit-calendar-picker-indicator,
+  .we-preapprove-form input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-modalBody input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-admin-table input[type="date"]::-webkit-calendar-picker-indicator,
+  .we-admin-filterLabel input[type="date"]::-webkit-calendar-picker-indicator
+) {
+  filter: invert(0.14) opacity(.8);
+}
+
+:where(.we-qi-editBtn.we-btn--save, .we-qi-editBtn.we-btn--edit, .we-qi-cancelBtn.we-btn--apply) {
+  border-color: transparent !important;
+  color: #f8fbff !important;
+}
+
+:where(input::placeholder, textarea::placeholder) {
+  color: color-mix(in srgb, var(--we-muted) 88%, transparent);
+}
+
+:where(select option) {
+  color: var(--we-text);
+  background: var(--we-control-bg);
+}
+
+.we-admin-user,
+.we-mobile-user,
+.we-muted {
+  color: var(--we-muted);
+}
+
+html.theme-light .we-admin-tab.is-active,
+html.theme-light .we-tab-btn.is-active {
+  color: #0d2a57;
+  background: linear-gradient(135deg, rgba(79, 125, 255, 0.34), rgba(102, 162, 255, 0.3));
+  border-color: rgba(33, 66, 120, 0.3);
+}
+
+html.theme-light .we-admin-top,
+html.theme-light .we-mobile-phone,
+html.theme-light .we-mobile-header,
+html.theme-light .we-tabs-shell.is-contained,
+html.theme-light .we-tabs-shell.is-fixed {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(27, 52, 93, 0.2);
+}
+
+html.theme-light .we-admin-brandMark,
+html.theme-light .we-mobile-brandMark {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(27, 52, 93, 0.2);
+}
+
+/* ---------- Global Background Harmony ---------- */
+:where(.we-app-bg, .we-h-bg, .we-clock-bg, .we-admin-bg, .we-a-bg) {
+  background: var(--we-bg-grad) !important;
+}
+
+:where(.we-app-blob.b1, .we-h-blob-1, .we-clock-blob-1, .we-admin-blob-1, .we-a-blob-1) {
+  background: var(--we-blob-1) !important;
+  opacity: var(--we-blob-opacity) !important;
+}
+
+:where(.we-app-blob.b2, .we-h-blob-2, .we-clock-blob-2, .we-admin-blob-2, .we-a-blob-2) {
+  background: var(--we-blob-2) !important;
+  opacity: var(--we-blob-opacity) !important;
+}
+
+:where(.we-app-blob.b3, .we-h-blob-3, .we-clock-blob-3, .we-admin-blob-3, .we-a-blob-3) {
+  background: var(--we-blob-3) !important;
+  opacity: calc(var(--we-blob-opacity) * 0.92) !important;
+}
+
+:where(.we-app-noise, .we-h-noise, .we-clock-noise, .we-admin-noise, .we-a-noise) {
+  opacity: 0.028 !important;
+}
+
+html.theme-light :where(.we-app-noise, .we-h-noise, .we-clock-noise, .we-admin-noise, .we-a-noise) {
+  opacity: 0.02 !important;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.28);
+}
+
+html.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(33, 54, 87, 0.24);
+}
+
+/* ---------- Global Design Kit: light-mode readability ---------- */
+html.theme-light :where(
+  .we-admin-shell,
+  .we-admin-page,
+  .we-admin-root,
+  .we-mobile-stage,
+  .we-mobile-phone,
+  .we-clock-root,
+  .we-h-root,
+  .we-s-root
+) {
+  color: var(--we-text);
+}
+
+html.theme-light :where(
+  .we-admin-title,
+  .we-admin-sub,
+  .we-admin-kicker,
+  .we-admin-cardTitle,
+  .we-h-title,
+  .we-h-sub,
+  .we-h-kicker,
+  .we-h-cardTitle,
+  .we-s-title,
+  .we-s-sub,
+  .we-s-kicker,
+  .we-s-cardTitle,
+  .we-s-cardSub,
+  .we-gridHint,
+  .we-admin-empty
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-admin-user,
+  .we-mobile-user,
+  .we-admin-hint,
+  .we-h-cardHint,
+  .we-h-cardMeta,
+  .we-s-key,
+  .we-s-leaveMeta,
+  .we-s-leaveReason,
+  .we-detailLabel
+) {
+  color: var(--we-muted) !important;
+}
+
+html.theme-light :where(
+  .we-input,
+  .we-h-dateInput,
+  .we-admin-select,
+  .we-s-form input,
+  .we-s-form select,
+  .we-s-form textarea,
+  .we-form-grid2 input,
+  .we-form-grid2 select
+) {
+  background: var(--we-control-bg) !important;
+  border-color: var(--we-control-border) !important;
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-input input,
+  .we-input select,
+  .we-admin-select,
+  .we-h-dateInput,
+  .we-s-form input,
+  .we-s-form select,
+  .we-s-form textarea,
+  .we-kv .v,
+  .we-detailValue
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-input input::placeholder,
+  .we-s-form input::placeholder,
+  .we-s-form textarea::placeholder
+) {
+  color: var(--we-muted) !important;
+}
+
+html.theme-light .we-admin-card,
+html.theme-light .we-admin-row,
+html.theme-light .we-modal,
+html.theme-light .we-gridWrap,
+html.theme-light .we-empCard,
+html.theme-light .we-detailItem,
+html.theme-light .we-kv,
+html.theme-light .we-h-glass {
+  background: var(--we-surface) !important;
+  border-color: var(--we-border) !important;
+  color: var(--we-text) !important;
+}
+
+html.theme-light .we-gridTable thead th,
+html.theme-light .we-gridTable tbody td,
+html.theme-light .we-admin-table thead th,
+html.theme-light .we-admin-table tbody td {
+  color: var(--we-text) !important;
+}
+
+html.theme-light .we-gridTable thead th,
+html.theme-light .we-admin-table thead th {
+  background: rgba(230, 239, 252, 0.86) !important;
+  border-color: rgba(27, 52, 93, 0.2) !important;
+}
+
+html.theme-light .we-gridTable tbody td,
+html.theme-light .we-admin-table tbody td {
+  border-color: rgba(27, 52, 93, 0.14) !important;
+}
+
+html.theme-light .we-gridRow:hover td {
+  background: rgba(197, 215, 243, 0.3) !important;
+}
+
+html.theme-light .we-h-root {
+  color-scheme: light !important;
+}
+
+html.theme-light .we-h-bg {
+  background: #eef3fb !important;
+}
+
+html.theme-light .we-h-blob-1 {
+  background: radial-gradient(circle at 30% 30%, #a8bbd9, transparent 55%) !important;
+}
+html.theme-light .we-h-blob-2 {
+  background: radial-gradient(circle at 30% 30%, #9bb4d4, transparent 55%) !important;
+}
+html.theme-light .we-h-blob-3 {
+  background: radial-gradient(circle at 30% 30%, #c5d4e8, transparent 55%) !important;
+}
+html.theme-light .we-h-noise {
+  opacity: 0.02 !important;
+}
+
+/* ---------- Global Design Kit: module-wide light harmonization ---------- */
+html.theme-light :where(
+  .we-admin-page,
+  .we-admin-root,
+  .we-a-root,
+  .we-cal-root,
+  .we-s-root,
+  .we-clock-root,
+  .we-h-root
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-admin-head,
+  .we-admin-tabs,
+  .we-admin-card,
+  .we-a-card,
+  .we-a-item,
+  .we-admin-msg,
+  .we-admin-row,
+  .we-admin-pill,
+  .we-modal,
+  .we-gridWrap,
+  .we-empCard,
+  .we-detailsGrid,
+  .we-kv,
+  .we-detailItem,
+  .we-s-row,
+  .we-s-leaveItem,
+  .we-cal-day,
+  .we-cal-item,
+  .we-cal-locCard,
+  .we-cal-entryCard,
+  .we-reportActions,
+  .we-reportCard .we-admin-tableWrap
+) {
+  background: var(--we-surface) !important;
+  border-color: var(--we-border) !important;
+  color: var(--we-text) !important;
+  box-shadow: none !important;
+}
+
+html.theme-light :where(
+  .we-admin-title,
+  .we-a-title,
+  .we-admin-cardTitle,
+  .we-a-cardTitle,
+  .we-a-name,
+  .we-empName,
+  .we-detailValue,
+  .we-a-title,
+  .we-a-cardTitle,
+  .we-a-name,
+  .we-a-state,
+  .we-a-item,
+  .we-s-title,
+  .we-s-cardTitle,
+  .we-s-leaveType,
+  .we-cal-title,
+  .we-cal-monthLabel,
+  .we-cal-weekhead,
+  .we-cal-dayTop,
+  .we-clock-miniTop,
+  .we-clock-strong,
+  .we-clock-itemId,
+  .we-h-title,
+  .we-h-cardTitle
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-admin-sub,
+  .we-admin-kicker,
+  .we-a-sub,
+  .we-a-kicker,
+  .we-a-cardMeta,
+  .we-admin-hint,
+  .we-gridHint,
+  .we-empId,
+  .we-detailLabel,
+  .we-s-sub,
+  .we-s-cardSub,
+  .we-s-key,
+  .we-s-leaveMeta,
+  .we-s-leaveReason,
+  .we-cal-sub,
+  .we-cal-more,
+  .we-h-sub,
+  .we-h-cardMeta,
+  .we-h-cardHint
+) {
+  color: var(--we-muted) !important;
+}
+
+html.theme-light :where(
+  .we-input,
+  .we-admin-select,
+  .we-select,
+  .we-s-form input,
+  .we-s-form select,
+  .we-s-form textarea,
+  .we-clock-label input,
+  .we-clock-label select,
+  .we-clock-label textarea,
+  .we-cal-filter,
+  .we-cal-nav,
+  .we-h-dateInput,
+  .we-reportSearch
+) {
+  background: var(--we-control-bg) !important;
+  border-color: var(--we-control-border) !important;
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-input input,
+  .we-input select,
+  .we-admin-select,
+  .we-select,
+  .we-s-form input,
+  .we-s-form select,
+  .we-s-form textarea,
+  .we-clock-label input,
+  .we-clock-label select,
+  .we-clock-label textarea,
+  .we-cal-filter,
+  .we-reportSearch input
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-input input::placeholder,
+  .we-s-form input::placeholder,
+  .we-s-form textarea::placeholder,
+  .we-clock-label input::placeholder,
+  .we-reportSearch input::placeholder
+) {
+  color: var(--we-muted) !important;
+}
+
+html.theme-light :where(
+  .we-btn-soft,
+  .we-btn-mini,
+  .we-btn-mini-soft,
+  .we-a-pill,
+  .we-a-state,
+  .we-a-tab,
+  .we-s-btn,
+  .we-tab,
+  .we-chip,
+  .we-btn-x,
+  .we-reportBtns > .we-btn-soft
+) {
+  background: var(--we-surface-2) !important;
+  border-color: var(--we-border) !important;
+  color: var(--we-text) !important;
+}
+
+html.theme-light :where(
+  .we-btn,
+  .we-s-apply,
+  .we-s-logout,
+  .we-a-apply,
+  .we-a-logout,
+  .we-h-refresh,
+  .we-a-apply,
+  .we-a-logout,
+  .we-tab.on,
+  .we-chip.on
+) {
+  color: #f8fbff !important;
+}
+
+html.theme-light :where(
+  .we-reportCard .we-admin-table thead th,
+  .we-reportCard .we-admin-table tbody td
+) {
+  color: var(--we-text) !important;
+}
+
+html.theme-light .we-reportCard .we-admin-table thead th {
+  background: rgba(227, 238, 252, 0.88) !important;
+  border-color: rgba(27, 52, 93, 0.18) !important;
+}
+
+html.theme-light .we-reportCard .we-admin-table tbody td {
+  border-color: rgba(27, 52, 93, 0.12) !important;
+}
+
+html.theme-light .we-reportCard .we-admin-table tbody tr:nth-child(odd) td {
+  background: rgba(194, 214, 243, 0.16) !important;
+}
+
+html.theme-light .we-reportCard .we-admin-table tbody tr:hover td {
+  background: rgba(169, 194, 230, 0.26) !important;
+}
+
+/* ---------- Global Governance Layer (must stay last) ---------- */
+html[data-theme] :is(
+  .we-btn,
+  .we-btn-soft,
+  .we-btn-mini,
+  .we-btn-x,
+  .we-tab,
+  .we-tab-btn,
+  .we-admin-tab,
+  .we-cal-nav,
+  .we-btn-chip,
+  .we-qi-editBtn,
+  .we-qi-cancelBtn
+) {
+  border-radius: var(--we-radius-control) !important;
+  font-weight: 850 !important;
+}
+
+html[data-theme] :is(
+  .we-btn-soft,
+  .we-btn-mini,
+  .we-btn-x,
+  .we-tab,
+  .we-tab-btn,
+  .we-admin-tab,
+  .we-cal-nav,
+  .we-btn-chip,
+  .we-qi-editBtn,
+  .we-qi-cancelBtn
+) {
+  background: var(--we-surface-2) !important;
+  border: 1px solid var(--we-border) !important;
+  color: var(--we-text) !important;
+}
+
+html[data-theme] :is(
+  .we-input,
+  .we-select,
+  .we-admin-select,
+  .we-cal-filter,
+  .we-reportSearch,
+  .we-raLabel select,
+  .we-raSearch,
+  .we-admin-filterLabel input,
+  .we-admin-filterLabel select,
+  .we-a-form input,
+  .we-a-form select,
+  .we-preapprove-form input,
+  .we-preapprove-form select,
+  .we-raSearch input,
+  .we-cal-form input,
+  .we-cal-form select,
+  .we-cal-editGrid input,
+  .we-modalBody input,
+  .we-modalBody select,
+  .we-admin-table input,
+  .we-admin-table select
+) {
+  background: var(--we-control-bg) !important;
+  border-color: var(--we-control-border) !important;
+  color: var(--we-text) !important;
+}
+
+html[data-theme] :is(
+  .we-admin-head,
+  .we-admin-tabs,
+  .we-admin-card,
+  .we-admin-row,
+  .we-modal,
+  .we-gridWrap,
+  .we-empCard,
+  .we-kv,
+  .we-detailItem,
+  .we-cal-day,
+  .we-cal-item,
+  .we-cal-locCard,
+  .we-cal-entryCard,
+  .we-reportActions,
+  .we-reportCard .we-admin-tableWrap,
+  .we-matrixTableWrap,
+  .we-presenceCard,
+  .we-qi-panel
+) {
+  background: var(--we-surface) !important;
+  border-color: var(--we-border) !important;
+  color: var(--we-text) !important;
+}
+
+html[data-theme] :is(.we-admin-title, .we-admin-cardTitle, .we-cal-title, .we-presenceName, .we-qi-panelTitle) {
+  color: var(--we-text) !important;
+}
+
+html[data-theme] :is(.we-admin-sub, .we-admin-kicker, .we-admin-hint, .we-cal-sub, .we-qi-panelSub, .we-qi-donutLbl) {
+  color: var(--we-muted) !important;
+}
+
+html[data-theme] :is(.we-admin-donut, .we-qi-donut) {
+  position: relative !important;
+  border-radius: 999px !important;
+  transform: rotateX(20deg) rotateZ(-8deg) !important;
+  box-shadow:
+    0 22px 30px rgba(2, 6, 23, 0.26),
+    0 1px 0 rgba(255,255,255,.34) inset,
+    0 -6px 16px rgba(2, 6, 23, 0.3) inset !important;
+}
+
+html[data-theme] :is(.we-admin-donut::after, .we-qi-donut::after) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--we-control-bg) 86%, #fff), var(--we-surface-2)) !important;
+  border-color: var(--we-border) !important;
+}

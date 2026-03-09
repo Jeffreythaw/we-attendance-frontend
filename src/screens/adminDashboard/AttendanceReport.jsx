@@ -8,26 +8,6 @@ import { parseContentDispositionFilename, parseCsvText } from "./csv";
  * UI table columns (ONLY for display on screen)
  * Exports (Excel/PDF) include ALL columns from CSV automatically.
  */
-function formatOtHours(value) {
-  if (value == null || value === "") return "—";
-  const n = Number(value);
-  if (Number.isNaN(n)) return String(value);
-  const minutes = Math.max(0, Math.round(n * 60));
-  const h = Math.floor(minutes / 60);
-  const mm = minutes % 60;
-  if (h <= 0) return `${mm}m`;
-  if (mm === 0) return `${h}h`;
-  return `${h}h ${mm}m`;
-}
-
-const OT_COLUMNS = new Set([
-  "Mon~Fri OT (1.5x)",
-  "Sat OT (1.5x)",
-  "Sun/PH OT (2.0x)",
-  "Overnight OT (2.0x)",
-  "Total OT",
-]);
-
 const DISPLAY_COLUMNS = [
   { label: "No.", key: "No." },
   { label: "Name", key: "Staff Name" },
@@ -79,11 +59,17 @@ function getValueByAliases(row, aliases) {
   return "";
 }
 
+function getReportCellDisplayValue(row, key, phInRange) {
+  if (key === "Public Holiday") {
+    return (row?.[key] ?? "") === "" ? (phInRange ?? "—") : row?.[key];
+  }
+  return row?.[key] ?? "—";
+}
+
 export default function AttendanceReport({ from, to, disabled, onAuthError }) {
   const [reportBusy, setReportBusy] = useState(false);
   const [reportErr, setReportErr] = useState("");
   const [reportRows, setReportRows] = useState([]);
-  const [reportHeaders, setReportHeaders] = useState([]);
   const [reportOpen, setReportOpen] = useState(true);
   const [phInRange, setPhInRange] = useState(null);
 
@@ -132,7 +118,6 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
 
       const parsed = parseCsvText(text);
       setReportRows(parsed.rows || []);
-      setReportHeaders(parsed.headers || []);
     } catch (e) {
       const status = Number(e?.status);
       if (status === 401 || status === 403) {
@@ -198,9 +183,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
         await loadReport();
       }
 
-      const headers = reportHeaders?.length
-        ? reportHeaders
-        : Object.keys(reportRows?.[0] || {});
+      const headers = DISPLAY_COLUMNS.map((c) => c.label);
       if (!headers.length) throw new Error("No data to export.");
 
       const rowsToExport = filteredReportRows;
@@ -220,7 +203,9 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       autoTable(doc, {
         startY: 45,
         head: [headers],
-        body: rowsToExport.map((r) => headers.map((h) => String(r?.[h] ?? ""))),
+        body: rowsToExport.map((r) =>
+          DISPLAY_COLUMNS.map((c) => String(getReportCellDisplayValue(r, c.key, phInRange)))
+        ),
         theme: "striped",
         styles: {
           fontSize: 7,
@@ -254,11 +239,11 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
           </div>
 
           <div className="we-reportBtns">
-            <button className="we-btn-soft we-report-toggle" type="button" onClick={() => setReportOpen((v) => !v)} disabled={reportBusy}>
+            <button className="we-btn-soft we-report-toggle we-btn--apply" type="button" onClick={() => setReportOpen((v) => !v)} disabled={reportBusy}>
               {reportOpen ? "Hide" : "Show"}
             </button>
             <button
-              className="we-btn"
+              className="we-btn we-btn--load"
               type="button"
               onClick={loadReport}
               disabled={reportBusy || disabled}
@@ -267,7 +252,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
             </button>
 
             <button
-              className="we-btn"
+              className="we-btn-soft we-btn--load"
               type="button"
               onClick={downloadExcel}
               disabled={reportBusy || disabled || uiRowsCount === 0}
@@ -276,7 +261,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
             </button>
 
             <button
-              className="we-btn-soft"
+              className="we-btn-soft we-btn--load"
               type="button"
               onClick={downloadPdf}
               disabled={reportBusy || disabled || uiRowsCount === 0}
@@ -344,13 +329,9 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
                       {DISPLAY_COLUMNS.map((c) => (
                         <td key={c.key}>
                           {c.key === "Total OT" ? (
-                            <b>{formatOtHours(r?.[c.key])}</b>
-                          ) : c.key === "Public Holiday" ? (
-                            (r?.[c.key] ?? "") === "" ? (phInRange ?? "—") : r?.[c.key]
-                          ) : OT_COLUMNS.has(c.key) ? (
-                            formatOtHours(r?.[c.key])
+                            <b>{getReportCellDisplayValue(r, c.key, phInRange)}</b>
                           ) : (
-                            r?.[c.key] ?? "—"
+                            getReportCellDisplayValue(r, c.key, phInRange)
                           )}
                         </td>
                       ))}

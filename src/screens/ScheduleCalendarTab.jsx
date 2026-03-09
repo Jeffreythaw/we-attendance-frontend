@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { schedulesApi } from "../api/schedules";
 import { Card } from "../components/Card";
 
@@ -86,12 +86,17 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
   const [entries, setEntries] = useState([]);
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState(() => new Set());
+  const [workerPickerOpen, setWorkerPickerOpen] = useState(false);
+  const [workerQuery, setWorkerQuery] = useState("");
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("17:00");
   const [workLocation, setWorkLocation] = useState("");
   const [workTitle, setWorkTitle] = useState("");
   const [note, setNote] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingDraft, setEditingDraft] = useState(null);
+  const [editBusy, setEditBusy] = useState(false);
 
   const monthLabel = useMemo(() => {
     const [y, m] = monthIso.split("-").map(Number);
@@ -115,6 +120,33 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
     return map;
   }, [entries]);
   const selectedEntries = useMemo(() => byDay.get(selectedDay) || [], [byDay, selectedDay]);
+  const workerPickerRef = useRef(null);
+  const workerTriggerRef = useRef(null);
+
+  const filteredWorkers = useMemo(() => {
+    const q = workerQuery.trim().toLowerCase();
+    if (!q) return employees;
+    return employees.filter((e) => `${e.name || ""} ${e.id}`.toLowerCase().includes(q));
+  }, [employees, workerQuery]);
+
+  const selectedWorkerNames = useMemo(() => {
+    const idSet = new Set(Array.from(selectedEmployeeIds).map((x) => Number(x)));
+    return employees.filter((e) => idSet.has(Number(e.id))).map((e) => e.name);
+  }, [employees, selectedEmployeeIds]);
+
+  useEffect(() => {
+    function onPointerDown(ev) {
+      if (!workerPickerOpen) return;
+      const panel = workerPickerRef.current;
+      const trigger = workerTriggerRef.current;
+      const target = ev.target;
+      if ((panel && panel.contains(target)) || (trigger && trigger.contains(target))) return;
+      setWorkerPickerOpen(false);
+    }
+    if (workerPickerOpen) document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [workerPickerOpen]);
+
   const selectedByLocation = useMemo(() => {
     const map = new Map();
     for (const e of selectedEntries) {
@@ -213,6 +245,54 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
     }
   }
 
+  function startEdit(entry) {
+    setEditingId(entry.id);
+    setEditingDraft({
+      employeeId: entry.employeeId,
+      workDate: entry.workDate,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      workLocation: entry.workLocation || "",
+      workTitle: entry.workTitle || "",
+      note: entry.note || "",
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingDraft(null);
+  }
+
+  async function saveEdit() {
+    if (!editingId || !editingDraft) return;
+    if (!editingDraft.startTime || !editingDraft.endTime) {
+      setErr("Start and End times are required.");
+      return;
+    }
+
+    setEditBusy(true);
+    setErr("");
+    try {
+      await schedulesApi.updateEntry(editingId, {
+        employeeId: Number(editingDraft.employeeId),
+        workDate: editingDraft.workDate,
+        startTime: editingDraft.startTime,
+        endTime: editingDraft.endTime,
+        workLocation: editingDraft.workLocation,
+        workTitle: editingDraft.workTitle,
+        note: editingDraft.note,
+      });
+      cancelEdit();
+      await loadEntries();
+    } catch (e) {
+      const msg = e?.message || "Failed to update schedule";
+      if (String(msg).includes("401") || String(msg).includes("403")) return onAuthError?.();
+      setErr(msg);
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
   return (
     <div className="we-cal-root">
       <Card className="we-glass-card">
@@ -221,7 +301,7 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
             <div className="we-cal-title">Schedule Calendar</div>
             <div className="we-cal-sub">Monthly planning with multi-shift support</div>
           </div>
-          <button type="button" className="we-btn-soft" onClick={loadEntries} disabled={busy}>
+          <button type="button" className="we-btn-soft we-btn--refresh" onClick={loadEntries} disabled={busy}>
             {busy ? "Loading..." : "Refresh"}
           </button>
         </div>
@@ -292,14 +372,71 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
                 <div className="we-cal-list">
                   {group.list.map((e) => (
                     <div key={e.id} className={`we-cal-item we-cal-entryCard ${toneClassForEntry(e)}`}>
-                      <div><b>{e.startTime} - {e.endTime}</b> • {e.employeeName}</div>
-                      <div>{e.workTitle || "Work"}</div>
-                      {e.note ? <div>Note: {e.note}</div> : null}
-                      {canEditEntries ? (
-                        <div className="we-cal-rowBtns">
-                          <button type="button" className="we-btn danger" onClick={() => removeEntry(e.id)}>Delete</button>
+                      {editingId === e.id && editingDraft ? (
+                        <div className="we-cal-editWrap">
+                          <div className="we-cal-editGrid">
+                            <label className="we-clock-label">Date
+                              <input
+                                type="date"
+                                value={editingDraft.workDate}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, workDate: ev.target.value }))}
+                              />
+                            </label>
+                            <label className="we-clock-label">Start
+                              <input
+                                type="time"
+                                value={editingDraft.startTime}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, startTime: ev.target.value }))}
+                              />
+                            </label>
+                            <label className="we-clock-label">End
+                              <input
+                                type="time"
+                                value={editingDraft.endTime}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, endTime: ev.target.value }))}
+                              />
+                            </label>
+                            <label className="we-clock-label">Work Location
+                              <input
+                                value={editingDraft.workLocation}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, workLocation: ev.target.value }))}
+                              />
+                            </label>
+                            <label className="we-clock-label">Work Title
+                              <input
+                                value={editingDraft.workTitle}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, workTitle: ev.target.value }))}
+                              />
+                            </label>
+                            <label className="we-clock-label we-cal-span2">Note
+                              <input
+                                value={editingDraft.note}
+                                onChange={(ev) => setEditingDraft((d) => ({ ...d, note: ev.target.value }))}
+                              />
+                            </label>
+                          </div>
+                          <div className="we-cal-rowBtns">
+                            <button type="button" className="we-btn we-btn--save" onClick={saveEdit} disabled={editBusy}>
+                              {editBusy ? "Saving..." : "Save"}
+                            </button>
+                            <button type="button" className="we-btn-soft" onClick={cancelEdit} disabled={editBusy}>
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      ) : null}
+                      ) : (
+                        <>
+                          <div><b>{e.startTime} - {e.endTime}</b> • {e.employeeName}</div>
+                          <div>{e.workTitle || "Work"}</div>
+                          {e.note ? <div>Note: {e.note}</div> : null}
+                          {canEditEntries ? (
+                            <div className="we-cal-rowBtns">
+                              <button type="button" className="we-btn-soft we-btn--edit" onClick={() => startEdit(e)}>Edit</button>
+                              <button type="button" className="we-btn danger we-btn--delete" onClick={() => removeEntry(e.id)}>Delete</button>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -316,41 +453,68 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
             <label className="we-clock-label we-cal-span2">Worker
               <div className="we-cal-multiActions">
                 <button
+                  ref={workerTriggerRef}
                   type="button"
-                  className="we-btn-soft"
-                  onClick={() => setSelectedEmployeeIds(new Set(employees.map((e) => e.id)))}
+                  className="we-btn-soft we-btn--apply we-cal-workerTrigger"
+                  onClick={() => setWorkerPickerOpen((v) => !v)}
                 >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  className="we-btn-soft"
-                  onClick={() => setSelectedEmployeeIds(new Set())}
-                >
-                  Clear
+                  {selectedEmployeeIds.size > 0
+                    ? `${selectedEmployeeIds.size} selected`
+                    : "Select workers"}
                 </button>
               </div>
-              <div className="we-cal-multiList">
-                {employees.map((emp) => {
-                  const checked = selectedEmployeeIds.has(emp.id);
-                  return (
-                    <label key={emp.id} className="we-cal-multiItem">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          setSelectedEmployeeIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(emp.id)) next.delete(emp.id);
-                            else next.add(emp.id);
-                            return next;
-                          });
-                        }}
-                      />
-                      <span>{emp.name}</span>
-                    </label>
-                  );
-                })}
+              {workerPickerOpen ? (
+                <div className="we-cal-workerPicker" ref={workerPickerRef}>
+                  <div className="we-cal-workerSearch">
+                    <input
+                      type="text"
+                      value={workerQuery}
+                      onChange={(e) => setWorkerQuery(e.target.value)}
+                      placeholder="Search worker..."
+                    />
+                  </div>
+                  <div className="we-cal-multiActions">
+                    <button
+                      type="button"
+                      className="we-btn-soft we-btn--apply"
+                      onClick={() => setSelectedEmployeeIds(new Set(filteredWorkers.map((e) => e.id)))}
+                    >
+                      Select filtered
+                    </button>
+                    <button
+                      type="button"
+                      className="we-btn-soft we-btn--apply"
+                      onClick={() => setSelectedEmployeeIds(new Set())}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="we-cal-multiList">
+                    {filteredWorkers.map((emp) => {
+                      const checked = selectedEmployeeIds.has(emp.id);
+                      return (
+                        <label key={emp.id} className="we-cal-multiItem">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setSelectedEmployeeIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(emp.id)) next.delete(emp.id);
+                                else next.add(emp.id);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span>{emp.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <div className="we-cal-workerSummary">
+                {selectedWorkerNames.length ? selectedWorkerNames.join(", ") : "No worker selected"}
               </div>
             </label>
             <label className="we-clock-label">Date
@@ -371,7 +535,7 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
             <label className="we-clock-label we-cal-span2">Note
               <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="optional details" />
             </label>
-            <button type="submit" className="we-btn" disabled={saveBusy}>{saveBusy ? "Saving..." : "Save Schedule"}</button>
+            <button type="submit" className="we-btn we-btn--save" disabled={saveBusy}>{saveBusy ? "Saving..." : "Save Schedule"}</button>
           </form>
         </Card>
       ) : (

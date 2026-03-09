@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { attendanceApi } from "../api/attendance";
 import { fmtDateTime, parseApiDate } from "../utils/datetime";
+import { asMinutes, formatDurationMinutes, pickReportOtMinutes, pickReportWorkedMinutes } from "../utils/attendanceFormat";
 import "./HistoryScreen.css";
 
 /** Business rules (Singapore) */
@@ -175,11 +176,6 @@ function isLate(checkInAt) {
   return hh > ON_TIME_HOUR || (hh === ON_TIME_HOUR && mm > ON_TIME_MINUTE);
 }
 
-function asMinutes(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
-}
-
 function backendMetricsFromRow(r) {
   const hasReport =
     r?.reportWorkedMinutes != null ||
@@ -190,25 +186,22 @@ function backendMetricsFromRow(r) {
     r?.reportOvernightOtMinutes != null;
 
   const workedMins = hasReport
-    ? asMinutes(r?.reportWorkedMinutes)
+    ? pickReportWorkedMinutes(r)
     : Math.max(0, asMinutes(r?.regularMinutes) + asMinutes(r?.otMinutes));
 
-  const monFriOtMins = hasReport ? asMinutes(r?.reportMonFriOtMinutes) : 0;
-  const satOtMins = hasReport ? asMinutes(r?.reportSatOtMinutes) : 0;
-  const sunPhOtMins = hasReport ? asMinutes(r?.reportSunPhOtMinutes) : 0;
-  const overnightOtMins = hasReport ? asMinutes(r?.reportOvernightOtMinutes) : 0;
-  const otMins = hasReport ? asMinutes(r?.reportOtMinutes) : asMinutes(r?.otMinutes);
+  let monFriOtMins = hasReport ? asMinutes(r?.reportMonFriOtMinutes) : 0;
+  let satOtMins = hasReport ? asMinutes(r?.reportSatOtMinutes) : 0;
+  let sunPhOtMins = hasReport ? asMinutes(r?.reportSunPhOtMinutes) : 0;
+  let overnightOtMins = hasReport ? asMinutes(r?.reportOvernightOtMinutes) : 0;
+  const otMins = hasReport
+    ? pickReportOtMinutes(r)
+    : asMinutes(r?.otMinutes);
 
   return { workedMins, otMins, monFriOtMins, satOtMins, sunPhOtMins, overnightOtMins };
 }
 
 function formatHm(mins) {
-  const m = Math.max(0, Math.round(Number(mins) || 0));
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h <= 0) return `${mm}m`;
-  if (mm === 0) return `${h}h`;
-  return `${h}h ${mm}m`;
+  return formatDurationMinutes(mins);
 }
 
 function formatHShort(mins) {
@@ -218,11 +211,6 @@ function formatHShort(mins) {
   if (h === 0) return `${mm}m`;
   if (mm === 0) return `${h}h`;
   return `${h}.${Math.round((mm / 60) * 10)}h`;
-}
-
-function roundOtMinutes(mins) {
-  const m = Math.max(0, Math.round(Number(mins) || 0));
-  return Math.floor(m / 30) * 30;
 }
 
 export function HistoryScreen({ onAuthError }) {
@@ -454,12 +442,12 @@ export function HistoryScreen({ onAuthError }) {
     const denom = Math.max(1, onTimeWorkdaySessions + lateWorkdaySessions);
     const onTimePct = Math.round((onTimeWorkdaySessions / denom) * 100);
 
-    const overtimeMinutes = roundOtMinutes(overtimeAllRaw);
-    const overtimeWorkMinutes = roundOtMinutes(overtimeWorkdaysRaw);
-    const overtimeOffMinutes = roundOtMinutes(overtimeOffDaysRaw);
-    const monFriOtMinutes = roundOtMinutes(monFriOtMinutesRaw);
-    const satOtMinutes = roundOtMinutes(satOtMinutesRaw);
-    const sunPhOtMinutes = roundOtMinutes(sunPhOtMinutesRaw);
+    const overtimeMinutes = asMinutes(overtimeAllRaw);
+    const overtimeWorkMinutes = asMinutes(overtimeWorkdaysRaw);
+    const overtimeOffMinutes = asMinutes(overtimeOffDaysRaw);
+    const monFriOtMinutes = asMinutes(monFriOtMinutesRaw);
+    const satOtMinutes = asMinutes(satOtMinutesRaw);
+    const sunPhOtMinutes = asMinutes(sunPhOtMinutesRaw);
 
     return {
       sessions,
@@ -505,29 +493,13 @@ export function HistoryScreen({ onAuthError }) {
   }, [stats]);
 
   /**
-   * ✅ Daily report = THIS WEEK (Sun → Sat) in Singapore
+   * ✅ Daily report = selected Date Range (Singapore days, inclusive)
    */
   const daily = useMemo(() => {
-    const todayIso = isoDateInSg(now);
-    const todayRange = sgDayRangeUtcMs(todayIso);
-
-    const todayNoon = todayRange
-      ? new Date(todayRange.startUtcMs + 12 * 60 * 60 * 1000)
-      : new Date();
-
-    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SG_TZ, weekday: "short" }).format(todayNoon);
-    const mapDow = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-    const back = mapDow[dow] ?? 0;
-
-    const todaySgStartUtc = todayRange ? todayRange.startUtcMs : todayNoon.getTime();
-    const weekStartUtcMs = todaySgStartUtc - back * 24 * 60 * 60 * 1000;
-
-    // 7 days ISO keys
-    const daysIso = [];
-    for (let i = 0; i < 7; i += 1) {
-      const noon = new Date(weekStartUtcMs + i * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000);
-      daysIso.push(isoDateInSg(noon));
-    }
+    const hasRange = Boolean(rangeSelected.fromIso && rangeSelected.toIso);
+    const daysIso = hasRange
+      ? daysBetweenInclusiveIso(rangeSelected.fromIso, rangeSelected.toIso)
+      : daysBetweenInclusiveIso(weekRangeIso(now).fromIso, weekRangeIso(now).toIso);
 
     const map = new Map();
     for (const iso of daysIso) {
@@ -573,7 +545,7 @@ export function HistoryScreen({ onAuthError }) {
     const items = Array.from(map.values());
     const maxOt = Math.max(1, ...items.map((x) => x.otMins));
     return { items, maxOt };
-  }, [rowsInRange, isHolidayIso, isWorkdayIso, now]);
+  }, [rowsInRange, isHolidayIso, isWorkdayIso, now, rangeSelected]);
 
   // ✅ Search list works on rowsInRange
   const filtered = useMemo(() => {
@@ -641,7 +613,7 @@ export function HistoryScreen({ onAuthError }) {
             </div>
           </div>
 
-          <button className="we-h-refresh" onClick={refresh} disabled={busy}>
+          <button className="we-h-refresh we-btn--refresh" onClick={refresh} disabled={busy}>
             {busy ? (
               <span className="we-h-spin">
                 <span className="we-h-spinner" />
@@ -681,16 +653,16 @@ export function HistoryScreen({ onAuthError }) {
             </div>
 
             <div className="we-h-rangeBtns">
-              <button className="we-h-chip" onClick={setThisWeek} type="button">
+              <button className="we-h-chip we-btn-soft we-btn--apply" onClick={setThisWeek} type="button">
                 This Week
               </button>
-              <button className="we-h-chip" onClick={setThisMonth} type="button">
+              <button className="we-h-chip we-btn-soft we-btn--apply" onClick={setThisMonth} type="button">
                 This Month
               </button>
-              <button className="we-h-chip" onClick={setLastMonth} type="button">
+              <button className="we-h-chip we-btn-soft we-btn--apply" onClick={setLastMonth} type="button">
                 Last Month
               </button>
-              <button className="we-h-chip ghost" onClick={resetRange} type="button">
+              <button className="we-h-chip ghost we-btn-soft we-btn--apply" onClick={resetRange} type="button">
                 Reset
               </button>
             </div>
@@ -843,7 +815,7 @@ export function HistoryScreen({ onAuthError }) {
             <div>
               <div className="we-h-cardTitle">Daily Report</div>
               <div className="we-h-cardHint">
-                This week (Sun → Sat) • Donut split by 24h: work, OT, rest
+                Selected range ({rangeText}) • Donut split by 24h: work, OT, rest
               </div>
             </div>
 
@@ -944,9 +916,9 @@ export function HistoryScreen({ onAuthError }) {
                 const isOpen = !r.checkOutAt;
                 const mm = backendMetricsFromRow(r);
                 const worked = r.checkOutAt ? mm.workedMins : null;
-                const monFriOt = roundOtMinutes(mm.monFriOtMins);
-                const satOt = roundOtMinutes(mm.satOtMins);
-                const sunPhOt = roundOtMinutes(mm.sunPhOtMins + mm.overnightOtMins);
+                const monFriOt = asMinutes(mm.monFriOtMins);
+                const satOt = asMinutes(mm.satOtMins);
+                const sunPhOt = asMinutes(mm.sunPhOtMins + mm.overnightOtMins);
                 const ot = r.checkOutAt ? monFriOt + satOt + sunPhOt : 0;
                 const otSplit = r.checkOutAt
                   ? `Mon-Fri ${formatHm(monFriOt)} | Sat ${formatHm(satOt)} | Sun/PH ${formatHm(sunPhOt)}`

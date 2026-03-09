@@ -1,366 +1,205 @@
-/* =========================
-   Attendance Report (modern)
-   ========================= */
-
+/* ===== Attendance Report (clean panel style) ===== */
 .we-reportCard {
-  padding: 12px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
 }
 
 .we-reportActions {
   display: grid;
   gap: 10px;
-  margin-bottom: 10px;
   padding: 10px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  border: 1px solid var(--ad-border);
+  background: color-mix(in srgb, var(--ad-soft-bg-2) 62%, var(--ad-soft-bg));
 }
 
-/* Title + buttons (top line) */
 .we-reportTopRow {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-/* Buttons group -> looks like a table toolbar */
 .we-reportBtns {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
   gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
+  width: 100%;
 }
 
-/* Smaller, consistent button sizing */
 .we-reportBtns > button {
-  height: var(--we-control-h);
-  padding: 0 12px;
+  width: 100%;
+  height: 36px;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.2px;
-  line-height: 1;
+  padding: 0 12px;
 }
 
-/* Make “Load Report” subtle */
-.we-reportBtns .we-btn-soft {
-  box-shadow: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(15, 23, 42, 0.85);
-}
-.we-reportBtns .we-btn-soft:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.we-reportBtns .we-btn-soft:active {
-  transform: translateY(1px);
-}
-
-/* Search row */
 .we-reportSearchRow {
   display: flex;
-  gap: 10px;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-/* Checkbox */
 .we-reportCheck {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 11px;
   font-weight: 900;
-  opacity: 0.9;
-  user-select: none;
-  white-space: nowrap;
+  color: var(--ad-text-2);
 }
+
 .we-reportCheck input {
   width: 16px;
   height: 16px;
-  accent-color: #a5b4fc;
+  accent-color: var(--ad-accent);
 }
 
-/* Search bar */
 .we-reportSearch {
   flex: 1 1 280px;
+  min-width: 0;
+  height: 36px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  height: var(--we-control-h) !important;
-  min-height: var(--we-control-h) !important;
-  max-height: var(--we-control-h) !important;
-  border-radius: var(--we-radius-control);
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  align-self: flex-start;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--ad-border);
+  background: var(--ad-soft-bg-2);
 }
+
+.we-reportSearch .we-admin-searchIcon {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
 .we-reportSearch input {
+  flex: 1;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: #fff;
-  width: 100%;
-  height: 100% !important;
-  min-width: 0;
-  margin: 0;
-  padding: 0 !important;
-  line-height: var(--we-control-h) !important;
+  color: var(--ad-text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
-.we-reportSearch .we-admin-searchIcon {
-  font-size: 13px;
-  line-height: 1;
-  opacity: 0.78;
-}
+
 .we-reportSearch:focus-within {
-  border-color: rgba(165, 180, 252, 0.35);
-  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.1);
+  border-color: color-mix(in srgb, var(--ad-accent) 60%, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 0 0 2px rgba(127, 147, 255, 0.18);
 }
 
-/* =========================
-   DATA-GRID STYLE TABLE (scoped)
-   ========================= */
+.we-reportEmpty {
+  border-radius: 14px;
+  border: 1px solid var(--ad-border);
+  background: color-mix(in srgb, var(--ad-soft-bg-2) 62%, var(--ad-soft-bg));
+  padding: 22px 14px;
+  text-align: center;
+}
 
-/* outer frame */
+.we-reportEmptyTitle {
+  color: var(--ad-text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.we-reportEmptySub {
+  margin-top: 6px;
+  color: var(--ad-text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Keep one restrained table language for dashboard + report */
 .we-reportCard .we-admin-tableWrap {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.28),
-    rgba(15, 23, 42, 0.18)
-  );
+  border: 1px solid var(--ad-border);
+  background: color-mix(in srgb, var(--ad-soft-bg-2) 62%, var(--ad-soft-bg));
   overflow: auto;
 }
 
-/* table */
 .we-reportCard .we-admin-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
   font-size: 11.5px;
 }
 
-/* header */
 .we-reportCard .we-admin-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  color: rgba(226, 232, 240, 0.96);
+  position: static;
+  background: color-mix(in srgb, var(--ad-soft-bg-2) 72%, var(--ad-soft-bg));
+  color: var(--ad-text);
+  border-bottom: 1px solid var(--ad-border);
+  border-right: 1px solid color-mix(in srgb, var(--ad-border) 72%, transparent);
   font-size: 11px;
-  font-weight: 950;
-  letter-spacing: 0.25px;
-
+  font-weight: 900;
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  white-space: nowrap;
 }
 
-/* body */
 .we-reportCard .we-admin-table tbody td {
   padding: 8px 10px;
-  color: rgba(226, 232, 240, 0.92);
-  font-weight: 800;
-  vertical-align: middle;
-  white-space: nowrap;
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--ad-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--ad-border) 64%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--ad-border) 60%, transparent);
 }
 
-/* last column no right border */
 .we-reportCard .we-admin-table thead th:last-child,
 .we-reportCard .we-admin-table tbody td:last-child {
   border-right: 0;
 }
 
-/* zebra */
 .we-reportCard .we-admin-table tbody tr:nth-child(odd) td {
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--ad-soft-bg) 78%, transparent);
 }
 
-/* hover */
 .we-reportCard .we-admin-table tbody tr:hover td {
-  background: rgba(15, 23, 42, 0.85);
+  background: color-mix(in srgb, var(--ad-accent) 15%, var(--ad-soft-bg));
 }
 
-/* numeric alignment (everything except No. + Name) */
-.we-reportCard .we-admin-table tbody td:nth-child(n + 3),
-.we-reportCard .we-admin-table thead th:nth-child(n + 3) {
+.we-reportCard .we-admin-table thead th:nth-child(n + 3),
+.we-reportCard .we-admin-table tbody td:nth-child(n + 3) {
   text-align: right;
 }
 
-/* =========================
-   Sticky first 2 columns (smaller!)
-   ========================= */
-
-/* No. column (smaller) */
-.we-reportCard .we-admin-table thead th:nth-child(1),
-.we-reportCard .we-admin-table tbody td:nth-child(1) {
-  position: sticky;
-  left: 0;
-  z-index: 6;
-
-  background: rgba(17, 24, 39, 0.78);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
-  text-align: right;
-}
-
-/* Name column (smaller + ellipsis) */
-.we-reportCard .we-admin-table thead th:nth-child(2),
 .we-reportCard .we-admin-table tbody td:nth-child(2) {
-  position: sticky;
-  left: 48px;
-  z-index: 6;
-
-  background: rgba(17, 24, 39, 0.78);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-
-  min-width: 180px;
-  max-width: 220px; /* ✅ don’t eat screen */
-  text-align: left;
-
-  overflow: hidden;
+  max-width: 220px;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden;
 }
 
-/* sticky header above sticky body */
-.we-reportCard .we-admin-table thead th:nth-child(1),
-.we-reportCard .we-admin-table thead th:nth-child(2) {
-  z-index: 10;
-}
-
-/* Total OT (<b>) pops */
 .we-reportCard .we-admin-table tbody td b {
-  color: #fff;
   font-weight: 950;
+  color: var(--ad-text);
 }
 
-/* =========================
-   Mobile / narrow screens
-   - turn OFF sticky cols (better scrolling)
-   ========================= */
 @media (max-width: 860px) {
-  .we-reportTopRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .we-reportBtns {
-    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .we-reportBtns > button {
-    flex: 1;
-    min-width: 120px;
-  }
-  .we-reportSearchWrap {
     min-width: 0;
-    width: 100%;
   }
+
   .we-reportSearchRow {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-  }
-  .we-reportSearch input {
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: #e2e8f0;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    margin: 0;
-    padding: 0 !important;
-    line-height: 24px !important;
-    font-size: 10px;
   }
 
   .we-reportSearch {
-    flex: 0 0 auto;
     width: 100%;
-    height: 24px !important;
-    min-height: 24px !important;
-    max-height: 24px !important;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 7px;
-    border-radius: 9px;
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    overflow: hidden;
-  }
-
-  /* slightly smaller table */
-  .we-reportCard .we-admin-table {
-    font-size: 10px;
-  }
-  .we-reportCard .we-admin-table thead th {
-    font-size: 9.5px;
-  }
-
-  /* ✅ IMPORTANT: disable sticky columns on mobile */
-  .we-reportCard .we-admin-table thead th:nth-child(1),
-  .we-reportCard .we-admin-table tbody td:nth-child(1),
-  .we-reportCard .we-admin-table thead th:nth-child(2),
-  .we-reportCard .we-admin-table tbody td:nth-child(2) {
-    position: static;
-    left: auto;
-    z-index: auto;
-    max-width: none;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: nowrap;
-    background: transparent; /* let zebra/hover show */
   }
 }
 
-.we-reportEmpty {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.28);
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  text-align: center;
-}
-.we-reportEmptyTitle {
-  font-weight: 950;
-  color: #fff;
-}
-.we-reportEmptySub {
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.we-report-toggle {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 10.5px;
-  font-weight: 900;
+@media (max-width: 520px) {
+  .we-reportBtns {
+    grid-template-columns: 1fr;
+  }
 }

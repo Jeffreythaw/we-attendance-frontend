@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, apiFetchBlob } from "../api/client";
+import { useTheme } from "../theme/context";
 
 import "./adminDashboard/styles/base.css";
 import "./adminDashboard/styles/report.css";
@@ -100,6 +101,7 @@ function applyRejectionDefaults(setters) {
 }
 
 export default function AdminQuotations({ onAuthError }) {
+  const { theme } = useTheme();
   const [err, setErr] = useState("");
   const [qiBusy, setQiBusy] = useState(false);
   const [quotationInvoices, setQuotationInvoices] = useState([]);
@@ -463,7 +465,7 @@ export default function AdminQuotations({ onAuthError }) {
   }, [filteredRows]);
 
   return (
-    <div className="we-admin-root">
+    <div className={`we-admin-root we-theme-${theme}`}>
       <div className="we-admin-bg" aria-hidden="true">
         <div className="we-admin-blob we-admin-blob-1" />
         <div className="we-admin-blob we-admin-blob-2" />
@@ -479,7 +481,7 @@ export default function AdminQuotations({ onAuthError }) {
               <div className="we-admin-title">Quotations & Invoices</div>
               <div className="we-admin-sub">Aging by customer payment term</div>
             </div>
-            <button className="we-btn" onClick={loadQuotationInvoices} disabled={qiBusy}>
+            <button className="we-btn we-btn--refresh" onClick={loadQuotationInvoices} disabled={qiBusy}>
               {qiBusy ? "Loading..." : "Refresh"}
             </button>
           </div>
@@ -522,7 +524,7 @@ export default function AdminQuotations({ onAuthError }) {
             <label className="we-a-label">Payment Term (days)<input type="number" min="0" max="3650" value={qiPaymentTermDays} onChange={(e) => setQiPaymentTermDays(e.target.value)} disabled={qiQuotStatus === "Rejected"} /></label>
             <label className="we-a-label">Payment Status<select className="we-select" value={qiPaymentStatus} onChange={(e) => setQiPaymentStatus(e.target.value)} disabled={qiQuotStatus === "Rejected"}><option value="Pending">Pending</option><option value="Received">Received</option><option value="N/A">N/A</option></select></label>
             <label className="we-a-label">Received Date<input type="date" value={qiReceivedDate} onChange={(e) => setQiReceivedDate(e.target.value)} disabled={qiQuotStatus === "Rejected"} /></label>
-            <button className="we-btn" type="submit" disabled={qiBusy}>{qiBusy ? "Saving..." : "Create"}</button>
+            <button className="we-btn we-btn--save" type="submit" disabled={qiBusy}>{qiBusy ? "Saving..." : "Create"}</button>
           </form>
         </div>
 
@@ -544,8 +546,8 @@ export default function AdminQuotations({ onAuthError }) {
             <label className="we-a-label">Invoice From<input type="date" value={qiFilterFrom} onChange={(e) => setQiFilterFrom(e.target.value)} /></label>
             <label className="we-a-label">Invoice To<input type="date" value={qiFilterTo} onChange={(e) => setQiFilterTo(e.target.value)} /></label>
             <label className="we-a-label">Report Month<input type="month" value={qiReportMonth} onChange={(e) => setQiReportMonth(e.target.value)} /></label>
-            <button className="we-btn-soft" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("csv")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Download Excel (CSV)"}</button>
-            <button className="we-btn-soft" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("html")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Open PDF (Print)"}</button>
+            <button className="we-btn-soft we-btn--load" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("csv")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Download Excel (CSV)"}</button>
+            <button className="we-btn-soft we-btn--load" style={{ minHeight: 40 }} type="button" onClick={() => downloadQuotationReport("html")} disabled={reportBusy}>{reportBusy ? "Preparing..." : "Open PDF (Print)"}</button>
           </div>
         </div>
 
@@ -723,11 +725,11 @@ export default function AdminQuotations({ onAuthError }) {
                       <td className="we-qi-actions">
                         {isEditing ? (
                           <>
-                            <button className="we-qi-editBtn" type="button" onClick={() => saveEdit(r.id)}>Save</button>
-                            <button className="we-qi-cancelBtn" type="button" onClick={() => cancelEdit(r.id)}>Cancel</button>
+                            <button className="we-qi-editBtn we-btn--save" type="button" onClick={() => saveEdit(r.id)}>Save</button>
+                            <button className="we-qi-cancelBtn we-btn--apply" type="button" onClick={() => cancelEdit(r.id)}>Cancel</button>
                           </>
                         ) : (
-                          <button className="we-qi-editBtn" type="button" onClick={() => startEdit(r)}>Edit</button>
+                          <button className="we-qi-editBtn we-btn--edit" type="button" onClick={() => startEdit(r)}>Edit</button>
                         )}
                       </td>
                     </tr>

@@ -51,6 +51,20 @@
   --danger: linear-gradient(135deg, rgba(244,63,94,1), rgba(236,72,153,1));
 }
 
+html.theme-light .we-clock-root {
+  --bg-base: #eef3fb;
+  --glass: rgba(255,255,255,.72);
+  --glass-b: rgba(27,52,93,.2);
+  --ink: #1a2d4a;
+  --muted: rgba(47,69,101,.82);
+  --muted2: rgba(47,69,101,.72);
+  --line: rgba(27,52,93,.18);
+  --blob-1: radial-gradient(circle at 30% 30%, #a8bbd9, transparent 58%);
+  --blob-2: radial-gradient(circle at 30% 30%, #9bb4d4, transparent 55%);
+  --blob-3: radial-gradient(circle at 30% 30%, #c5d4e8, transparent 58%);
+  --accent: linear-gradient(135deg, rgba(79,125,255,.9), rgba(102,162,255,.9));
+}
+
 .we-clock-root.is-day{
   --bg-base: #081324;
   --blob-1: radial-gradient(circle at 30% 30%, #60a5fa, transparent 58%);
@@ -219,7 +233,7 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
   font-size: 12px;
   font-weight: 900;
-  color: rgba(226,232,240,.95);
+  color: var(--ink);
   white-space: nowrap;
 }
 .we-clock-chip .ic{
@@ -312,7 +326,7 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: #fff;
+  color: var(--ink);
   font-size: 14px;
   min-width: 0;
 }
@@ -425,7 +439,7 @@
   border: 1px solid rgba(255,255,255,.12);
   font-size: 14px;
 }
-.we-clock-miniTop{ font-weight: 950; font-size: 12px; color: #fff; }
+.we-clock-miniTop{ font-weight: 950; font-size: 12px; color: var(--ink); }
 .we-clock-miniBot{ font-size: 11px; opacity: .8; margin-top: 2px; }
 .we-clock-mini.compact{ flex: 0 0 auto; }
 
@@ -452,16 +466,16 @@
   line-height: 1.3;
 }
 .we-clock-scheduleList .time{
-  color: #e2e8f0;
+  color: var(--ink);
   font-weight: 900;
   margin-right: 6px;
 }
-.we-clock-scheduleList .task{ color: #fff; }
+.we-clock-scheduleList .task{ color: var(--ink); }
 .we-clock-scheduleList .place{
   color: var(--muted);
   margin-left: 6px;
 }
-.we-clock-strong{ font-weight: 950; color: #fff; }
+.we-clock-strong{ font-weight: 950; color: var(--ink); }
 
 /* ================================
    Buttons
@@ -501,7 +515,7 @@
   padding: 12px 14px;
   background: rgba(255,255,255,.10);
   border: 1px solid rgba(255,255,255,.14);
-  color: #fff;
+  color: var(--ink);
   font-weight: 950;
   cursor: pointer;
   transition: background .12s ease, opacity .12s ease;
@@ -555,7 +569,7 @@
 .we-clock-recentTitle{
   font-size: 14px;
   font-weight: 950;
-  color: #fff;
+  color: var(--ink);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -577,7 +591,7 @@
   gap: 10px;
   align-items: flex-start;
 }
-.we-clock-itemId{ font-weight: 950; color: #fff; }
+.we-clock-itemId{ font-weight: 950; color: var(--ink); }
 .we-clock-itemNote{
   font-size: 12px;
   opacity: .75;
@@ -680,7 +694,7 @@
 .we-clock-segBtn {
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  color: var(--ink);
   border-radius: 999px;
   padding: 8px 12px;
   font-size: 12px;
@@ -694,10 +708,17 @@
 
 .we-cal-root { display: grid; gap: 10px; }
 .we-cal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.we-cal-title { font-size: 14px; font-weight: 950; color: #fff; }
-.we-cal-sub { font-size: 12px; opacity: .75; }
+.we-cal-title { font-size: 14px; font-weight: 950; color: var(--ink); }
+.we-cal-sub { font-size: 12px; color: var(--muted); }
 .we-cal-list { display: grid; gap: 8px; }
-.we-cal-item { border: 1px solid rgba(255,255,255,.12); background: rgba(15,23,42,.28); border-radius: 12px; padding: 10px; display: grid; gap: 4px; }
+.we-cal-item { border: 1px solid var(--line); background: var(--glass); border-radius: 12px; padding: 10px; display: grid; gap: 4px; }
+.we-cal-item,
+.we-cal-item b,
+.we-cal-list,
+.we-cal-dayTop,
+.we-cal-more {
+  color: var(--ink);
+}
 .we-cal-scheduleGrid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .we-cal-locCard { position: relative; overflow: hidden; }
 .we-cal-locCard::before{
@@ -708,8 +729,19 @@
   background: var(--cal-tone, rgba(99,102,241,.85));
 }
 .we-cal-entryCard{
-  border-color: color-mix(in srgb, var(--cal-tone, rgba(99,102,241,.85)) 45%, rgba(255,255,255,.15));
+  border-color: color-mix(in srgb, var(--cal-tone, rgba(99,102,241,.85)) 45%, var(--line));
   background: color-mix(in srgb, var(--cal-tone, rgba(99,102,241,.85)) 16%, rgba(15,23,42,.7));
+}
+.we-cal-editWrap{ display: grid; gap: 8px; }
+.we-cal-editGrid{ display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.we-cal-editGrid .we-cal-span2{ grid-column: 1 / -1; }
+.we-cal-editGrid input{
+  height: var(--we-control-h);
+  border-radius: var(--we-radius-control);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 78%, transparent);
+  color: var(--ink);
+  padding: 0 10px;
 }
 .we-cal-form { display: grid; gap: 8px; }
 .we-cal-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -719,9 +751,9 @@
 .we-cal-form input, .we-cal-form select {
   height: 38px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(15,23,42,.35);
-  color: #fff;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 72%, transparent);
+  color: var(--ink);
   padding: 0 10px;
 }
 .we-cal-multiActions {
@@ -729,12 +761,34 @@
   gap: 8px;
   margin-bottom: 8px;
 }
+.we-cal-workerTrigger {
+  width: 100%;
+  justify-content: center;
+}
+.we-cal-workerPicker {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--glass) 82%, transparent);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.we-cal-workerSearch input {
+  width: 100%;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 72%, transparent);
+  color: var(--ink);
+  padding: 0 10px;
+}
 .we-cal-multiList {
   max-height: 180px;
   overflow: auto;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(15,23,42,.25);
+  background: color-mix(in srgb, var(--glass) 68%, transparent);
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -746,7 +800,16 @@
   font-size: 12px;
   font-weight: 800;
 }
+.we-cal-workerSummary {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
 .we-cal-rowBtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.we-cal-rowBtns > button {
+  flex: 1 1 0;
+  min-height: 40px;
+}
 
 .we-cal-toolbar {
   display: grid;
@@ -756,9 +819,9 @@
   margin-bottom: 10px;
 }
 .we-cal-nav {
-  border: 1px solid rgba(255,255,255,.16);
-  background: rgba(255,255,255,.08);
-  color: #fff;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: var(--ink);
   border-radius: 12px;
   height: 38px;
   font-size: 20px;
@@ -768,15 +831,15 @@
 .we-cal-monthLabel {
   text-align: center;
   font-weight: 900;
-  color: #fff;
+  color: var(--ink);
   font-size: 16px;
 }
 .we-cal-filter {
   height: 38px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(15,23,42,.35);
-  color: #fff;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 72%, transparent);
+  color: var(--ink);
   padding: 0 10px;
 }
 
@@ -794,9 +857,9 @@
 .we-cal-day {
   min-height: 92px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(15,23,42,.26);
-  color: #fff;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 70%, transparent);
+  color: var(--ink);
   text-align: left;
   padding: 8px;
   display: grid;
@@ -855,9 +918,19 @@
 .we-cal-chip.tone-5, .we-cal-locCard.tone-5, .we-cal-entryCard.tone-5 { --cal-tone: rgba(20,184,166,.9); }
 .we-cal-chip[class*="tone-"]{
   background: color-mix(in srgb, var(--cal-tone) 22%, rgba(15,23,42,.9));
-  border-color: color-mix(in srgb, var(--cal-tone) 45%, rgba(255,255,255,.2));
+  border-color: color-mix(in srgb, var(--cal-tone) 45%, var(--line));
+  color: #f8fbff;
 }
-.we-cal-more { font-size: 10px; opacity: .7; }
+.we-cal-more { font-size: 10px; color: var(--muted); }
+
+html.theme-light .we-cal-entryCard {
+  background: color-mix(in srgb, var(--cal-tone, rgba(79,125,255,.85)) 18%, rgba(255,255,255,.92));
+}
+
+html.theme-light .we-cal-chip[class*="tone-"]{
+  background: color-mix(in srgb, var(--cal-tone) 22%, rgba(255,255,255,.96));
+  color: #14315d;
+}
 
 /* ================================
    Responsive (small phones)
@@ -894,6 +967,9 @@
     gap: 6px;
   }
   .we-cal-scheduleGrid {
+    grid-template-columns: 1fr;
+  }
+  .we-cal-editGrid {
     grid-template-columns: 1fr;
   }
   .we-cal-form-grid {

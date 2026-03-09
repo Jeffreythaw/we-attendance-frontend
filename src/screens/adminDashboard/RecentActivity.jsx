@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { formatDurationMinutes, pickReportOtMinutes } from "../../utils/attendanceFormat";
 
 const SG_TZ = "Asia/Singapore";
 
@@ -103,14 +104,6 @@ function formatTimeOnly(value) {
   }).format(d);
 }
 
-function toFiniteNumber(...values) {
-  for (const value of values) {
-    const n = Number(value);
-    if (Number.isFinite(n)) return n;
-  }
-  return null;
-}
-
 function roundOtDisplayMinutes(mins) {
   const n = Math.max(0, Math.round(Number(mins) || 0));
   if (n <= 0) return 0;
@@ -193,7 +186,7 @@ function deriveOtMinutesByPolicy(row, holidaySet = null) {
     inWall.getUTCFullYear(),
     inWall.getUTCMonth(),
     inWall.getUTCDate(),
-    17, 30, 0, 0
+    17, 0, 0, 0
   ));
 
   const effectiveOut = outWall >= fivePm && outWall < otStart ? fivePm : outWall;
@@ -202,16 +195,8 @@ function deriveOtMinutesByPolicy(row, holidaySet = null) {
 }
 
 function calcOtMins(row, holidaySet = null) {
-  const backend = toFiniteNumber(
-    row?.otMinutes,
-    row?.OtMinutes,
-    row?.otMins,
-    row?.overtimeMinutes,
-    row?.overtimeMins,
-    row?.totalOtMinutes,
-    row?.ot,
-  );
-  if (backend != null) return roundOtDisplayMinutes(Math.max(0, Math.round(backend)));
+  const backend = pickReportOtMinutes(row);
+  if (backend > 0) return backend;
 
   const derived = deriveOtMinutesByPolicy(row, holidaySet);
   if (derived != null) return roundOtDisplayMinutes(derived);
@@ -219,13 +204,8 @@ function calcOtMins(row, holidaySet = null) {
 }
 
 function formatOt(row, holidaySet = null) {
-  const mins = roundOtDisplayMinutes(calcOtMins(row, holidaySet));
-  if (mins <= 0) return "0m";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h <= 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  const mins = calcOtMins(row, holidaySet);
+  return mins <= 0 ? "0m" : formatDurationMinutes(mins);
 }
 
 function safeMapUrl(row) {
@@ -256,6 +236,7 @@ export default function RecentActivity({
   onEdit,
   onlyTodayByDefault = true,
   mapUrl,
+  embedded = false,
 }) {
   const [q, setQ] = useState("");
   const [employeeId, setEmployeeId] = useState("");
@@ -313,7 +294,7 @@ export default function RecentActivity({
   }, [filtered]);
 
   return (
-    <div className="we-glass-card we-raCard">
+    <div className={`${embedded ? "" : "we-glass-card "}we-raCard`}>
       <div className="we-admin-sectionHead">
         <div>
           <div className="we-admin-sectionTitle">Recent activity</div>
@@ -410,12 +391,7 @@ export default function RecentActivity({
 
                   return (
                     <div key={rowKey(r, g.day, idx)} className={`we-raItem ${tone}`}>
-                      <div className="we-raRail">
-                        <span className="we-raRailDot" />
-                        <span className="we-raRailLine" />
-                      </div>
-                      <div className="we-raContent">
-                        <div className="we-raTop">
+                      <div className="we-raTop">
                         <div className="we-raLeft">
                           <div className="we-raNameRow">
                             <div className="we-raName" title={name}>
@@ -424,31 +400,17 @@ export default function RecentActivity({
                             {t ? <span className={`we-raType ${tone}`}>{t}</span> : null}
                           </div>
 
-                          <div className="we-raMeta we-raMetaGrid">
-                            <div className="we-raMetaCell">
-                              <span className="we-raMetaLabel">Dept</span>
-                              <span className="we-raMetaValue">{department}</span>
-                            </div>
-                            <div className="we-raMetaCell">
-                              <span className="we-raMetaLabel">In</span>
-                              <span className="we-raMetaValue">{formatTimeOnly(inAt)}</span>
-                            </div>
-                            <div className="we-raMetaCell">
-                              <span className="we-raMetaLabel">Out</span>
-                              <span className="we-raMetaValue">{formatTimeOnly(outAt)}</span>
-                            </div>
-                            <div className="we-raMetaCell">
-                              <span className="we-raMetaLabel">OT</span>
-                              <span className="we-raMetaValue">{formatOt(r, holidaySet)}</span>
-                            </div>
-                            {r?.locationName ? (
-                              <div className="we-raMetaCell wide">
-                                <span className="we-raMetaLabel">Location</span>
-                                <span className="we-raMetaValue">{r.locationName}</span>
-                              </div>
-                            ) : null}
+                          <div className="we-raSummary">
+                            <span>{department}</span>
+                            <span className="we-raDot">•</span>
+                            <span>In {formatTimeOnly(inAt)}</span>
+                            <span className="we-raDot">•</span>
+                            <span>Out {formatTimeOnly(outAt)}</span>
+                            <span className="we-raDot">•</span>
+                            <span>OT {formatOt(r, holidaySet)}</span>
                           </div>
 
+                          {r?.locationName ? <div className="we-raLocation">Location: {r.locationName}</div> : null}
                           {r?.note ? <div className="we-raNote">{r.note}</div> : null}
                         </div>
 
@@ -469,7 +431,6 @@ export default function RecentActivity({
                             </button>
                           ) : null}
                         </div>
-                      </div>
                       </div>
                     </div>
                   );

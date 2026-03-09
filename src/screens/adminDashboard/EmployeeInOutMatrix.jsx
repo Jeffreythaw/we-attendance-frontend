@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { formatDurationMinutes, pickReportOtMinutes } from "../../utils/attendanceFormat";
 
 /** local YYYY-MM-DD (not UTC) */
 function localIsoDate(d = new Date()) {
@@ -107,10 +108,6 @@ function pickWhen(row) {
   );
 }
 
-function pickLocationName(row) {
-  return row?.locationName ?? row?.location ?? row?.siteName ?? row?.site ?? "";
-}
-
 function pickLatLng(row) {
   const lat = row?.lat ?? row?.latitude ?? row?.checkInLat ?? row?.checkOutLat;
   const lng = row?.lng ?? row?.longitude ?? row?.checkInLng ?? row?.checkOutLng;
@@ -118,20 +115,6 @@ function pickLatLng(row) {
     return { lat: Number(lat), lng: Number(lng) };
   }
   return null;
-}
-
-function timeAgo(value) {
-  if (!value) return "";
-  const t = new Date(value).getTime();
-  if (!Number.isFinite(t)) return "";
-  const diff = Date.now() - t;
-  const mins = Math.round(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.round(hrs / 24);
-  return `${days}d ago`;
 }
 
 function mapUrl(lat, lng) {
@@ -150,17 +133,6 @@ function pickEmpName(row, employeeMap) {
   );
 }
 
-function dayLabel(iso) {
-  if (!iso) return "—";
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
-}
-
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
-
 function workedMinutes(inAt, outAt, lunchBreakMinutes, lunchThresholdMinutes) {
   const total = minutesBetween(inAt, outAt);
   if (total <= 0) return 0;
@@ -168,39 +140,12 @@ function workedMinutes(inAt, outAt, lunchBreakMinutes, lunchThresholdMinutes) {
   return Math.max(0, total - deduct);
 }
 
-function Sparkline({ values = [], max = 1 }) {
-  const w = 92;
-  const h = 22;
-  const pad = 2;
-  const n = values.length;
-  if (!n) return <div className="we-sparkEmpty">—</div>;
+function otMinutesFromRow(row) {
+  return pickReportOtMinutes(row);
+}
 
-  const denom = Math.max(1, max);
-  const pts = values.map((v, i) => {
-    const x = pad + (i * (w - pad * 2)) / Math.max(1, n - 1);
-    const y = h - pad - (clamp(v, 0, denom) / denom) * (h - pad * 2);
-    return [x, y];
-  });
-
-  const d = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-
-  return (
-    <svg
-      className="we-spark"
-      viewBox={`0 0 ${w} ${h}`}
-      width={w}
-      height={h}
-      aria-hidden="true"
-    >
-      <polyline className="we-sparkLine" points={d} fill="none" />
-      <polyline
-        className="we-sparkGlow"
-        points={d}
-        fill="none"
-        aria-hidden="true"
-      />
-    </svg>
-  );
+function formatHm(mins) {
+  return formatDurationMinutes(mins);
 }
 
 export default function EmployeeInOutMatrix({
@@ -211,7 +156,6 @@ export default function EmployeeInOutMatrix({
   employees = [],
   problemsOnly = false,
   defaultSelectedCount = 5,
-  workDayMinutes = 8 * 60,
   lunchBreakMinutes = 60,
   lunchThresholdMinutes = 6 * 60,
   expectedIn = "08:00",
@@ -219,6 +163,7 @@ export default function EmployeeInOutMatrix({
   lateAfterMinutes = 15,
   earlyBeforeMinutes = 0,
   onEdit,
+  embedded = false,
 }) {
   const days = useMemo(() => eachDayInclusive(from, to), [from, to]);
 
@@ -231,7 +176,7 @@ export default function EmployeeInOutMatrix({
     [expectedOut]
   );
 
-  const { employeesList, byEmpDay, trendByEmp } = useMemo(() => {
+  const { employeesList, byEmpDay } = useMemo(() => {
     const rows = Array.isArray(recentActivity) ? recentActivity : [];
     const map = new Map();
 
@@ -301,29 +246,12 @@ export default function EmployeeInOutMatrix({
 
     baseEmployees.sort((a, b) => a.name.localeCompare(b.name));
 
-    const trend = new Map();
-    for (const emp of baseEmployees) {
-      const arr = days.map((day) => {
-        const c = map.get(`${emp.empId}|${day}`);
-        if (!c) return 0;
-        return workedMinutes(
-          c.inAt,
-          c.outAt,
-          lunchBreakMinutes,
-          lunchThresholdMinutes
-        );
-      });
-      trend.set(emp.empId, arr);
-    }
-
-    return { employeesList: baseEmployees, byEmpDay: map, trendByEmp: trend };
+    return { employeesList: baseEmployees, byEmpDay: map };
   }, [
     recentActivity,
     employeeMap,
     days,
     employees,
-    lunchBreakMinutes,
-    lunchThresholdMinutes,
   ]);
 
   const ddBtnRef = useRef(null); // ✅ FIX: define it
@@ -422,17 +350,6 @@ export default function EmployeeInOutMatrix({
     return `${days[0]} → ${days[days.length - 1]}`;
   }, [days, from, to]);
 
-  function pctForCell(inAt, outAt) {
-    const mins = workedMinutes(
-      inAt,
-      outAt,
-      lunchBreakMinutes,
-      lunchThresholdMinutes
-    );
-    if (!mins) return 0;
-    return clamp(Math.round((mins / workDayMinutes) * 100), 0, 100);
-  }
-
   function hoursLabel(inAt, outAt) {
     const mins = workedMinutes(
       inAt,
@@ -446,12 +363,8 @@ export default function EmployeeInOutMatrix({
     return m ? `${h}h ${m}m` : `${h}h`;
   }
 
-  function badgeKeyList(badges) {
-    return (badges || []).map((b) => b.label);
-  }
-
   return (
-    <div className="we-glass-card we-matrixCard">
+    <div className={`${embedded ? "" : "we-glass-card "}we-matrixCard`}>
       <div className="we-matrixHead">
         <div className="we-matrixTitle">
           Employee clock-in / clock-out
@@ -482,9 +395,6 @@ export default function EmployeeInOutMatrix({
             <span className="we-mxLegend">
               <span className="we-mxDot out" /> OUT
             </span>
-            <span className="we-mxLegend">
-              <span className="we-mxDot hrs" /> Hours %
-            </span>
           </div>
         </div>
       </div>
@@ -495,15 +405,12 @@ export default function EmployeeInOutMatrix({
         <>
           <div className="we-presenceGrid">
             {visibleEmployees.map((emp) => {
-              const trend = trendByEmp.get(emp.empId) || [];
               const latest = latestCellForEmp(emp.empId);
               const inAt = latest?.inAt || null;
               const outAt = latest?.outAt || null;
               const latestRow = latest?.row || null;
-              const latestDay = latest?.dayKey || null;
-              const locName = latestRow ? pickLocationName(latestRow) : "";
               const latLng = latestRow ? pickLatLng(latestRow) : null;
-              const latestTime = latestRow ? timeAgo(pickWhen(latestRow)) : "";
+              const otMins = otMinutesFromRow(latestRow);
               const badges = cellBadges(inAt, outAt);
               const state = badges.some((b) => b.tone === "bad")
                 ? "bad"
@@ -517,28 +424,12 @@ export default function EmployeeInOutMatrix({
                 <div key={emp.empId} className={`we-presenceCard ${state}`}>
                   <div className="we-presenceTop">
                     <div>
-                      <div className="we-presenceNameRow">
-                        <div className="we-presenceName" title={emp.name}>{emp.name}</div>
-                        <div className="we-presenceChips">
-                          {badgeKeyList(badges).slice(0, 2).map((b) => (
-                            <span key={b} className="we-presenceChip">{b}</span>
-                          ))}
-                          {badgeKeyList(badges).length > 2 ? (
-                            <span className="we-presenceChip dim">+{badgeKeyList(badges).length - 2}</span>
-                          ) : null}
-                        </div>
-                      </div>
+                      <div className="we-presenceName" title={emp.name}>{emp.name}</div>
                       <div className="we-presenceMeta">#{emp.empId}</div>
                     </div>
                     <div className={`we-presenceStatus ${state}`}>
-                      {state === "ok" ? "IN" : state === "warn" ? "CHECK" : state === "bad" ? "ALERT" : "—"}
+                      {state === "ok" ? "On Track" : state === "warn" ? "Needs Check" : state === "bad" ? "Alert" : "No Log"}
                     </div>
-                  </div>
-
-                  <div className="we-presenceSub">
-                    <span className="we-presenceDay">{dayLabel(latestDay)}</span>
-                    {latestTime ? <span className="we-presenceAgo">• {latestTime}</span> : null}
-                    {locName ? <span className="we-presenceLoc">• {locName}</span> : null}
                   </div>
 
                   <div className="we-presenceTimes">
@@ -554,54 +445,30 @@ export default function EmployeeInOutMatrix({
                     </div>
                   </div>
 
-                  {badges.length ? (
-                    <div className="we-presenceBadges">
-                      {badges.slice(0, 3).map((b) => (
-                        <span key={b.key} className={`we-mxBadge ${b.tone}`}>{b.label}</span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="we-presenceBadges empty">No flags</div>
-                  )}
-
-                  <div className="we-presenceTrend">
-                    <Sparkline values={trend} max={workDayMinutes} />
-                    <div className="we-presenceTrendMeta">
-                      <span className="we-sparkChip">{expectedIn}–{expectedOut}</span>
-                      <span className="we-sparkChip subtle">- {lunchBreakMinutes}m lunch</span>
-                    </div>
-                  </div>
-
                   <div className="we-presenceFoot">
-                    <div className="we-presenceHours">Worked: <b>{hoursLabel(inAt, outAt)}</b></div>
+                    <div className="we-presenceHours">
+                      Worked: <b>{hoursLabel(inAt, outAt)}</b> • OT: <b>{otMins > 0 ? formatHm(otMins) : "—"}</b>
+                    </div>
                     <div className="we-presenceActions">
                       {latLng ? (
-                        <a className="we-btn-mini" href={mapUrl(latLng.lat, latLng.lng)} target="_blank" rel="noreferrer">
+                        <a className="we-btn-mini we-btn--load" href={mapUrl(latLng.lat, latLng.lng)} target="_blank" rel="noreferrer">
                           Map
                         </a>
                       ) : (
                         <button className="we-btn-mini" type="button" disabled>Map</button>
                       )}
                       {typeof onEdit === "function" && latestRow ? (
-                        <button className="we-btn-mini primary" type="button" onClick={() => onEdit(latestRow)}>
+                        <button className="we-btn-mini primary we-btn--edit" type="button" onClick={() => onEdit(latestRow)}>
                           Edit
                         </button>
                       ) : null}
                     </div>
-                    <div className="we-presencePct">{pctForCell(inAt, outAt) || 0}%</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="we-matrixFootNote">
-            * Workday = <b>{Math.round(workDayMinutes / 60)}h</b>, lunch ={" "}
-            <b>{lunchBreakMinutes}m</b> (deducted when shift ≥{" "}
-            <b>{Math.round(lunchThresholdMinutes / 60)}h</b>). Late after{" "}
-            <b>{lateAfterMinutes}m</b>. Early before{" "}
-            <b>{earlyBeforeMinutes}m</b>.
-          </div>
         </>
       )}
 

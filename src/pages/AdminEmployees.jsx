@@ -604,7 +604,7 @@ export default function AdminEmployees({ onAuthError }) {
         </div>
 
         <button
-          className="we-btn-soft we-admin-refresh"
+          className="we-btn-soft we-admin-refresh we-btn--refresh"
           onClick={() => {
             if (tab === "employees") {
               refreshEmployees();
@@ -706,7 +706,7 @@ export default function AdminEmployees({ onAuthError }) {
                   </div>
                 </label>
 
-                <button className="we-btn" disabled={loading}>
+                <button className="we-btn we-btn--save" disabled={loading}>
                   {loading ? (
                     <span className="we-btn-spin">
                       <span className="spinner" />
@@ -833,7 +833,7 @@ export default function AdminEmployees({ onAuthError }) {
                   </div>
                 ) : null}
 
-                <button className="we-btn" disabled={loading}>
+                <button className="we-btn we-btn--save" disabled={loading}>
                   {loading ? (
                     <span className="we-btn-spin">
                       <span className="spinner" />
@@ -1012,7 +1012,7 @@ export default function AdminEmployees({ onAuthError }) {
 
                 <div className="we-modalFoot">
                   <button className="we-btn-soft" onClick={closeEdit} disabled={editSaving}>Cancel</button>
-                  <button className="we-btn" onClick={saveEdit} disabled={editSaving}>
+                  <button className="we-btn we-btn--save" onClick={saveEdit} disabled={editSaving}>
                     {editSaving ? (
                       <span className="we-btn-spin"><span className="spinner" />Saving…</span>
                     ) : (
@@ -1048,7 +1048,7 @@ export default function AdminEmployees({ onAuthError }) {
                 </div>
               </label>
 
-              <button className="we-btn" disabled={loading}>{loading ? "Saving…" : "Add Holiday"}</button>
+              <button className="we-btn we-btn--save" disabled={loading}>{loading ? "Saving…" : "Add Holiday"}</button>
             </form>
           </div>
 
@@ -1069,7 +1069,7 @@ export default function AdminEmployees({ onAuthError }) {
                     <div key={h.id} className="we-admin-row">
                       <div className="we-admin-rowTop">
                         <div className="we-admin-name">{h.name || "(no name)"}</div>
-                        <button className="we-btn-soft" onClick={() => deleteHoliday(h.id)} disabled={loading}>
+                        <button className="we-btn-soft we-btn--delete" onClick={() => deleteHoliday(h.id)} disabled={loading}>
                           Delete
                         </button>
                       </div>
@@ -1135,7 +1135,7 @@ export default function AdminEmployees({ onAuthError }) {
                 Active
               </label>
 
-              <button className="we-btn" disabled={loading}>
+              <button className="we-btn we-btn--save" disabled={loading}>
                 {loading ? "Saving…" : "Create Leave Type"}
               </button>
             </form>
@@ -1158,7 +1158,7 @@ export default function AdminEmployees({ onAuthError }) {
                         {t.code} — {t.name}
                       </div>
                       <button
-                        className="we-btn-soft"
+                        className="we-btn-soft we-btn--apply"
                         onClick={() => toggleLeaveTypeActive(t)}
                         disabled={loading}
                       >
@@ -1203,14 +1203,14 @@ export default function AdminEmployees({ onAuthError }) {
                     </div>
                     <div className="we-approveBtns">
                       <button
-                        className="we-btn"
+                        className="we-btn we-btn--approve"
                         onClick={() => approveLeave(r.id)}
                         disabled={loading}
                       >
                         Approve
                       </button>
                       <button
-                        className="we-btn danger"
+                        className="we-btn danger we-btn--delete"
                         onClick={() => rejectLeave(r.id)}
                         disabled={loading}
                       >

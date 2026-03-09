@@ -40,3 +40,25 @@
   mix-blend-mode: overlay;
 }
 
+html.theme-light .we-app-bg {
+  background: #eef3fb;
+}
+
+html.theme-light .we-app-blob.b1 {
+  background: radial-gradient(circle at 30% 30%, #a8bbd9, transparent 55%);
+  opacity: 0.35;
+}
+
+html.theme-light .we-app-blob.b2 {
+  background: radial-gradient(circle at 30% 30%, #9bb4d4, transparent 55%);
+  opacity: 0.28;
+}
+
+html.theme-light .we-app-blob.b3 {
+  background: radial-gradient(circle at 30% 30%, #c5d4e8, transparent 55%);
+  opacity: 0.24;
+}
+
+html.theme-light .we-app-noise {
+  opacity: 0.02;
+}

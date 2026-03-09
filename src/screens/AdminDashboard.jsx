@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listEmployees } from "../api/employees";
-import { attendanceApi } from "../api/attendance";
 import { apiFetch } from "../api/client";
 import { fmtDateTime } from "../utils/datetime";
+import { formatDurationMinutes, pickReportOtMinutes } from "../utils/attendanceFormat";
 
 import { SUMMARY_ENDPOINT } from "./adminDashboard/constants";
 import { toIsoRangeParams } from "./adminDashboard/timezone";
@@ -14,11 +14,11 @@ import EditAttendanceModal from "./adminDashboard/EditAttendanceModal";
 
 // ✅ split CSS files (no more styles.js)
 import "./adminDashboard/styles/base.css";
-import "./adminDashboard/styles/summary.css";
 import "./adminDashboard/styles/matrix.css";
 import "./adminDashboard/styles/report.css";
 import "./adminDashboard/styles/recentActivity.css";
 import "./adminDashboard/styles/modal.css";
+import { useTheme } from "../theme/context";
 
 /** YYYY-MM-DD in Singapore time */
 const SG_TZ = "Asia/Singapore";
@@ -136,14 +136,7 @@ function isWorkdayIso(iso, holidaySet) {
   return dow !== "Sun";
 }
 
-function formatHm(mins) {
-  const m = Math.max(0, Math.round(Number(mins) || 0));
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h <= 0) return `${mm}m`;
-  if (mm === 0) return `${h}h`;
-  return `${h}h ${mm}m`;
-}
+const formatHm = formatDurationMinutes;
 
 function finiteNumberOrNull(value) {
   const n = Number(value);
@@ -162,8 +155,8 @@ export default function AdminDashboard({ onAuthError }) {
   const [preApproveDate, setPreApproveDate] = useState(() => sgWeekRangeIso(new Date()).fromIso);
   const [preApproveNote, setPreApproveNote] = useState("");
   const [preApproveBusy, setPreApproveBusy] = useState(false);
-  const [recalcBusy, setRecalcBusy] = useState(false);
-  const [recalcMsg, setRecalcMsg] = useState("");
+  const [viewMode, setViewMode] = useState("overview");
+  const { theme } = useTheme();
 
   const mountedRef = useRef(true);
 
@@ -294,32 +287,6 @@ export default function AdminDashboard({ onAuthError }) {
     }
   }
 
-  async function handleRecalculateMinutes() {
-    setErr("");
-    setRecalcMsg("");
-    setRecalcBusy(true);
-    try {
-      const rawFrom = fromRef.current;
-      const rawTo = toRef.current;
-      const f = rawFrom && rawTo && rawFrom > rawTo ? rawTo : rawFrom;
-      const t = rawFrom && rawTo && rawFrom > rawTo ? rawFrom : rawTo;
-
-      const result = await attendanceApi.adminRecalculateMinutes({ from: f, to: t });
-      if (!mountedRef.current) return;
-
-      const scanned = Number(result?.scanned ?? 0);
-      const updated = Number(result?.updated ?? 0);
-      setRecalcMsg(`Policy recalculation done: ${updated}/${scanned} logs updated.`);
-      await load({ from: f, to: t });
-    } catch (e) {
-      const msg = e?.message || "Failed to recalculate minutes";
-      if (String(msg).includes("401") || String(msg).includes("403")) return onAuthError?.();
-      if (mountedRef.current) setErr(msg);
-    } finally {
-      if (mountedRef.current) setRecalcBusy(false);
-    }
-  }
-
   useEffect(() => {
     mountedRef.current = true;
     load({ from: fromRef.current, to: toRef.current });
@@ -327,6 +294,7 @@ export default function AdminDashboard({ onAuthError }) {
       mountedRef.current = false;
     };
   }, [load]);
+
 
   const recentActivity = useMemo(() => summary?.recentActivity ?? [], [summary]);
 
@@ -406,8 +374,7 @@ export default function AdminDashboard({ onAuthError }) {
       }
 
       const regMins = finiteNumberOrNull(r?.regularMinutes);
-      const otMins = finiteNumberOrNull(r?.otMinutes);
-      const safeOtMins = Math.max(0, Math.round(otMins ?? 0));
+      const safeOtMins = pickReportOtMinutes(r);
       const totalMins = Math.max(0, Math.round((regMins ?? 0) + safeOtMins));
       totalWorkedByEmp.set(empId, (totalWorkedByEmp.get(empId) || 0) + totalMins);
       otByEmp.set(empId, (otByEmp.get(empId) || 0) + safeOtMins);
@@ -533,8 +500,6 @@ export default function AdminDashboard({ onAuthError }) {
     };
   }, [employeeInsights, employees.length]);
 
-  const insightLegend = useMemo(() => employeeInsights, [employeeInsights]);
-
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -549,7 +514,7 @@ export default function AdminDashboard({ onAuthError }) {
   }
 
   return (
-    <div className="we-admin-root">
+    <div className={`we-admin-root we-theme-${theme}`}>
       <div className="we-admin-bg" aria-hidden="true">
         <div className="we-admin-blob we-admin-blob-1" />
         <div className="we-admin-blob we-admin-blob-2" />
@@ -557,361 +522,343 @@ export default function AdminDashboard({ onAuthError }) {
         <div className="we-admin-noise" />
       </div>
 
-      <div className="we-admin-wrap">
-        <div className="we-admin-sticky">
-          <div className="we-admin-head">
-            <div>
-              <div className="we-admin-kicker">Admin overview</div>
-              <div className="we-admin-title">Dashboard</div>
-              <div className="we-admin-sub">
-                Activities • hours • leave • sessions
+      <div className="we-admin-wrap we-admin-layout">
+        <div className="we-glass-card we-admin-hero">
+          <div className="we-admin-heroTop">
+            <div className="we-admin-head">
+              <div>
+                <div className="we-admin-kicker">Admin overview</div>
+                <div className="we-admin-title">Dashboard</div>
+                <div className="we-admin-sub">
+                  Activities • hours • leave • sessions
+                </div>
               </div>
+
+              <button className="we-btn we-btn--refresh" onClick={() => load({ from, to })} disabled={busy}>
+                {busy ? "Loading…" : "Refresh"}
+              </button>
             </div>
 
-            <button className="we-btn" onClick={() => load({ from, to })} disabled={busy}>
-              {busy ? "Loading…" : "Refresh"}
-            </button>
+            <div className="we-admin-heroStats">
+              <div className="we-admin-heroStat">
+                <span className="k">Range</span>
+                <span className="v">{from} → {to}</span>
+              </div>
+              <div className="we-admin-heroStat">
+                <span className="k">Staff</span>
+                <span className="v">{employees.length}</span>
+              </div>
+              <div className="we-admin-heroStat">
+                <span className="k">OT</span>
+                <span className="v">{formatHm(insightBreakdown.totalOtMinutes)}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="we-glass-card we-admin-filters">
-          <div className="we-admin-filterRow">
-            <label className="we-admin-filterLabel">
-              From
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
+          <div className="we-admin-heroControls">
+            <div className="we-admin-filterRow">
+              <label className="we-admin-filterLabel">
+                From
+                <input
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  disabled={busy}
+                />
+              </label>
+
+              <label className="we-admin-filterLabel">
+                To
+                <input
+                  type="date"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  disabled={busy}
+                />
+              </label>
+
+              <button
+                className="we-btn-soft we-btn--apply"
+                onClick={() => load({ from, to })}
                 disabled={busy}
-              />
-            </label>
+                type="button"
+              >
+                Apply
+              </button>
+            </div>
 
-            <label className="we-admin-filterLabel">
-              To
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                disabled={busy}
-              />
-            </label>
+            <div className="we-admin-filterQuick">
+              <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This Week</button>
+              <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This Month</button>
+              <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last Month</button>
+            </div>
 
-            <button
-              className="we-btn-soft"
-              onClick={() => load({ from, to })}
-              disabled={busy}
-              type="button"
-            >
-              Apply
-            </button>
+            <div className="we-admin-viewSwitch" role="tablist" aria-label="Dashboard sections">
+              <button
+                type="button"
+                className={`we-admin-viewBtn ${viewMode === "overview" ? "active" : ""}`}
+                onClick={() => setViewMode("overview")}
+                aria-selected={viewMode === "overview"}
+              >
+                Overview
+              </button>
+              <button
+                type="button"
+                className={`we-admin-viewBtn ${viewMode === "attendance" ? "active" : ""}`}
+                onClick={() => setViewMode("attendance")}
+                aria-selected={viewMode === "attendance"}
+              >
+                Attendance
+              </button>
+              <button
+                type="button"
+                className={`we-admin-viewBtn ${viewMode === "reports" ? "active" : ""}`}
+                onClick={() => setViewMode("reports")}
+                aria-selected={viewMode === "reports"}
+              >
+                Reports
+              </button>
+            </div>
           </div>
-
-          <div className="we-admin-filterQuick">
-            <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This Week</button>
-            <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This Month</button>
-            <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last Month</button>
-            <button className="we-btn-chip ghost" type="button" onClick={handleRecalculateMinutes} disabled={busy || recalcBusy}>
-              {recalcBusy ? "Recalculating..." : "Recalculate OT/Hours"}
-            </button>
-          </div>
-          {recalcMsg ? <div className="we-admin-sectionMeta" style={{ marginTop: 8 }}>{recalcMsg}</div> : null}
         </div>
 
         {err ? <div className="we-error">{err}</div> : null}
 
-        {/* Attendance Insights */}
-        <div className="we-glass-card we-admin-charts">
-          <div className="we-admin-chartsHead">
-            <div>
-              <div className="we-admin-sectionTitle">Attendance Insights</div>
-              <div className="we-admin-sectionMeta">
-                Donut overview (selected range) • each color segment maps to one employee
+        {viewMode === "overview" ? (
+        <section className="we-admin-block">
+          <div className="we-admin-blockHead">
+            <div className="we-admin-blockTitle">Overview</div>
+            <div className="we-admin-sectionMeta">High-level attendance health and quick controls</div>
+          </div>
+
+          <div className="we-admin-kpiRow">
+            <div className="we-admin-kpiCard">
+              <div className="we-admin-kpiLabel">Attendance Rate</div>
+              <div className="we-admin-kpiValue">{insightBreakdown.attendanceRate}%</div>
+              <div className="we-admin-kpiHint">Present days across selected range</div>
+            </div>
+            <div className="we-admin-kpiCard">
+              <div className="we-admin-kpiLabel">Total OT</div>
+              <div className="we-admin-kpiValue">{formatHm(insightBreakdown.totalOtMinutes)}</div>
+              <div className="we-admin-kpiHint">Normal + Sat + Sun/PH + Overnight</div>
+            </div>
+            <div className="we-admin-kpiCard">
+              <div className="we-admin-kpiLabel">Absence Rate</div>
+              <div className="we-admin-kpiValue">{insightBreakdown.absentRate}%</div>
+              <div className="we-admin-kpiHint">Workdays only</div>
+            </div>
+            <div className="we-admin-kpiCard">
+              <div className="we-admin-kpiLabel">Active Staff</div>
+              <div className="we-admin-kpiValue">{employees.length}</div>
+              <div className="we-admin-kpiHint">{from} → {to}</div>
+            </div>
+          </div>
+
+          <div className="we-admin-insightRow">
+            <div className="we-glass-card we-admin-charts we-admin-insightCard">
+              <div className="we-admin-chartTitle">Attendance vs Absence</div>
+              <div className="we-admin-donutWrap">
+                <div className="we-admin-donut" style={{ background: insightBreakdown.attendanceRing }} />
+                <div className="we-admin-donutCenter">
+                  <div className="v">{insightBreakdown.attendanceRate}%</div>
+                  <div className="k">Attendance</div>
+                </div>
+              </div>
+              <div className="we-admin-donutNote">Clean summary view for selected date range.</div>
+            </div>
+            <div className="we-glass-card we-admin-charts we-admin-insightCard">
+              <div className="we-admin-chartTitle">Overtime Share</div>
+              <div className="we-admin-donutWrap">
+                <div className="we-admin-donut warn" style={{ background: insightBreakdown.otTimeRing }} />
+                <div className="we-admin-donutCenter">
+                  <div className="v">{insightBreakdown.overtimeRate}%</div>
+                  <div className="k">OT Ratio</div>
+                </div>
+              </div>
+              <div className="we-admin-donutNote">OT minutes relative to worked minutes.</div>
+            </div>
+          </div>
+
+          <div className="we-glass-card we-admin-preapprove">
+            <div className="we-admin-sectionHead">
+              <div>
+                <div className="we-admin-sectionTitle">Quick Overnight Pre-approvals</div>
+                <div className="we-admin-sectionMeta">Create approvals without leaving overview</div>
               </div>
             </div>
-          </div>
-          <div className="we-admin-insightsLegend">
-            <span className="we-admin-insightsLegendLabel">Employee color map</span>
-            {insightLegend.map((item, idx) => (
-              <span
-                key={`legend-${item.id}`}
-                className="we-admin-donutDayChip we-admin-donutDayChipName"
-                style={{ borderColor: `${item.color}99`, color: item.color }}
-                title={`${idx + 1}. ${item.name}`}
-              >
-                <i style={{ background: item.color }} />
-                <span className="n">{idx + 1}. {item.name}</span>
-              </span>
-            ))}
-          </div>
-          <div className="we-admin-donutGrid">
-            {(() => {
-              const attendanceRate = insightBreakdown.attendanceRate;
-              const absentRate = insightBreakdown.absentRate;
-              const overtimeRate = insightBreakdown.overtimeRate;
-              return (
-                <>
-                  <div className="we-admin-donutCard">
-                    <div className="we-admin-chartTitle">Attendance rate</div>
-                    <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut" style={{ background: insightBreakdown.attendanceRing }} />
-                      <div className="we-admin-donutCenter">
-                        <div className="v">{attendanceRate}%</div>
-                        <div className="k">Present</div>
-                      </div>
-                    </div>
-                    <div className="we-admin-donutDayChips">
-                      {insightLegend.map((item, idx) => (
-                        <span
-                          key={item.id}
-                          className="we-admin-donutDayChip"
-                          style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${idx + 1}. ${item.name}: ${item.presentDays}d`}
-                        >
-                          <i style={{ background: item.color }} />
-                          {idx + 1}. {item.name} • {item.presentDays}d
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="we-admin-donutCard">
-                    <div className="we-admin-chartTitle">OT time</div>
-                    <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut warn" style={{ background: insightBreakdown.otTimeRing }} />
-                      <div className="we-admin-donutCenter">
-                        <div className="v">{formatHm(insightBreakdown.totalOtMinutes)}</div>
-                        <div className="k">Total OT</div>
-                      </div>
-                    </div>
-                    <div className="we-admin-donutNote">Split by employee (normal OT, Sunday/PH OT, overnight OT)</div>
-                    <div className="we-admin-donutDayChips">
-                      {insightLegend.map((item, idx) => (
-                        <span
-                          key={item.id}
-                          className="we-admin-donutDayChip"
-                          style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${idx + 1}. ${item.name}: N ${formatHm(item.normalOtMinutes)} • S/PH ${formatHm(item.sunPhOtMinutes)} • ON ${formatHm(item.overnightOtMinutes)}`}
-                        >
-                          <i style={{ background: item.color }} />
-                          {idx + 1}. {item.name} • N {formatHm(item.normalOtMinutes)} • S {formatHm(item.sunPhOtMinutes)} • ON {formatHm(item.overnightOtMinutes)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="we-admin-donutCard">
-                    <div className="we-admin-chartTitle">Absence rate</div>
-                    <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut alt" style={{ background: insightBreakdown.absentRing }} />
-                      <div className="we-admin-donutCenter">
-                        <div className="v">{absentRate}%</div>
-                        <div className="k">Absent</div>
-                      </div>
-                    </div>
-                    <div className="we-admin-donutNote">Active staff only</div>
-                    <div className="we-admin-donutDayChips">
-                      {insightLegend.map((item, idx) => (
-                        <span
-                          key={item.id}
-                          className="we-admin-donutDayChip"
-                          style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${idx + 1}. ${item.name}: ${item.absentDays}d`}
-                        >
-                          <i style={{ background: item.color }} />
-                          {idx + 1}. {item.name} • {item.absentDays}d
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="we-admin-donutCard">
-                    <div className="we-admin-chartTitle">OT rate</div>
-                    <div className="we-admin-donutWrap">
-                      <div className="we-admin-donut ot" style={{ background: insightBreakdown.overtimeRing }} />
-                      <div className="we-admin-donutCenter">
-                        <div className="v">{overtimeRate}%</div>
-                        <div className="k">OT share</div>
-                      </div>
-                    </div>
-                    <div className="we-admin-donutNote">OT minutes / total worked minutes</div>
-                    <div className="we-admin-donutDayChips">
-                      {insightLegend.map((item, idx) => (
-                        <span
-                          key={item.id}
-                          className="we-admin-donutDayChip"
-                          style={{ borderColor: `${item.color}99`, color: item.color }}
-                          title={`${idx + 1}. ${item.name}: ${insightBreakdown.otPctById.get(item.id) || 0}%`}
-                        >
-                          <i style={{ background: item.color }} />
-                          {idx + 1}. {item.name} • {insightBreakdown.otPctById.get(item.id) || 0}%
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
 
-        {/* Overnight pre-approvals */}
-        <div className="we-glass-card we-admin-preapprove">
-          <div className="we-admin-sectionHead">
-            <div>
-              <div className="we-admin-sectionTitle">Overnight pre-approvals</div>
-              <div className="we-admin-sectionMeta">Allow specific employees to work overnight on a date</div>
-            </div>
-          </div>
+            <div className="we-preapprove-form">
+              <label>Employee
+                <select
+                  value={preApproveEmployeeId}
+                  onChange={(e) => setPreApproveEmployeeId(e.target.value)}
+                  disabled={preApproveBusy}
+                >
+                  <option value="">Select employee</option>
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+              </label>
 
-          <div className="we-preapprove-form">
-            <label>Employee
-              <select
-                value={preApproveEmployeeId}
-                onChange={(e) => setPreApproveEmployeeId(e.target.value)}
+              <label>Date
+                <input
+                  type="date"
+                  value={preApproveDate}
+                  onChange={(e) => setPreApproveDate(e.target.value)}
+                  disabled={preApproveBusy}
+                />
+              </label>
+
+              <label>Note (optional)
+                <input
+                  type="text"
+                  value={preApproveNote}
+                  onChange={(e) => setPreApproveNote(e.target.value)}
+                  placeholder="Overnight site work"
+                  disabled={preApproveBusy}
+                />
+              </label>
+
+              <button
+                type="button"
+                className="we-btn we-btn--approve"
+                onClick={handleCreatePreApproval}
                 disabled={preApproveBusy}
               >
-                <option value="">Select employee</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>Date
-              <input
-                type="date"
-                value={preApproveDate}
-                onChange={(e) => setPreApproveDate(e.target.value)}
-                disabled={preApproveBusy}
-              />
-            </label>
-
-            <label>Note (optional)
-              <input
-                type="text"
-                value={preApproveNote}
-                onChange={(e) => setPreApproveNote(e.target.value)}
-                placeholder="Overnight site work"
-                disabled={preApproveBusy}
-              />
-            </label>
-
-            <button
-              type="button"
-              className="we-btn"
-              onClick={handleCreatePreApproval}
-              disabled={preApproveBusy}
-            >
-              Add approval
-            </button>
-          </div>
-
-          <div className="we-preapprove-list">
-            {preApprovals.length === 0 ? (
-              <div className="we-admin-empty">No pre-approvals in this range.</div>
-            ) : (
-              preApprovals.map((row) => {
-                const emp = employeeMap.get(Number(row.employeeId));
-                return (
-                  <div key={row.id} className="we-preapprove-item">
-                    <div>
-                      <div className="name">{emp?.name || `#${row.employeeId}`}</div>
-                      <div className="meta">{row.date} • {row.note || "—"}</div>
-                    </div>
-                    <button
-                      type="button"
-                      className="we-btn-soft"
-                      onClick={() => handleDeletePreApproval(row.id)}
-                      disabled={preApproveBusy}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Overnight approvals */}
-        <div className="we-glass-card we-admin-overnight">
-          <div className="we-admin-sectionHead">
-            <div>
-              <div className="we-admin-sectionTitle">Overnight OT approvals</div>
-              <div className="we-admin-sectionMeta">Pending overnight requests (no approval - auto-close at 17:00 next day)</div>
+                Add approval
+              </button>
             </div>
-            <div className="we-admin-sectionMeta">{overnightPending.length} pending</div>
-          </div>
 
-          {overnightPending.length === 0 ? (
-            <div className="we-admin-empty">No pending overnight requests.</div>
-          ) : (
-            <div className="we-overnight-list">
-              {overnightPending.map((row) => {
-                const emp = employeeMap.get(Number(row.employeeId));
-                const name = emp?.name || `#${row.employeeId}`;
-                return (
-                  <div key={row.id} className="we-overnight-card">
-                    <div className="we-overnight-head">
+            <div className="we-preapprove-list">
+              {preApprovals.length === 0 ? (
+                <div className="we-admin-empty">No pre-approvals in this range.</div>
+              ) : (
+                preApprovals.map((row) => {
+                  const emp = employeeMap.get(Number(row.employeeId));
+                  return (
+                    <div key={row.id} className="we-preapprove-item">
                       <div>
-                        <div className="we-overnight-name">{name}</div>
-                        <div className="we-overnight-sub">
-                          In: {fmtDateTime(row.checkInAt)} • Requested out: {fmtDateTime(row.requestedCheckOutAt)}
-                        </div>
+                        <div className="name">{emp?.name || `#${row.employeeId}`}</div>
+                        <div className="meta">{row.date} • {row.note || "—"}</div>
                       </div>
-                      <span className="we-admin-pill warn">Pending</span>
-                    </div>
-                    <div className="we-overnight-body">
-                      <div>OT Project: <b>{row.requestedOtProjectName || "—"}</b></div>
-                      {row.remark ? <div className="we-overnight-remark">{row.remark}</div> : null}
-                    </div>
-                    <div className="we-overnight-actions">
                       <button
                         type="button"
-                        className="we-btn"
-                        disabled={overnightBusy}
-                        onClick={() => handleOvernightDecision(row.id, true)}
+                        className="we-btn-soft we-btn--delete"
+                        onClick={() => handleDeletePreApproval(row.id)}
+                        disabled={preApproveBusy}
                       >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="we-btn-soft"
-                        disabled={overnightBusy}
-                        onClick={() => handleOvernightDecision(row.id, false)}
-                      >
-                        Reject (set 17:00)
+                        Remove
                       </button>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        </section>
+        ) : null}
 
-        {/* Presence Board */}
-        <EmployeeInOutMatrix
-          from={from}
-          to={to}
-          recentActivity={recentActivity}
-          employeeMap={employeeMap}
-          employees={employees}
-          defaultSelectedCount={3}
-          onEdit={openEdit}
-        />
+        {viewMode === "attendance" ? (
+        <section className="we-admin-block">
+          <div className="we-admin-blockHead">
+            <div className="we-admin-blockTitle">Attendance</div>
+            <div className="we-admin-sectionMeta">Daily in/out board and recent operational timeline</div>
+          </div>
 
-        {/* Recent Activity */}
-        <RecentActivity
-          recentActivity={recentActivity}
-          employees={employees}
-          allDepartments={allDepartments}
-          employeeMap={employeeMap}
-          holidaySet={holidayIsoSet}
-          busy={busy}
-          onEdit={openEdit}
-          onlyTodayByDefault={true}
-        />
+          <div className="we-glass-card we-admin-attPanel">
+            <EmployeeInOutMatrix
+              from={from}
+              to={to}
+              recentActivity={recentActivity}
+              employeeMap={employeeMap}
+              employees={employees}
+              defaultSelectedCount={3}
+              onEdit={openEdit}
+              embedded
+            />
+          </div>
 
-        {/* Attendance report */}
-        <AttendanceReport from={from} to={to} disabled={busy} onAuthError={onAuthError} />
+          <div className="we-glass-card we-admin-attPanel">
+            <RecentActivity
+              recentActivity={recentActivity}
+              employees={employees}
+              allDepartments={allDepartments}
+              employeeMap={employeeMap}
+              holidaySet={holidayIsoSet}
+              busy={busy}
+              onEdit={openEdit}
+              onlyTodayByDefault={true}
+              embedded
+            />
+          </div>
+        </section>
+        ) : null}
+
+        {viewMode === "reports" ? (
+        <section className="we-admin-block">
+          <div className="we-admin-blockHead">
+            <div className="we-admin-blockTitle">Reports</div>
+            <div className="we-admin-sectionMeta">Monthly attendance output and approval tasks</div>
+          </div>
+
+          <AttendanceReport from={from} to={to} disabled={busy} onAuthError={onAuthError} />
+
+          <details className="we-glass-card we-admin-overnightDrawer">
+            <summary>
+              <span className="we-admin-sectionTitle">Overnight OT approvals</span>
+              <span className="we-admin-pill warn">{overnightPending.length} pending</span>
+            </summary>
+            <div className="we-admin-sectionMeta">Pending overnight requests (no approval - auto-close at 17:00 next day)</div>
+
+            {overnightPending.length === 0 ? (
+              <div className="we-admin-empty">No pending overnight requests.</div>
+            ) : (
+              <div className="we-overnight-list">
+                {overnightPending.map((row) => {
+                  const emp = employeeMap.get(Number(row.employeeId));
+                  const name = emp?.name || `#${row.employeeId}`;
+                  return (
+                    <div key={row.id} className="we-overnight-card">
+                      <div className="we-overnight-head">
+                        <div>
+                          <div className="we-overnight-name">{name}</div>
+                          <div className="we-overnight-sub">
+                            In: {fmtDateTime(row.checkInAt)} • Requested out: {fmtDateTime(row.requestedCheckOutAt)}
+                          </div>
+                        </div>
+                        <span className="we-admin-pill warn">Pending</span>
+                      </div>
+                      <div className="we-overnight-body">
+                        <div>OT Project: <b>{row.requestedOtProjectName || "—"}</b></div>
+                        {row.remark ? <div className="we-overnight-remark">{row.remark}</div> : null}
+                      </div>
+                      <div className="we-overnight-actions">
+                        <button
+                          type="button"
+                          className="we-btn we-btn--approve"
+                          disabled={overnightBusy}
+                          onClick={() => handleOvernightDecision(row.id, true)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="we-btn-soft we-btn--delete"
+                          disabled={overnightBusy}
+                          onClick={() => handleOvernightDecision(row.id, false)}
+                        >
+                          Reject (set 17:00)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </details>
+        </section>
+        ) : null}
       </div>
 
       <EditAttendanceModal

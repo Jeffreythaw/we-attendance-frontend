@@ -4,6 +4,7 @@ import { Login } from "./screens/Login";
 import EmployeeMobileShell from "./layouts/EmployeeMobileShell";
 import AdminDesktopShell from "./layouts/AdminDesktopShell";
 import SupervisorDesktopShell from "./layouts/SupervisorDesktopShell";
+import ThemeProvider from "./theme/ThemeProvider";
 
 function AuthedApp({ user, logout }) {
   const role = (user?.role || "").toLowerCase();
@@ -15,8 +16,9 @@ function AuthedApp({ user, logout }) {
 export default function App() {
   const { user, isAuthed, login, logout } = useAuth();
 
-  if (!isAuthed) return <Login onLogin={login} />;
-
-  const sessionKey = `${user?.username || "u"}:${user?.role || "r"}`;
-  return <AuthedApp key={sessionKey} user={user} logout={logout} />;
+  return (
+    <ThemeProvider>
+      {!isAuthed ? <Login onLogin={login} /> : <AuthedApp key={`${user?.username || "u"}:${user?.role || "r"}`} user={user} logout={logout} />}
+    </ThemeProvider>
+  );
 }

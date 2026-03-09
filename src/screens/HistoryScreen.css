@@ -11,8 +11,8 @@
   min-height: 100vh;
   overflow-x: hidden;
   padding: 12px 0 92px;
-  color: #e5e7eb;
-  color-scheme: dark; /* ✅ make inputs (date) dark-friendly */
+  color: var(--we-text);
+  color-scheme: light dark;
 }
 
 .we-h-bg {
@@ -81,21 +81,21 @@
   margin-top: 2px;
   font-size: 24px;
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
   line-height: 1.1;
 }
 .we-h-sub {
   margin-top: 6px;
   font-size: 12px;
-  color: rgba(226, 232, 240, 0.78);
+  color: var(--we-muted);
 }
 
 .we-h-refresh {
   border: 0;
   border-radius: var(--we-radius-control);
   padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 1), rgba(236, 72, 153, 1));
-  color: #fff;
+  background: var(--we-primary-grad);
+  color: #f8fbff;
   font-weight: 950;
   font-size: 14px;
   cursor: pointer;
@@ -135,8 +135,8 @@
 
 /* glass card */
 .we-h-glass {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--we-surface);
+  border: 1px solid var(--we-border);
   border-radius: var(--we-radius-card);
   padding: 12px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
@@ -167,7 +167,7 @@
 .we-h-cardTitle {
   font-size: 13px;
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 
 .we-h-cardHint {
@@ -218,9 +218,9 @@
   width: 100%;
   min-width: 0;
   height: var(--we-control-h);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 23, 42, 0.35);
-  color: #fff;
+  border: 1px solid var(--we-control-border);
+  background: var(--we-control-bg);
+  color: var(--we-text);
   border-radius: var(--we-radius-control);
   padding: 10px 12px;
   outline: none;
@@ -237,30 +237,36 @@
   opacity: 0.75;
   cursor: pointer;
 }
+html.theme-light .we-h-dateInput[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.14);
+  opacity: 0.82;
+}
 
 .we-h-rangeBtns {
   grid-column: 1 / -1;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  flex-wrap: wrap;
   padding-top: 2px;
 }
 
 .we-h-chip {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  border: 1px solid var(--we-border);
+  background: var(--we-surface-2);
+  color: var(--we-text);
   padding: 8px 12px;
+  width: 100%;
   border-radius: var(--we-radius-pill);
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
+  text-align: center;
 }
 .we-h-chip:hover {
   filter: brightness(1.05);
 }
 .we-h-chip.ghost {
-  background: transparent;
+  background: var(--we-surface-2);
   opacity: 0.85;
 }
 
@@ -277,8 +283,8 @@
 .we-h-donutCard {
   border-radius: 14px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.26));
+  border: 1px solid var(--we-border);
+  background: var(--we-surface);
 }
 .we-h-donutCardWide {
   grid-column: 1 / -1;
@@ -302,7 +308,11 @@
   position: relative;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 0 0 10px rgba(0, 0, 0, 0.1);
+  transform: rotateX(20deg) rotateZ(-8deg);
+  box-shadow:
+    0 24px 30px rgba(2, 6, 23, 0.28),
+    0 1px 0 rgba(255,255,255,.34) inset,
+    0 -6px 16px rgba(2, 6, 23, 0.32) inset;
 }
 .we-h-donutRing.blue {
   background: conic-gradient(rgba(56, 189, 248, 0.95) var(--pct), rgba(255, 255, 255, 0.1) 0);
@@ -316,11 +326,11 @@
 .we-h-donutRing::before {
   content: "";
   position: absolute;
-  inset: 12px;
+  inset: 16px;
   border-radius: 999px;
-  background: rgba(11, 18, 32, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--we-control-bg) 86%, #fff), var(--we-surface-2));
+  border: 1px solid var(--we-border);
+  box-shadow: 0 10px 16px rgba(2, 6, 23, 0.22), 0 1px 0 rgba(255,255,255,.2) inset;
 }
 .we-h-donutCenter {
   position: relative;
@@ -331,19 +341,19 @@
 .we-h-donutPct {
   font-size: 24px;
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
   line-height: 1;
 }
 .we-h-donutLbl {
   margin-top: 6px;
   font-size: 12px;
   font-weight: 900;
-  opacity: 0.95;
+  color: var(--we-muted);
 }
 .we-h-donutSub {
   margin-top: 4px;
   font-size: 11px;
-  opacity: 0.7;
+  color: var(--we-muted);
 }
 
 .we-h-kpiGrid {
@@ -352,8 +362,8 @@
   gap: 10px;
 }
 .we-h-kpiCard {
-  background: rgba(15, 23, 42, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--we-surface);
+  border: 1px solid var(--we-border);
   border-radius: 14px;
   padding: 12px;
 }
@@ -374,7 +384,7 @@
 .we-h-kpiValue {
   font-size: 20px;
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 .we-h-kpiValue.green {
   color: #bbf7d0;
@@ -423,19 +433,19 @@
   gap: 10px;
   padding: 10px;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.45), rgba(2, 6, 23, 0.55));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--we-surface);
+  border: 1px solid var(--we-border);
 }
 .we-h-dayCard {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid var(--we-border);
+  background: var(--we-surface);
   padding: 8px;
   display: grid;
   gap: 8px;
 }
 .we-h-dayCard.off {
-  background: rgba(30, 41, 59, 0.42);
+  background: var(--we-surface-2);
 }
 .we-h-dayCard.has-ot {
   border-color: rgba(249, 115, 22, 0.35);
@@ -467,8 +477,8 @@
   position: absolute;
   inset: 10px;
   border-radius: 999px;
-  background: rgba(2, 6, 23, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--we-control-bg) 86%, #fff), var(--we-surface-2));
+  border: 1px solid var(--we-border);
 }
 .we-h-dayCenter {
   position: absolute;
@@ -482,7 +492,7 @@
   font-size: 20px;
   line-height: 1;
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 .we-h-dayUnit {
   font-size: 10px;
@@ -507,7 +517,7 @@
   text-overflow: ellipsis;
 }
 .we-h-dayOff {
-  color: #e2e8f0;
+  color: var(--we-muted);
 }
 .we-h-dayOt.active {
   color: rgba(255, 210, 128, 0.98);
@@ -533,7 +543,7 @@
 }
 .we-h-kpiSub b{
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 
 /* ---------- Search ---------- */
@@ -555,8 +565,8 @@
   gap: 10px;
   padding: 12px 12px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--we-control-bg);
+  border: 1px solid var(--we-control-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .we-h-input input {
@@ -564,12 +574,12 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: #fff;
+  color: var(--we-text);
   font-size: 14px;
   min-width: 0;
 }
 .we-h-input input::placeholder {
-  color: rgba(226, 232, 240, 0.55);
+  color: var(--we-muted);
 }
 .we-h-ic {
   opacity: 0.85;
@@ -606,8 +616,8 @@
 .we-h-item {
   padding: 12px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--we-surface);
+  border: 1px solid var(--we-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   display: grid;
   gap: 10px;
@@ -620,15 +630,15 @@
 }
 .we-h-itemId {
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 .we-h-pill {
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 900;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--we-border);
+  background: var(--we-surface-2);
   white-space: nowrap;
 }
 .we-h-pill.open {
@@ -637,9 +647,9 @@
   color: #bbf7d0;
 }
 .we-h-pill.closed {
-  background: rgba(226, 232, 240, 0.1);
-  border-color: rgba(226, 232, 240, 0.16);
-  color: rgba(226, 232, 240, 0.9);
+  background: var(--we-surface-2);
+  border-color: var(--we-border);
+  color: var(--we-muted);
 }
 
 .we-h-ioGrid {
@@ -659,27 +669,27 @@
 .we-h-ioLbl {
   font-size: 12px;
   font-weight: 900;
-  color: rgba(226, 232, 240, 0.8);
+  color: var(--we-muted);
 }
 .we-h-ioVal {
   font-size: 12px;
-  color: rgba(226, 232, 240, 0.95);
+  color: var(--we-text);
   text-align: right;
   min-width: 0;
   word-break: break-word;
 }
 .we-h-ioVal.strong {
   font-weight: 950;
-  color: #fff;
+  color: var(--we-text);
 }
 .we-h-noteRow {
   font-size: 12px;
-  opacity: 0.9;
+  color: var(--we-text);
   word-break: break-word;
 }
 .we-h-noteLbl {
   font-weight: 900;
-  color: #fff;
+  color: var(--we-text);
   margin-right: 6px;
 }
 .we-h-noteVal {
@@ -688,6 +698,92 @@
 
 .we-h-footSpace {
   height: 8px;
+}
+
+/* ---------- Premium Polish Layer ---------- */
+.we-h-glass {
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--we-surface) 84%, #ffffff 8%), color-mix(in srgb, var(--we-surface) 96%, #000 4%)) !important;
+  box-shadow:
+    0 26px 64px color-mix(in srgb, #020617 36%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.we-h-cardHead {
+  border-bottom: 1px solid color-mix(in srgb, var(--we-border) 72%, transparent);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.we-h-refresh {
+  background: linear-gradient(135deg, #4f7dff, #58abff) !important;
+  box-shadow: 0 14px 32px rgba(79, 125, 255, .34) !important;
+}
+
+.we-h-dateInput[type="date"] {
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.we-h-chip {
+  border-radius: 999px;
+  font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+.we-h-chip.we-btn--apply {
+  background: color-mix(in srgb, #5d8dff 24%, var(--we-surface-2)) !important;
+  border-color: color-mix(in srgb, #5d8dff 44%, var(--we-border)) !important;
+}
+
+.we-h-donutCard,
+.we-h-kpiCard,
+.we-h-dayCard {
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--we-surface) 86%, #ffffff 6%), color-mix(in srgb, var(--we-surface) 96%, #000 4%)) !important;
+  border-color: color-mix(in srgb, var(--we-border) 92%, #ffffff 8%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+.we-h-donutRing {
+  filter: saturate(1.08);
+}
+
+.we-h-donutCenter {
+  text-shadow: 0 2px 8px rgba(2, 6, 23, .22);
+}
+
+.we-h-kpiValue {
+  letter-spacing: -.02em;
+}
+
+.we-h-dayCard:hover,
+.we-h-donutCard:hover,
+.we-h-kpiCard:hover {
+  transform: translateY(-1px);
+  transition: transform .18s ease, box-shadow .18s ease;
+  box-shadow: 0 14px 30px color-mix(in srgb, #1e293b 24%, transparent), inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+html.theme-light .we-h-glass {
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.94), rgba(245,249,255,.88)) !important;
+  box-shadow:
+    0 18px 38px rgba(58, 84, 129, .18),
+    inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+html.theme-light .we-h-donutCard,
+html.theme-light .we-h-kpiCard,
+html.theme-light .we-h-dayCard {
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.96), rgba(247,251,255,.9)) !important;
+}
+
+html.theme-light .we-h-chip.we-btn--apply {
+  background: color-mix(in srgb, #4f7dff 18%, #ffffff) !important;
+  border-color: color-mix(in srgb, #4f7dff 38%, var(--we-border)) !important;
+  color: #14315d !important;
 }
 
 /* ---------- Mobile ---------- */
@@ -704,6 +800,9 @@
   }
   .we-h-rangeGrid {
     grid-template-columns: 1fr; /* stack date inputs */
+  }
+  .we-h-rangeBtns {
+    grid-template-columns: 1fr 1fr;
   }
   .we-h-cardMeta {
     width: 100%;

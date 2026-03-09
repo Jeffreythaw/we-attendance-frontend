@@ -136,7 +136,7 @@ export default function EditAttendanceModal({ open, row, onClose, onSaved, onAut
           <button className="we-btn-soft" onClick={close} disabled={editSaving} type="button">
             Cancel
           </button>
-          <button className="we-btn" onClick={saveEdit} disabled={editSaving} type="button">
+          <button className="we-btn we-btn--save" onClick={saveEdit} disabled={editSaving} type="button">
             {editSaving ? (
               <span className="we-btn-spin">
                 <span className="spinner" />

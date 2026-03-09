@@ -6,9 +6,11 @@ import AppBackground from "./AppBackground";
 import { Tabs } from "../components/Tabs";
 import weWordmark from "../assets/WE_Eng.png";
 import "./EmployeeMobileShell.css";
+import { useTheme } from "../theme/context";
 
 export default function EmployeeMobileShell({ user, logout }) {
   const [tab, setTab] = useState("clock");
+  const { theme, toggleTheme } = useTheme();
 
   function onAuthError() {
     alert("Session expired. Please login again.");
@@ -30,9 +32,14 @@ export default function EmployeeMobileShell({ user, logout }) {
             <img src={weWordmark} alt="WE Engineering" className="we-mobile-brandMark" />
             <div className="we-mobile-user">{user?.username} • {user?.role}</div>
           </div>
-          <button type="button" className="we-mobile-logout" onClick={logout}>
-            Log out
-          </button>
+          <div className="we-mobile-actions">
+            <button type="button" className="we-mobile-themeSwitch" onClick={toggleTheme}>
+              {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+            </button>
+            <button type="button" className="we-mobile-logout" onClick={logout}>
+              🚪 Log out
+            </button>
+          </div>
         </div>
 
         <div className="we-mobile-content">

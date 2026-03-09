@@ -316,6 +316,44 @@ const css = `
 .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+html.theme-light .we-login-root {
+  background: #eef3fb;
+  color: #132949;
+}
+html.theme-light .we-login-window {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(35, 58, 92, 0.22);
+  box-shadow: 0 26px 64px rgba(58, 84, 129, 0.2);
+}
+html.theme-light .we-login-titlebar {
+  background: rgba(255, 255, 255, 0.65);
+  border-bottom-color: rgba(35, 58, 92, 0.22);
+}
+html.theme-light .we-brandbar-full {
+  background: rgba(255, 255, 255, 0.7);
+}
+html.theme-light .we-login-h1,
+html.theme-light .we-login-label,
+html.theme-light .we-input input,
+html.theme-light .we-eye,
+html.theme-light .we-check,
+html.theme-light .we-login-sub {
+  color: #173052;
+}
+html.theme-light .we-login-kicker,
+html.theme-light .we-link {
+  color: #3a5f9a;
+}
+html.theme-light .we-input {
+  background: rgba(255,255,255,.96);
+  border-color: rgba(35,58,92,.28);
+}
+html.theme-light .we-input:focus-within {
+  border-color: #4f7dff;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 0 0 4px rgba(79, 125, 255, 0.16);
+}
+
 
 @media (min-width: 900px) {
   .we-login-content { grid-template-columns: 1.05fr 1fr; align-items: center; }
