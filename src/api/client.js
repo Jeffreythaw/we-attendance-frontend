@@ -40,11 +40,10 @@ const sameOriginFallbackAllowed =
   String(import.meta.env.VITE_API_ALLOW_SAME_ORIGIN_FALLBACK || "").toLowerCase() === "true" ||
   !!import.meta.env.DEV ||
   isLikelyLocalHost() ||
-  isVercelHost() ||
   CONFIGURED_BASES.length === 0;
 
 const API_BASES = sameOriginFallbackAllowed
-  ? uniqueBases(isVercelHost() ? ["", ...CONFIGURED_BASES] : [...CONFIGURED_BASES, ""])
+  ? uniqueBases([...CONFIGURED_BASES, ""])
   : CONFIGURED_BASES;
 
 const API_BASE = API_BASES[0] || "";
@@ -100,7 +99,7 @@ function shouldRetryOrFallback(path, method, statusOrNull, errorMessage) {
     status === 0 ||
     Number.isNaN(status) ||
     String(errorMessage || "").toLowerCase().includes("failed to fetch");
-  const isTransientHttp = status === 502 || status === 503 || status === 504;
+  const isTransientHttp = status === 500 || status === 502 || status === 503 || status === 504;
 
   const isIdempotent = m === "GET" || m === "HEAD" || m === "OPTIONS";
   const isLogin = p.toLowerCase() === "/api/auth/login";
