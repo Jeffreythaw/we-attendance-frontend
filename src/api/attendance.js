@@ -62,4 +62,12 @@ export const attendanceApi = {
       : "/api/Attendance/admin/recalculate-minutes";
     return apiFetch(path, { method: "POST" });
   },
+
+  getPayslip({ from, to, employeeId }) {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (employeeId) qs.set("employeeId", String(employeeId));
+    return apiFetch(`/api/Reports/payslip?${qs.toString()}`, { method: "GET" });
+  },
 };

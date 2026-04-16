@@ -22,6 +22,7 @@ export default function EmployeesGrid({ rows, loading, q, setQ, onEdit, fmtDateO
       id: e?.id,
       name: e?.name || "(no name)",
       dept: e?.department || e?.dept || "—",
+      monthlyBasicSalary: Number(e?.monthlyBasicSalary || e?.MonthlyBasicSalary || 0),
       active: !!e?.active,
       fin: getField(e, "finNo", "fin_number"),
       nat: getField(e, "nationality"),
@@ -156,6 +157,7 @@ export default function EmployeesGrid({ rows, loading, q, setQ, onEdit, fmtDateO
                         <div className="we-detailsGrid">
                           <div className="we-kv"><div className="k">FIN</div><div className="v">{r.fin || "—"}</div></div>
                           <div className="we-kv"><div className="k">Nationality</div><div className="v">{r.nat || "—"}</div></div>
+                          <div className="we-kv"><div className="k">Monthly Salary</div><div className="v">{r.monthlyBasicSalary > 0 ? r.monthlyBasicSalary.toFixed(2) : "—"}</div></div>
                           <div className="we-kv"><div className="k">DOB</div><div className="v">{fmtDateOnly(r.dob)}</div></div>
 
                           <div className="we-kv"><div className="k">WP No</div><div className="v">{r.wpNo || "—"}</div></div>

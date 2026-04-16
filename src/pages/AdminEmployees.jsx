@@ -38,6 +38,13 @@ function emptyToNull(s) {
   return t.length ? t : null;
 }
 
+function toDecimalOrNull(v) {
+  const t = String(v ?? "").trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 /**
  * Convert any UI date string into backend-safe ISO DateOnly string (YYYY-MM-DD) or null.
  * - input type="date" already gives YYYY-MM-DD
@@ -90,6 +97,7 @@ export default function AdminEmployees({ onAuthError }) {
   // ============================================================
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
+  const [monthlyBasicSalary, setMonthlyBasicSalary] = useState("");
   const [active, setActive] = useState(true);
 
   // Create form fields
@@ -185,6 +193,7 @@ export default function AdminEmployees({ onAuthError }) {
       await createEmployee({
         name: n,
         department: d,
+        monthlyBasicSalary: toDecimalOrNull(monthlyBasicSalary),
         active,
 
         finNo: emptyToNull(finNo),
@@ -205,6 +214,7 @@ export default function AdminEmployees({ onAuthError }) {
 
       setName("");
       setDepartment("");
+      setMonthlyBasicSalary("");
       setActive(true);
 
       setFinNo("");
@@ -268,6 +278,7 @@ export default function AdminEmployees({ onAuthError }) {
   // editable fields
   const [eName, setEName] = useState("");
   const [eDepartment, setEDepartment] = useState("");
+  const [eMonthlyBasicSalary, setEMonthlyBasicSalary] = useState("");
   const [eActive, setEActive] = useState(true);
 
   const [eFinNo, setEFinNo] = useState("");
@@ -302,6 +313,7 @@ export default function AdminEmployees({ onAuthError }) {
 
     setEName(emp?.name || "");
     setEDepartment(emp?.department || emp?.dept || "");
+    setEMonthlyBasicSalary(String(emp?.monthlyBasicSalary ?? emp?.MonthlyBasicSalary ?? ""));
     setEActive(!!emp?.active);
 
     setEFinNo(emp?.finNo || emp?.fin_number || "");
@@ -356,6 +368,7 @@ export default function AdminEmployees({ onAuthError }) {
       const payload = {
         name: emptyToNull(eName),
         department: eDepartment != null ? String(eDepartment) : null,
+        monthlyBasicSalary: toDecimalOrNull(eMonthlyBasicSalary),
         active: !!eActive,
 
         finNo: eFinNo != null ? String(eFinNo) : null,
@@ -740,6 +753,21 @@ export default function AdminEmployees({ onAuthError }) {
                   </div>
                 </label>
 
+                <label className="we-admin-label">
+                  Monthly Salary
+                  <div className="we-input">
+                    <span className="we-icon" aria-hidden="true">💵</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={monthlyBasicSalary}
+                      onChange={(e) => setMonthlyBasicSalary(e.target.value)}
+                      placeholder="Monthly basic salary"
+                    />
+                  </div>
+                </label>
+
                 <div className="we-admin-two">
                   <label className="we-admin-label">
                     Fin No.
@@ -888,6 +916,20 @@ export default function AdminEmployees({ onAuthError }) {
                       <div className="we-input">
                         <span className="we-icon" aria-hidden="true">🏢</span>
                         <input value={eDepartment} onChange={(ev) => setEDepartment(ev.target.value)} />
+                      </div>
+                    </label>
+
+                    <label className="we-admin-label">
+                      Monthly Salary
+                      <div className="we-input">
+                        <span className="we-icon" aria-hidden="true">💵</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={eMonthlyBasicSalary}
+                          onChange={(ev) => setEMonthlyBasicSalary(ev.target.value)}
+                        />
                       </div>
                     </label>
                   </div>

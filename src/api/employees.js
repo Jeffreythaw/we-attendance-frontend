@@ -8,6 +8,7 @@ function normalizeEmployee(r) {
     id: r.id ?? r.Id,
     name: r.name ?? r.Name,
     department: r.department ?? r.Department,
+    monthlyBasicSalary: Number(r.monthlyBasicSalary ?? r.MonthlyBasicSalary ?? 0),
     active: r.active ?? r.Active ?? true,
     createdAt: r.createdAt ?? r.CreatedAt,
 
