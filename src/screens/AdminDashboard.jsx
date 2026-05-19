@@ -152,7 +152,7 @@ export default function AdminDashboard({ onAuthError }) {
   const [overnightBusy, setOvernightBusy] = useState(false);
   const [preApprovals, setPreApprovals] = useState([]);
   const [preApproveEmployeeId, setPreApproveEmployeeId] = useState("");
-  const [preApproveDate, setPreApproveDate] = useState(() => sgWeekRangeIso(new Date()).fromIso);
+  const [preApproveDate, setPreApproveDate] = useState(() => localIsoDate(new Date()));
   const [preApproveNote, setPreApproveNote] = useState("");
   const [preApproveBusy, setPreApproveBusy] = useState(false);
   const [viewMode, setViewMode] = useState("overview");
