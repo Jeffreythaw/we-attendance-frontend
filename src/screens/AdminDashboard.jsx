@@ -2,7 +2,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { listEmployees } from "../api/employees";
 import { apiFetch } from "../api/client";
 import { fmtDateTime } from "../utils/datetime";
-import { formatDurationMinutes, pickReportOtMinutes } from "../utils/attendanceFormat";
+import {
+  formatDurationMinutes,
+  hasReportMetrics,
+  pickReportMonFriOtMinutes,
+  pickReportOtMinutes,
+  pickReportOvernightOtMinutes,
+  pickReportSatOtMinutes,
+  pickReportSunPhOtMinutes,
+  pickReportWorkedMinutes,
+} from "../utils/attendanceFormat";
 
 import { SUMMARY_ENDPOINT } from "./adminDashboard/constants";
 import { toIsoRangeParams } from "./adminDashboard/timezone";
@@ -373,19 +382,26 @@ export default function AdminDashboard({ onAuthError }) {
         lateDaysByEmp.get(empId).add(dayKey);
       }
 
-      const regMins = finiteNumberOrNull(r?.regularMinutes);
       const safeOtMins = pickReportOtMinutes(r);
-      const totalMins = Math.max(0, Math.round((regMins ?? 0) + safeOtMins));
+      const totalMins = hasReportMetrics(r)
+        ? pickReportWorkedMinutes(r)
+        : Math.max(0, Math.round((finiteNumberOrNull(r?.regularMinutes) ?? 0) + safeOtMins));
       totalWorkedByEmp.set(empId, (totalWorkedByEmp.get(empId) || 0) + totalMins);
       otByEmp.set(empId, (otByEmp.get(empId) || 0) + safeOtMins);
 
       if (safeOtMins > 0) {
-        const offDay = !workdaySet.has(dayKey);
-        const outDayKey = toDateKey(outAt);
-        const overnight = !!(outDayKey && outDayKey !== dayKey);
-        if (offDay) sunPhOtByEmp.set(empId, (sunPhOtByEmp.get(empId) || 0) + safeOtMins);
-        else normalOtByEmp.set(empId, (normalOtByEmp.get(empId) || 0) + safeOtMins);
-        if (overnight) overnightOtByEmp.set(empId, (overnightOtByEmp.get(empId) || 0) + safeOtMins);
+        if (hasReportMetrics(r)) {
+          normalOtByEmp.set(empId, (normalOtByEmp.get(empId) || 0) + pickReportMonFriOtMinutes(r) + pickReportSatOtMinutes(r));
+          sunPhOtByEmp.set(empId, (sunPhOtByEmp.get(empId) || 0) + pickReportSunPhOtMinutes(r));
+          overnightOtByEmp.set(empId, (overnightOtByEmp.get(empId) || 0) + pickReportOvernightOtMinutes(r));
+        } else {
+          const offDay = !workdaySet.has(dayKey);
+          const outDayKey = toDateKey(outAt);
+          const overnight = !!(outDayKey && outDayKey !== dayKey);
+          if (offDay) sunPhOtByEmp.set(empId, (sunPhOtByEmp.get(empId) || 0) + safeOtMins);
+          else normalOtByEmp.set(empId, (normalOtByEmp.get(empId) || 0) + safeOtMins);
+          if (overnight) overnightOtByEmp.set(empId, (overnightOtByEmp.get(empId) || 0) + safeOtMins);
+        }
       }
     }
 

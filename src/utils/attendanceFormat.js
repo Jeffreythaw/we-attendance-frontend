@@ -12,6 +12,23 @@ export function formatDurationMinutes(mins) {
   return `${h}h ${mm}m`;
 }
 
+export function hasReportMetrics(row) {
+  return !!row && (
+    row?.reportWorkedMinutes != null ||
+    row?.ReportWorkedMinutes != null ||
+    row?.reportOtMinutes != null ||
+    row?.ReportOtMinutes != null ||
+    row?.reportMonFriOtMinutes != null ||
+    row?.ReportMonFriOtMinutes != null ||
+    row?.reportSatOtMinutes != null ||
+    row?.ReportSatOtMinutes != null ||
+    row?.reportSunPhOtMinutes != null ||
+    row?.ReportSunPhOtMinutes != null ||
+    row?.reportOvernightOtMinutes != null ||
+    row?.ReportOvernightOtMinutes != null
+  );
+}
+
 export function pickReportOtMinutes(row) {
   if (!row) return 0;
 
@@ -32,4 +49,20 @@ export function pickReportWorkedMinutes(row) {
   const reportWorked = Number(row?.reportWorkedMinutes ?? row?.ReportWorkedMinutes);
   if (Number.isFinite(reportWorked)) return asMinutes(reportWorked);
   return asMinutes(row?.regularMinutes ?? row?.RegularMinutes) + pickReportOtMinutes(row);
+}
+
+export function pickReportMonFriOtMinutes(row) {
+  return asMinutes(row?.reportMonFriOtMinutes ?? row?.ReportMonFriOtMinutes);
+}
+
+export function pickReportSatOtMinutes(row) {
+  return asMinutes(row?.reportSatOtMinutes ?? row?.ReportSatOtMinutes);
+}
+
+export function pickReportSunPhOtMinutes(row) {
+  return asMinutes(row?.reportSunPhOtMinutes ?? row?.ReportSunPhOtMinutes);
+}
+
+export function pickReportOvernightOtMinutes(row) {
+  return asMinutes(row?.reportOvernightOtMinutes ?? row?.ReportOvernightOtMinutes);
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { formatDurationMinutes, pickReportOtMinutes } from "../../utils/attendanceFormat";
+import { formatDurationMinutes, hasReportMetrics, pickReportOtMinutes } from "../../utils/attendanceFormat";
 
 const SG_TZ = "Asia/Singapore";
 
@@ -195,8 +195,7 @@ function deriveOtMinutesByPolicy(row, holidaySet = null) {
 }
 
 function calcOtMins(row, holidaySet = null) {
-  const backend = pickReportOtMinutes(row);
-  if (backend > 0) return backend;
+  if (hasReportMetrics(row)) return pickReportOtMinutes(row);
 
   const derived = deriveOtMinutesByPolicy(row, holidaySet);
   if (derived != null) return roundOtDisplayMinutes(derived);

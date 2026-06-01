@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { formatDurationMinutes, pickReportOtMinutes } from "../../utils/attendanceFormat";
+import { formatDurationMinutes, hasReportMetrics, pickReportOtMinutes, pickReportWorkedMinutes } from "../../utils/attendanceFormat";
 
 /** local YYYY-MM-DD (not UTC) */
 function localIsoDate(d = new Date()) {
@@ -350,7 +350,12 @@ export default function EmployeeInOutMatrix({
     return `${days[0]} → ${days[days.length - 1]}`;
   }, [days, from, to]);
 
-  function hoursLabel(inAt, outAt) {
+  function hoursLabel(row, inAt, outAt) {
+    if (hasReportMetrics(row)) {
+      const backendWorked = pickReportWorkedMinutes(row);
+      return backendWorked > 0 ? formatHm(backendWorked) : "—";
+    }
+
     const mins = workedMinutes(
       inAt,
       outAt,
@@ -447,7 +452,7 @@ export default function EmployeeInOutMatrix({
 
                   <div className="we-presenceFoot">
                     <div className="we-presenceHours">
-                      Worked: <b>{hoursLabel(inAt, outAt)}</b> • OT: <b>{otMins > 0 ? formatHm(otMins) : "—"}</b>
+                      Worked: <b>{hoursLabel(latestRow, inAt, outAt)}</b> • OT: <b>{otMins > 0 ? formatHm(otMins) : "—"}</b>
                     </div>
                     <div className="we-presenceActions">
                       {latLng ? (
