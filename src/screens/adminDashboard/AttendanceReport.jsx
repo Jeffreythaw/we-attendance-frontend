@@ -258,7 +258,7 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       doc.setFont("helvetica", "normal");
       doc.text(String(payslip.companyName || "WE ENGINEERING PTE. LTD."), 86, y);
       doc.text("202447757M", 86, y + 12);
-      doc.text("WGCE@ TOWER 2, 21 BUKIT BATOK CRESCENT, #29-81, SINGAPORE 658060", 86, y + 24, { maxWidth: 230 });
+      doc.text("WCEGA TOWER, 21 BUKIT BATOK CRESCENT, #29-81, SINGAPORE 658060", 86, y + 24, { maxWidth: 230 });
 
       doc.setFont("helvetica", "bold");
       doc.text("Pay Month", 340, y);
