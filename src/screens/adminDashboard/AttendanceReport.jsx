@@ -216,6 +216,8 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       const otPay = Number(payslip.otPay || 0);
       const grossPay = Number(payslip.grossPay || 0);
       const netPay = Number(payslip.netPay || 0);
+      const unpaidLeaveDeduction = Number(payslip.unpaidLeaveDeduction || 0);
+      const totalDeductions = Number(payslip.totalDeductions || 0);
       const normalHours = Number(payslip.normalWorkingHours || 0);
       const totalHours = Number(payslip.totalWorkingHour || 0);
       const totalOt = Number(payslip.totalOt || 0);
@@ -315,10 +317,10 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       ];
 
       const deductionRows = [
-        ["Unpaid Leave", "0.00"],
+        ["Unpaid Leave", formatMoney(unpaidLeaveDeduction)],
         ["Employee CPF", "0.00"],
         ["Other Deductions", "0.00"],
-        ["Total Deductions", "0.00"],
+        ["Total Deductions", formatMoney(totalDeductions)],
       ];
 
       const sectionStartY = y;
