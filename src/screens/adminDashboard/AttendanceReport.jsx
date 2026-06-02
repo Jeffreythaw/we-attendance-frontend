@@ -26,6 +26,9 @@ const DISPLAY_COLUMNS = [
   { label: "Unpaid Leave", key: "Unpaid Leave Days" },
   { label: "Paid Leave Min", key: "Paid Leave Minutes" },
   { label: "Lunch Min", key: "Total Lunch Minutes" },
+  { label: "PH Pay Days", key: "Public Holiday Pay Days" },
+  { label: "Payable Days", key: "Total Payable Days" },
+  { label: "Divisor", key: "Payroll Divisor" },
   { label: "Basic Pay", key: "Basic Pay" },
   { label: "OT Pay", key: "OT Pay" },
   { label: "Net Pay", key: "Net Pay" },
@@ -219,6 +222,9 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       const leaveDays = Number(payslip.totalLeave || 0);
       const workingSunday = Number(payslip.workingSunday || 0);
       const hourlyRate = Number(payslip.hourlyRate || 0);
+      const payrollDivisor = Number(payslip.payrollDivisor || 0);
+      const phPayDays = Number(payslip.publicHolidayPayDays || 0);
+      const payableDays = Number(payslip.totalPayableDays || 0);
       const monthYear = formatMonthYear(payslip.periodFrom || from);
       const employeeCode = formatEmployeeCode(payslip.employeeId || employeeId);
       const detailOtRows = [
@@ -340,6 +346,9 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
         ["Total Working Hours", formatMoney(totalHours)],
         ["Total OT", formatMoney(totalOt)],
         ["Leave Days", String(leaveDays)],
+        ["PH Pay Days", formatMoney(phPayDays)],
+        ["Payable Days", formatMoney(payableDays)],
+        ["Payroll Divisor", formatMoney(payrollDivisor)],
         ["Working Sunday", String(workingSunday)],
         ["Hourly Rate", formatMoney(hourlyRate)],
       ].forEach(([label, value]) => {
