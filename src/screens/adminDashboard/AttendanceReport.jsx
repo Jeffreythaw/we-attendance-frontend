@@ -30,7 +30,9 @@ const DISPLAY_COLUMNS = [
   { label: "Payable Days", key: "Total Payable Days" },
   { label: "Divisor", key: "Payroll Divisor" },
   { label: "Basic Pay", key: "Basic Pay" },
+  { label: "Basic Payable", key: "Basic Salary Payable" },
   { label: "OT Pay", key: "OT Pay" },
+  { label: "Gross Pay", key: "Gross Pay" },
   { label: "Net Pay", key: "Net Pay" },
 ];
 
@@ -210,7 +212,9 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       if (!payslip) throw new Error("Failed to load payslip data.");
 
       const basicPay = Number(payslip.basicPay || 0);
+      const basicSalaryPayable = Number(payslip.basicSalaryPayable || 0);
       const otPay = Number(payslip.otPay || 0);
+      const grossPay = Number(payslip.grossPay || 0);
       const netPay = Number(payslip.netPay || 0);
       const normalHours = Number(payslip.normalWorkingHours || 0);
       const totalHours = Number(payslip.totalWorkingHour || 0);
@@ -230,7 +234,8 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
       const detailOtRows = [
         ["OT - Weekday", formatMoney(monFriOt)],
         ["OT - Saturday", formatMoney(satOt)],
-        ["OT - Sunday / PH", formatMoney(sunPhOt + overnightOt)],
+        ["OT - Sunday / PH", formatMoney(sunPhOt)],
+        ["OT - Overnight", formatMoney(overnightOt)],
       ];
 
       const { jsPDF } = await import("jspdf");
@@ -303,9 +308,10 @@ export default function AttendanceReport({ from, to, disabled, onAuthError }) {
 
       const earningRows = [
         ["Basic Pay", formatMoney(basicPay)],
+        ["Basic Salary Payable", formatMoney(basicSalaryPayable)],
         ["Fixed Allowances", "0.00"],
         ...detailOtRows,
-        ["Gross Pay", formatMoney(basicPay + otPay)],
+        ["Gross Pay", formatMoney(grossPay)],
       ];
 
       const deductionRows = [
