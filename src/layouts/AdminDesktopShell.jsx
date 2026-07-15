@@ -5,6 +5,7 @@ import AdminQuotations from "../screens/AdminQuotations";
 import Payslips from "../screens/Payslips";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import ScheduleCalendarTab from "../screens/ScheduleCalendarTab";
+import SopLibrary from "../screens/SopLibrary";
 import AppBackground from "./AppBackground";
 import weWordmark from "../assets/WE_Eng.png";
 import "./AdminDesktopShell.css";
@@ -35,6 +36,7 @@ export default function AdminDesktopShell({ user, logout }) {
             <button type="button" className={`we-admin-tab ${tab === "quotations" ? "is-active" : ""}`} onClick={() => setTab("quotations")}>🧾 Quotes</button>
             <button type="button" className={`we-admin-tab ${tab === "payslips" ? "is-active" : ""}`} onClick={() => setTab("payslips")}>💵 Payslips</button>
             <button type="button" className={`we-admin-tab ${tab === "calendar" ? "is-active" : ""}`} onClick={() => setTab("calendar")}>📅 Calendar</button>
+            <button type="button" className={`we-admin-tab ${tab === "sop" ? "is-active" : ""}`} onClick={() => setTab("sop")}>📚 SOP Library</button>
             <button type="button" className={`we-admin-tab ${tab === "settings" ? "is-active" : ""}`} onClick={() => setTab("settings")}>⚙️ Settings</button>
           </nav>
 
@@ -52,6 +54,7 @@ export default function AdminDesktopShell({ user, logout }) {
           {tab === "quotations" && <AdminQuotations onAuthError={onAuthError} />}
           {tab === "payslips" && <Payslips onAuthError={onAuthError} />}
           {tab === "calendar" && <ScheduleCalendarTab user={user} onAuthError={onAuthError} />}
+          {tab === "sop" && <SopLibrary onAuthError={onAuthError} />}
           {tab === "settings" && <SettingsScreen user={user} onLogout={logout} isAdmin />}
         </div>
       </div>
