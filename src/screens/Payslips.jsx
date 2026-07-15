@@ -136,7 +136,7 @@ export default function Payslips({ onAuthError }) {
             <div className="we-admin-sectionTitle">Payslips</div>
             <div className="we-admin-sectionMeta">Open an employee payslip to review database values and enter manual allowance or deductions in the PDF-style view.</div>
           </div>
-          <label className="we-a-label" style={{ minWidth: 170 }}>
+          <label className="we-a-label we-payslip-month">
             Pay month
             <input type="month" value={month} onChange={(e) => { setMonth(e.target.value); setPreviewEmployee(null); setPreview(null); }} />
           </label>

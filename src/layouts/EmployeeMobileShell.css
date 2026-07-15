@@ -760,7 +760,7 @@ html.theme-light .we-mobile-phone {
 }
 
 html.theme-dark .we-mobile-phone {
-  color-scheme: only light;
+  color-scheme: dark;
 }
 
 /* Light mode must win over global theme/governance rules and Android WebView text fill. */

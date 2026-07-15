@@ -27,13 +27,11 @@ function useMobileShell() {
 }
 
 function AuthedApp({ user, logout }) {
-  const role = (user?.role || "").toLowerCase();
   const isMobileShell = useMobileShell();
 
-  if (role === "admin") return <AdminDesktopShell user={user} logout={logout} />;
+  if ((user?.role || "").toLowerCase() === "admin") return <AdminDesktopShell user={user} logout={logout} />;
   if (isMobileShell) return <EmployeeMobileShell user={user} logout={logout} />;
-  if (role === "supervisor") return <SupervisorDesktopShell user={user} logout={logout} />;
-  return <EmployeeMobileShell user={user} logout={logout} />;
+  return <SupervisorDesktopShell user={user} logout={logout} />;
 }
 
 export default function App() {

@@ -22,21 +22,21 @@ export default function AdminDesktopShell({ user, logout }) {
   return (
     <div className="we-admin-shell">
       <AppBackground />
-      <div className="we-admin-wrap">
-        <div className="we-admin-top">
+      <div className="we-admin-shellWrap">
+        <aside className="we-admin-top">
           <div className="we-admin-brand">
             <img src={weWordmark} alt="WE Engineering" className="we-admin-brandMark" />
             <div className="we-admin-user">{user?.username} • {user?.role}</div>
           </div>
 
-          <div className="we-admin-tabs">
+          <nav className="we-admin-tabs" aria-label="Admin navigation">
             <button type="button" className={`we-admin-tab ${tab === "dashboard" ? "is-active" : ""}`} onClick={() => setTab("dashboard")}>🧭 Dashboard</button>
             <button type="button" className={`we-admin-tab ${tab === "employees" ? "is-active" : ""}`} onClick={() => setTab("employees")}>👥 Employees</button>
             <button type="button" className={`we-admin-tab ${tab === "quotations" ? "is-active" : ""}`} onClick={() => setTab("quotations")}>🧾 Quotes</button>
             <button type="button" className={`we-admin-tab ${tab === "payslips" ? "is-active" : ""}`} onClick={() => setTab("payslips")}>💵 Payslips</button>
             <button type="button" className={`we-admin-tab ${tab === "calendar" ? "is-active" : ""}`} onClick={() => setTab("calendar")}>📅 Calendar</button>
             <button type="button" className={`we-admin-tab ${tab === "settings" ? "is-active" : ""}`} onClick={() => setTab("settings")}>⚙️ Settings</button>
-          </div>
+          </nav>
 
           <div className="we-admin-actions">
             <button type="button" className="we-admin-themeSwitch" onClick={toggleTheme}>
@@ -44,7 +44,7 @@ export default function AdminDesktopShell({ user, logout }) {
             </button>
             <button type="button" className="we-admin-logout" onClick={logout}>🚪 Log out</button>
           </div>
-        </div>
+        </aside>
 
         <div className="we-admin-content">
           {tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} />}
