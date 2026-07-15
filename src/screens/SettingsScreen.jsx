@@ -22,6 +22,7 @@ export function SettingsScreen({
   const [myLeaves, setMyLeaves] = useState([]);
   const [leaveBusy, setLeaveBusy] = useState(false);
   const [leaveErr, setLeaveErr] = useState("");
+  const [leaveNotice, setLeaveNotice] = useState("");
 
   const [leaveTypeId, setLeaveTypeId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -83,8 +84,10 @@ export function SettingsScreen({
   async function applyLeave(e) {
     e.preventDefault();
     setLeaveErr("");
+    setLeaveNotice("");
     if (!leaveTypeId) return setLeaveErr("Please select leave type.");
     if (!startDate || !endDate) return setLeaveErr("Please select start/end date.");
+    if (!reason.trim()) return setLeaveErr("Please enter the reason for leave.");
     if (requiresAttachment && !file) return setLeaveErr("Attachment required for this leave type.");
     if (file && file.size > MAX_LEAVE_ATTACHMENT_BYTES) {
       return setLeaveErr("Attachment too large. Max 2MB.");
@@ -115,9 +118,13 @@ export function SettingsScreen({
         });
       }
 
+      setLeaveTypeId("");
+      setStartDate("");
+      setEndDate("");
       setReason("");
       setFile(null);
       await reloadLeaves();
+      setLeaveNotice("Leave request submitted for approval.");
     } catch (e2) {
       setLeaveErr(e2?.message || "Failed to apply leave");
     } finally {
@@ -197,6 +204,7 @@ export function SettingsScreen({
   async function rejectLeave(id) {
     if (!id) return;
     setLeaveErr("");
+    if (!rejectReason.trim()) return setLeaveErr("Please enter a rejection reason.");
     setLrBusy(true);
     try {
       await apiFetch(`/api/LeaveRequests/${id}/reject`, {
@@ -289,7 +297,7 @@ export function SettingsScreen({
         <div className="we-s-grid">
           <div className="we-glass-card">
             <div className="we-s-cardTitle">Apply Leave</div>
-            <div className="we-s-cardSub">Submit leave request with attachment (MC/HL required)</div>
+            <div className="we-s-cardSub">Select leave dates, give a reason, and attach supporting documents when required.</div>
 
             <form onSubmit={applyLeave} className="we-s-form we-s-form-grid2">
               <label className="we-s-label">
@@ -313,8 +321,8 @@ export function SettingsScreen({
               </label>
 
               <label className="we-s-label we-s-span2">
-                Reason (optional)
-                <input value={reason} onChange={(e) => setReason(e.target.value)} disabled={leaveBusy} placeholder="e.g. medical appointment" />
+                Reason
+                <input value={reason} onChange={(e) => setReason(e.target.value)} disabled={leaveBusy} placeholder="e.g. medical appointment" maxLength="500" required />
               </label>
 
               <label className="we-s-label we-s-span2">
@@ -327,7 +335,7 @@ export function SettingsScreen({
                 />
               </label>
 
-              <div className="we-s-hint we-s-span2">Max 2MB. Allowed: PDF, JPG, PNG. Stored on server at Documents/KJ_Attendance/leave_attachments.</div>
+              <div className="we-s-hint we-s-span2">Medical, hospitalisation, childcare, maternity and paternity leave require a document. Max 2MB: PDF, JPG or PNG.</div>
 
               <button className="we-s-apply we-s-span2" type="submit" disabled={leaveBusy}>
                 {leaveBusy ? "Submitting…" : "Apply Leave"}
@@ -335,6 +343,7 @@ export function SettingsScreen({
             </form>
 
             {leaveErr ? <div className="we-s-error">{leaveErr}</div> : null}
+            {leaveNotice ? <div className="we-s-success">{leaveNotice}</div> : null}
           </div>
 
           <div className="we-glass-card">
@@ -353,6 +362,7 @@ export function SettingsScreen({
                     </div>
                     <div className="we-s-leaveMeta">{String(r.startDate)} → {String(r.endDate)}</div>
                     {r.reason ? <div className="we-s-leaveReason">Reason: {r.reason}</div> : null}
+                    {r.decisionReason ? <div className="we-s-leaveReason">Decision: {r.decisionReason}</div> : null}
 
                     <div className="we-s-leaveActions">
                       {r.hasAttachment ? (
@@ -418,6 +428,7 @@ export function SettingsScreen({
                     <div className="we-s-leaveMeta">{lt}</div>
                     <div className="we-s-leaveMeta">{String(r.startDate)} → {String(r.endDate)} • {r.days} days</div>
                     {r.reason ? <div className="we-s-leaveReason">Reason: {r.reason}</div> : null}
+                    {r.decisionReason ? <div className="we-s-leaveReason">Decision: {r.decisionReason}</div> : null}
 
                     <div className="we-s-leaveActions">
                       {r.hasAttachment ? (
@@ -445,7 +456,8 @@ export function SettingsScreen({
                           <input
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Optional reject reason"
+                            placeholder="Rejection reason (required)"
+                            maxLength="500"
                             disabled={lrBusy}
                           />
                         </div>
@@ -554,6 +566,7 @@ const css = `
 .we-s-hint{ font-size:11px; opacity:.75; }
 .we-s-apply{ border:0; border-radius:var(--we-radius-control); padding:12px 14px; background: linear-gradient(135deg, rgba(99,102,241,1), rgba(236,72,153,1)); color:#f8fbff; font-weight:950; cursor:pointer; }
 .we-s-error{ margin-top:8px; padding:10px 12px; border-radius:12px; background: rgba(244,63,94,.14); border:1px solid rgba(244,63,94,.28); color:#fecdd3; font-size:12px; }
+.we-s-success{ margin-top:8px; padding:10px 12px; border-radius:12px; background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.28); color:#bbf7d0; font-size:12px; }
 
 .we-s-empty{ font-size:12px; opacity:.75; margin-top:8px; }
 .we-s-leaveList{ margin-top:12px; display:grid; gap:10px; }

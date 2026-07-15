@@ -579,10 +579,12 @@ export default function AdminEmployees({ onAuthError }) {
 
   async function rejectLeave(id) {
     if (!id) return;
+    const reason = window.prompt("Rejection reason for employee:")?.trim();
+    if (!reason) return;
     setLoading(true);
     setMsg("");
     try {
-      await apiFetch(ENDPOINTS.rejectLeave(id), { method: "POST" });
+      await apiFetch(ENDPOINTS.rejectLeave(id), { method: "POST", body: { reason } });
       await loadPendingLeaves();
       setMsg("✅ Leave rejected");
     } catch (e) {

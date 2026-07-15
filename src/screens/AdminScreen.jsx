@@ -389,6 +389,7 @@ export function AdminScreen({ onAuthError }) {
   async function rejectLeave(id) {
     if (!id) return;
     setErr("");
+    if (!rejectReason.trim()) return setErr("Please enter a rejection reason.");
     setLrBusy(true);
     try {
       await apiFetch(API.leaveRequestsReject(id), {
