@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { leaveApi } from "../api/leave";
 import { apiFetch } from "../api/client";
 
-const REQUIRED_ATTACH_CODES = new Set(["MC", "HL"]);
+const REQUIRED_ATTACH_CODES = new Set(["MC", "HL", "CCL", "ML", "PL"]);
 const MAX_LEAVE_ATTACHMENT_BYTES = 2_000_000;
 const ALLOWED_LEAVE_ATTACHMENT_EXT = new Set(["pdf", "jpg", "jpeg", "png"]);
 
