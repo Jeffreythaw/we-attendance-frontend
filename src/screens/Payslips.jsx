@@ -26,7 +26,7 @@ function monthLabel(month) {
 export default function Payslips({ onAuthError }) {
   const [month, setMonth] = useState(currentMonth);
   const [employees, setEmployees] = useState([]);
-  const [allowances, setAllowances] = useState({});
+  const [manuals, setManuals] = useState({});
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -45,7 +45,11 @@ export default function Payslips({ onAuthError }) {
         ]);
         if (cancelled) return;
         setEmployees(staff);
-        setAllowances(Object.fromEntries(savedAllowances.map((row) => [row.employeeId, String(row.amount ?? 0)])));
+        setManuals(Object.fromEntries(savedAllowances.map((row) => [row.employeeId, {
+          amount: String(row.amount ?? 0),
+          employeeCpf: String(row.employeeCpf ?? 0),
+          otherDeductions: String(row.otherDeductions ?? 0),
+        }])));
       } catch (e) {
         if (cancelled) return;
         if (Number(e?.status) === 401 || Number(e?.status) === 403) onAuthError?.();
@@ -76,18 +80,32 @@ export default function Payslips({ onAuthError }) {
     loadPreview(employee);
   }
 
+  function updateManual(employeeId, field, value) {
+    setManuals((current) => ({
+      ...current,
+      [employeeId]: { amount: "0", employeeCpf: "0", otherDeductions: "0", ...current[employeeId], [field]: value },
+    }));
+  }
+
   async function saveAllowance(employeeId) {
-    const amount = Number(allowances[employeeId] || 0);
-    if (!Number.isFinite(amount) || amount < 0) {
-      setError("Allowance must be a non-negative amount.");
+    const values = manuals[employeeId] || {};
+    const amount = Number(values.amount || 0);
+    const employeeCpf = Number(values.employeeCpf || 0);
+    const otherDeductions = Number(values.otherDeductions || 0);
+    if (![amount, employeeCpf, otherDeductions].every((value) => Number.isFinite(value) && value >= 0)) {
+      setError("Manual payroll amounts must be non-negative.");
       return;
     }
 
     try {
       setError("");
       setSavingId(employeeId);
-      const saved = await attendanceApi.savePayslipAllowance({ employeeId, payrollMonth: `${month}-01`, amount });
-      setAllowances((current) => ({ ...current, [employeeId]: String(saved.amount ?? amount) }));
+      const saved = await attendanceApi.savePayslipAllowance({ employeeId, payrollMonth: `${month}-01`, amount, employeeCpf, otherDeductions });
+      setManuals((current) => ({ ...current, [employeeId]: {
+        amount: String(saved.amount ?? amount),
+        employeeCpf: String(saved.employeeCpf ?? employeeCpf),
+        otherDeductions: String(saved.otherDeductions ?? otherDeductions),
+      } }));
       if (previewEmployee?.id === employeeId) await loadPreview(previewEmployee);
     } catch (e) {
       if (Number(e?.status) === 401 || Number(e?.status) === 403) onAuthError?.();
@@ -116,7 +134,7 @@ export default function Payslips({ onAuthError }) {
         <div className="we-reportTopRow">
           <div>
             <div className="we-admin-sectionTitle">Payslips</div>
-            <div className="we-admin-sectionMeta">Open an employee payslip to review database values and enter the fixed allowance in the PDF-style view.</div>
+            <div className="we-admin-sectionMeta">Open an employee payslip to review database values and enter manual allowance or deductions in the PDF-style view.</div>
           </div>
           <label className="we-a-label" style={{ minWidth: 170 }}>
             Pay month
@@ -164,7 +182,7 @@ export default function Payslips({ onAuthError }) {
             <div className="we-payslip-modalHead">
               <div>
                 <div className="we-modalTitle">Payslip preview</div>
-                <div className="we-modalSub">Database values are read-only. Fixed Allowance is the only manual field.</div>
+                <div className="we-modalSub">Database values are read-only. Fixed Allowance, Employee CPF and Other Deductions are manual fields.</div>
               </div>
               <button type="button" className="we-btn-mini" onClick={() => setPreviewEmployee(null)}>Close</button>
             </div>
@@ -190,13 +208,15 @@ export default function Payslips({ onAuthError }) {
                     <h3>Earnings</h3>
                     <div className="we-payslip-row"><span>Basic Pay</span><b>{money(preview.basicPay)}</b></div>
                     <div className="we-payslip-row"><span>Basic Salary Payable</span><b>{money(preview.basicSalaryPayable)}</b></div>
-                    <label className="we-payslip-row we-payslip-manual"><span>Fixed Allowance <small>Manual</small></span><input aria-label="Fixed allowance" type="number" min="0" step="0.01" value={allowances[previewEmployee.id] ?? "0"} onChange={(e) => setAllowances((current) => ({ ...current, [previewEmployee.id]: e.target.value }))} disabled={savingId === previewEmployee.id} /></label>
+                    <label className="we-payslip-row we-payslip-manual"><span>Fixed Allowance <small>Manual</small></span><input aria-label="Fixed allowance" type="number" min="0" step="0.01" value={manuals[previewEmployee.id]?.amount ?? "0"} onChange={(e) => updateManual(previewEmployee.id, "amount", e.target.value)} disabled={savingId === previewEmployee.id} /></label>
                     <div className="we-payslip-row"><span>OT Pay</span><b>{money(preview.otPay)}</b></div>
                     <div className="we-payslip-row we-payslip-total"><span>Gross Pay</span><b>{money(preview.grossPay)}</b></div>
                   </div>
                   <div>
                     <h3>Deductions</h3>
                     <div className="we-payslip-row"><span>Unpaid Leave</span><b>{money(preview.unpaidLeaveDeduction)}</b></div>
+                    <label className="we-payslip-row we-payslip-manual"><span>Employee CPF <small>Manual</small></span><input aria-label="Employee CPF" type="number" min="0" step="0.01" value={manuals[previewEmployee.id]?.employeeCpf ?? "0"} onChange={(e) => updateManual(previewEmployee.id, "employeeCpf", e.target.value)} disabled={savingId === previewEmployee.id} /></label>
+                    <label className="we-payslip-row we-payslip-manual"><span>Other Deductions <small>Manual</small></span><input aria-label="Other deductions" type="number" min="0" step="0.01" value={manuals[previewEmployee.id]?.otherDeductions ?? "0"} onChange={(e) => updateManual(previewEmployee.id, "otherDeductions", e.target.value)} disabled={savingId === previewEmployee.id} /></label>
                     <div className="we-payslip-row"><span>Total Deductions</span><b>{money(preview.totalDeductions)}</b></div>
                     <div className="we-payslip-net"><span>NET PAY</span><b>{money(preview.netPay)}</b></div>
                   </div>
@@ -211,9 +231,9 @@ export default function Payslips({ onAuthError }) {
                 </div>
 
                 <div className="we-payslip-foot">
-                  <span>Save the allowance to recalculate Gross and Net Pay from the database.</span>
+                  <span>Save manual fields to recalculate Gross and Net Pay from the database.</span>
                   <div className="we-payslip-actions">
-                    <button type="button" className="we-btn-mini we-btn--save" onClick={() => saveAllowance(previewEmployee.id)} disabled={savingId === previewEmployee.id}>{savingId === previewEmployee.id ? "Saving…" : "Save allowance"}</button>
+                    <button type="button" className="we-btn-mini we-btn--save" onClick={() => saveAllowance(previewEmployee.id)} disabled={savingId === previewEmployee.id}>{savingId === previewEmployee.id ? "Saving…" : "Save changes"}</button>
                     <button type="button" className="we-btn-mini" onClick={() => download(previewEmployee)} disabled={downloadingId === previewEmployee.id}>{downloadingId === previewEmployee.id ? "Building…" : "Download PDF"}</button>
                   </div>
                 </div>

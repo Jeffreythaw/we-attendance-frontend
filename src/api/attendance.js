@@ -75,10 +75,10 @@ export const attendanceApi = {
     return apiFetch(`/api/Reports/payslip-allowances?month=${encodeURIComponent(month)}`, { method: "GET" });
   },
 
-  savePayslipAllowance({ employeeId, payrollMonth, amount }) {
+  savePayslipAllowance({ employeeId, payrollMonth, amount, employeeCpf = 0, otherDeductions = 0 }) {
     return apiFetch("/api/Reports/payslip-allowances", {
       method: "PUT",
-      body: { employeeId, payrollMonth, amount },
+      body: { employeeId, payrollMonth, amount, employeeCpf, otherDeductions },
     });
   },
 };

@@ -30,6 +30,8 @@ export async function downloadPayslipPdf({ from, to, employeeId, staffName }) {
   const basicPay = Number(payslip.basicPay || 0);
   const basicSalaryPayable = Number(payslip.basicSalaryPayable || 0);
   const allowance = Number(payslip.allowance || 0);
+  const employeeCpf = Number(payslip.employeeCpf || 0);
+  const otherDeductions = Number(payslip.otherDeductions || 0);
   const grossPay = Number(payslip.grossPay || 0);
   const netPay = Number(payslip.netPay || 0);
   const unpaidLeaveDeduction = Number(payslip.unpaidLeaveDeduction || 0);
@@ -127,8 +129,8 @@ export async function downloadPayslipPdf({ from, to, employeeId, staffName }) {
   ];
   const deductionRows = [
     ["Unpaid Leave", formatMoney(unpaidLeaveDeduction)],
-    ["Employee CPF", "0.00"],
-    ["Other Deductions", "0.00"],
+    ["Employee CPF", formatMoney(employeeCpf)],
+    ["Other Deductions", formatMoney(otherDeductions)],
     ["Total Deductions", formatMoney(totalDeductions)],
   ];
   const sectionStartY = y;
