@@ -1,0 +1,16 @@
+{
+  "appId": "com.weengineering.attendance",
+  "appName": "WE Attendance",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  },
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
+		"Geolocation": {
+			"permissionsPrompt": true
+		}
+	}
+}

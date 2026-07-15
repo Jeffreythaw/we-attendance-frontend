@@ -306,6 +306,21 @@ export default function ScheduleCalendarTab({ user, onAuthError }) {
           </button>
         </div>
 
+        <div className="we-cal-mobileStats">
+          <div className="we-cal-mobileStat">
+            <div className="we-cal-mobileLabel">Month</div>
+            <div className="we-cal-mobileValue">{monthLabel}</div>
+          </div>
+          <div className="we-cal-mobileStat">
+            <div className="we-cal-mobileLabel">Selected day</div>
+            <div className="we-cal-mobileValue">{selectedDay}</div>
+          </div>
+          <div className="we-cal-mobileStat">
+            <div className="we-cal-mobileLabel">Entries</div>
+            <div className="we-cal-mobileValue">{selectedEntries.length}</div>
+          </div>
+        </div>
+
         <div className="we-cal-toolbar">
           <button type="button" className="we-cal-nav" onClick={() => setMonthIso((m) => shiftMonth(m, -1))}>‹</button>
           <div className="we-cal-monthLabel">{monthLabel}</div>

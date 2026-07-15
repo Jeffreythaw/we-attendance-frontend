@@ -5,7 +5,7 @@ import { attendanceApi } from "../api/attendance";
 import { schedulesApi } from "../api/schedules";
 import { getCurrentLocationDetails } from "../utils/location";
 import { fmtDateTime, parseApiDate } from "../utils/datetime";
-import WELogo from "../assets/WE.png";
+import WELogo from "../assets/welogo.png";
 import ScheduleCalendarTab from "./ScheduleCalendarTab";
 import "./ClockScreen.css";
 
@@ -48,19 +48,6 @@ function mapUrl(lat, lng) {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
-function mapTileUrl(lat, lng, zoom = 16) {
-  const latNum = Number(lat);
-  const lngNum = Number(lng);
-  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return "";
-  const n = 2 ** zoom;
-  const x = Math.floor(((lngNum + 180) / 360) * n);
-  const latRad = (latNum * Math.PI) / 180;
-  const y = Math.floor(
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
-  );
-  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
-}
-
 function fmtLocation(lat, lng, acc) {
   if (!hasLatLng(lat, lng)) return "—";
   const accTxt = typeof acc === "number" ? ` (±${Math.round(acc)}m)` : "";
@@ -73,6 +60,7 @@ export function ClockScreen({ onAuthError, user }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
   const [todaySchedules, setTodaySchedules] = useState([]);
   const [currentGps, setCurrentGps] = useState(null);
 
@@ -279,6 +267,7 @@ export function ClockScreen({ onAuthError, user }) {
   async function checkIn() {
     setBusy(true);
     setErr("");
+    setSuccess("");
     setGeoWarn("");
 
     try {
@@ -299,6 +288,7 @@ export function ClockScreen({ onAuthError, user }) {
       setShowOtManual(false);
 
       await refresh();
+      setSuccess("Check-in saved successfully.");
     } catch (e) {
       const msg = e?.message || "Check-in failed";
       if (String(msg).includes("401") || String(msg).includes("403"))
@@ -312,6 +302,7 @@ export function ClockScreen({ onAuthError, user }) {
   async function checkOut(forceNoOt = false) {
     setBusy(true);
     setErr("");
+    setSuccess("");
     setGeoWarn("");
 
     try {
@@ -343,6 +334,7 @@ export function ClockScreen({ onAuthError, user }) {
       setShowOtManual(false);
 
       await refresh();
+      setSuccess("Check-out saved successfully.");
     } catch (e) {
       const msg = e?.message || "Check-out failed";
 
@@ -394,6 +386,25 @@ export function ClockScreen({ onAuthError, user }) {
   const scheduleMoreCount = Math.max(todaySchedules.length - schedulePreview.length, 0);
 
   const showOtField = Boolean(open) && (otLikely || showOtManual);
+  const currentGpsText = useMemo(
+    () =>
+      currentGps
+        ? fmtLocation(
+            currentGps.latitude,
+            currentGps.longitude,
+            currentGps.accuracyMeters
+          )
+        : "Waiting for GPS",
+    [currentGps]
+  );
+  const hasCurrentGps = hasLatLng(currentGps?.latitude, currentGps?.longitude);
+  const nextSchedule = schedulePreview[0] || null;
+  const scheduleHeadline = nextSchedule
+    ? `${nextSchedule.startTime}-${nextSchedule.endTime}`
+    : "No schedule";
+  const scheduleDetail = nextSchedule
+    ? `${nextSchedule.workTitle || "Work"} @ ${nextSchedule.workLocation || "-"}`
+    : "No assigned work items for today";
 
   return (
     <div className={`we-clock-root ${themeClass}`}>
@@ -411,22 +422,18 @@ export function ClockScreen({ onAuthError, user }) {
           <div>
             <div className="we-clock-logoRow">
               <img className="we-clock-logo" src={WELogo} alt="WE" />
-              <div className="we-clock-kicker">⏱️ Clock in / out</div>
+              <div className="we-clock-kicker">Attendance command center</div>
             </div>
 
-            <div className="we-clock-title">{statusText}</div>
-            <div className="we-clock-sub">
-              {open
-                ? "✅ You are currently checked in."
-                : "🌙 You are currently not checked in."}
-            </div>
+            <div className="we-clock-title">Shift command center</div>
+            <div className="we-clock-sub">{statusSub}</div>
 
             <div className="we-clock-nowRow">
               <span className="we-clock-chip live">
-                <span className="ic">🕒</span> {formatLiveTime(now)}
+                <span className="ic">L</span> {formatLiveTime(now)}
               </span>
               <span className="we-clock-chip">
-                <span className="ic">📅</span> {formatFullDateDots(now)}
+                <span className="ic">D</span> {formatFullDateDots(now)}
               </span>
             </div>
           </div>
@@ -434,6 +441,28 @@ export function ClockScreen({ onAuthError, user }) {
           <span className={`we-clock-pill ${open ? "open" : "off"}`}>
             {open ? "OPEN" : "OFF"}
           </span>
+        </div>
+
+        <div className="we-clock-summaryGrid">
+          <div className="we-clock-summaryCard">
+            <div className="we-clock-summaryLabel">Session</div>
+            <div className="we-clock-summaryValue">{open ? "Live" : "Ready"}</div>
+            <div className="we-clock-summaryMeta">
+              {open ? "Checked in and active now" : "Ready for first tap"}
+            </div>
+          </div>
+          <div className="we-clock-summaryCard">
+            <div className="we-clock-summaryLabel">Next block</div>
+            <div className="we-clock-summaryValue">{scheduleHeadline}</div>
+            <div className="we-clock-summaryMeta">{scheduleDetail}</div>
+          </div>
+          <div className="we-clock-summaryCard">
+            <div className="we-clock-summaryLabel">GPS state</div>
+            <div className="we-clock-summaryValue">{hasCurrentGps ? "Ready" : "Pending"}</div>
+            <div className="we-clock-summaryMeta">
+              {hasCurrentGps ? "Live location captured" : "Waiting for permission or fix"}
+            </div>
+          </div>
         </div>
 
         <div className="we-clock-segment">
@@ -458,9 +487,9 @@ export function ClockScreen({ onAuthError, user }) {
         {/* location warning */}
         {showLocationWarning ? (
           <div className="we-clock-warn">
-            <div className="ic">⚠️</div>
+            <div className="ic">!</div>
             <div className="txt">
-              <div>Location is not enabled.</div>
+              <div>Location access needs attention.</div>
               <div className="hint">
                 {geoPerm === "denied"
                   ? "Permission denied — turn on location in browser settings."
@@ -473,58 +502,194 @@ export function ClockScreen({ onAuthError, user }) {
 
         {/* status card */}
         <Card className="we-glass-card">
-          <div className="we-clock-statusRow">
-            <div className="we-clock-statusText">
-              <div className="we-clock-statusTop">
-                <div>
-                  <div className="we-clock-statusLabel">📌 Status</div>
-                  <div className="we-clock-statusValue">{statusText}</div>
-                  <div className="we-clock-statusMeta">{statusSub}</div>
-                </div>
-
-                <div className="we-clock-mini compact">
-                  <div className="we-clock-miniDot" aria-hidden="true">
-                    {open ? "✅" : "⏸️"}
-                  </div>
-                  <div className="we-clock-miniText">
-                    <div className="we-clock-miniTop">{open ? "Working" : "Idle"}</div>
-                    <div className="we-clock-miniBot">
-                      {open ? "Don’t forget to check out" : "Ready when you are"}
-                    </div>
-                  </div>
+          <div className="we-clock-heroCard">
+            <div className="we-clock-statusTop">
+              <div>
+                <div className="we-clock-statusLabel">Live status</div>
+                <div className="we-clock-statusValue">{statusText}</div>
+                <div className="we-clock-statusMeta">
+                  {open
+                    ? "End your current session with live GPS capture."
+                    : "Start your shift with one tap and live location."}
                 </div>
               </div>
 
-              {open && openLocText ? (
-                <div className="we-clock-locLine">
-                  <span className="we-clock-strong">📍 Check-in loc:</span>{" "}
-                  {openLocText}{" "}
-                  {hasLatLng(open.checkInLat, open.checkInLng) ? (
-                    <a
-                      className="we-clock-mapLink"
-                      href={mapUrl(open.checkInLat, open.checkInLng)}
-                      target="_blank"
-                      rel="noreferrer"
+              <div className="we-clock-mini compact">
+                <div className="we-clock-miniDot" aria-hidden="true">
+                  {open ? "IN" : "ID"}
+                </div>
+                <div className="we-clock-miniText">
+                  <div className="we-clock-miniTop">{open ? "Session active" : "Waiting"}</div>
+                  <div className="we-clock-miniBot">
+                    {open ? "Remember to close before leaving" : "Clock in when you start"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="we-clock-heroStats">
+              <div className="we-clock-panel">
+                <div className="we-clock-panelLabel">Current GPS</div>
+                <div className="we-clock-panelValue">{hasCurrentGps ? "Live" : "Pending"}</div>
+                <div className="we-clock-panelMeta">{currentGpsText}</div>
+                {hasCurrentGps ? (
+                  <a
+                    className="we-clock-mapLink"
+                    href={mapUrl(currentGps.latitude, currentGps.longitude)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open map
+                  </a>
+                ) : null}
+              </div>
+              <div className="we-clock-panel">
+                <div className="we-clock-panelLabel">Today schedule</div>
+                <div className="we-clock-panelValue">{todaySchedules.length}</div>
+                <div className="we-clock-panelMeta">{scheduleDetail}</div>
+              </div>
+              <div className="we-clock-panel">
+                <div className="we-clock-panelLabel">Overtime state</div>
+                <div className="we-clock-panelValue">{otLikely ? "Watch" : "Normal"}</div>
+                <div className="we-clock-panelMeta">
+                  {otLikely ? "Project name may be required on checkout." : "Standard workday policy active."}
+                </div>
+              </div>
+            </div>
+
+            <div className="we-clock-actionBlock">
+              <div className="we-clock-actionHead">
+                <div>
+                  <div className="we-clock-panelLabel">Primary action</div>
+                  <div className="we-clock-actionTitle">{open ? "Check out" : "Check in"}</div>
+                  <div className="we-clock-panelMeta">{statusSub}</div>
+                </div>
+                {showOtField ? (
+                  <span className="we-clock-otBadge">OT {otRequired ? "Required" : "Optional"}</span>
+                ) : null}
+              </div>
+
+              {!open ? (
+                <div className="we-clock-actions">
+                  <label className="we-clock-label">
+                    Note (optional)
+                    <div className="we-input">
+                      <span className="we-icon" aria-hidden="true">
+                        N
+                      </span>
+                      <input
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="e.g. Site visit"
+                        disabled={busy}
+                      />
+                    </div>
+                  </label>
+
+                  <div className="we-clock-btnRow">
+                    <button className="we-btn" onClick={checkIn} disabled={busy}>
+                      {busy ? (
+                        <span className="we-btn-spin">
+                          <span className="spinner" />
+                          Checking in…
+                        </span>
+                      ) : (
+                        <>Check in now</>
+                      )}
+                    </button>
+
+                    <button className="we-btn-soft" onClick={refresh} disabled={busy}>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="we-clock-btnRow">
+                    <button
+                      className="we-btn danger"
+                      onClick={checkOut}
+                      disabled={busy}
                     >
-                      Map
-                    </a>
+                      {busy ? (
+                        <span className="we-btn-spin">
+                          <span className="spinner" />
+                          Checking out…
+                        </span>
+                      ) : (
+                        <>Check out now</>
+                      )}
+                    </button>
+
+                    <button className="we-btn-soft" onClick={refresh} disabled={busy}>
+                      Refresh
+                    </button>
+                  </div>
+
+                  {showOtField ? (
+                    <label className="we-clock-label">
+                      OT Project {otRequired ? "(required)" : "(optional)"}
+                      <div className={`we-input ${!otProjectOk ? "invalid" : ""}`}>
+                        <span className="we-icon" aria-hidden="true">
+                          OT
+                        </span>
+                        <input
+                          value={otProjectName}
+                          onChange={(e) => setOtProjectName(e.target.value)}
+                          placeholder="e.g. ARTC L5 FCU install"
+                          disabled={busy}
+                        />
+                      </div>
+
+                      {otRequired ? (
+                        <div className={`we-fieldHint ${!otProjectOk ? "warn" : ""}`}>
+                          {otProjectOk
+                            ? "OT likely detected. Fill this before checkout."
+                            : "Required: enter OT Project name."}
+                        </div>
+                      ) : (
+                        <div className="we-fieldHint">Optional. Fill only if you are doing OT.</div>
+                      )}
+                    </label>
+                  ) : (
+                    <div style={{ marginBottom: 10 }}>
+                      <button
+                        type="button"
+                        className="we-btn-soft"
+                        onClick={() => setShowOtManual(true)}
+                        disabled={busy}
+                      >
+                        Add OT project
+                      </button>
+                    </div>
+                  )}
+
+                  {canNoOtCheckout ? (
+                    <div className="we-clock-noOt">
+                      <button
+                        type="button"
+                        className="we-btn-soft"
+                        onClick={() => checkOut(true)}
+                        disabled={busy}
+                      >
+                        No OT checkout
+                      </button>
+                      <div className="we-clock-noOtHint">
+                        Use this if you are not claiming OT. Checkout between 17:00-17:29 is stored as 17:00.
+                      </div>
+                    </div>
                   ) : null}
-                </div>
-              ) : null}
-              {open && hasLatLng(open.checkInLat, open.checkInLng) ? (
-                <div className="we-clock-mapPreview">
-                  <img
-                    className="we-clock-mapFrame"
-                    src={mapTileUrl(open.checkInLat, open.checkInLng)}
-                    alt="Current check-in map"
-                    loading="lazy"
-                    draggable="false"
-                  />
-                  <span className="we-clock-mapPin" aria-hidden="true" />
-                </div>
-              ) : null}
-              <div className="we-clock-locLine we-clock-locBlock">
-                <span className="we-clock-strong">🗓️ Current work schedule</span>
+
+                  <div className="we-fieldHint" style={{ marginTop: 10 }}>
+                    Clock-out policy: 17:00-17:29 records as 17:00, 17:30 and later counts as OT. If still open next day without overnight approval, system auto-closes at 17:00.
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="we-clock-detailGrid">
+              <div className="we-clock-panel we-clock-panelWide">
+                <div className="we-clock-panelLabel">Today plan</div>
                 {todaySchedules.length === 0 ? (
                   <div className="we-clock-locSub">No schedule today</div>
                 ) : (
@@ -539,179 +704,41 @@ export function ClockScreen({ onAuthError, user }) {
                       ))}
                     </ul>
                     {scheduleMoreCount > 0 ? (
-                      <div className="we-clock-locSub">+{scheduleMoreCount} more</div>
+                      <div className="we-clock-locSub">+{scheduleMoreCount} more items today</div>
                     ) : null}
                   </>
                 )}
               </div>
-              <div className="we-clock-locLine">
-                <span className="we-clock-strong">🧭 Current GPS:</span>{" "}
-                {currentGps
-                  ? fmtLocation(currentGps.latitude, currentGps.longitude, currentGps.accuracyMeters)
-                  : "Unavailable"}
-                {currentGps && hasLatLng(currentGps.latitude, currentGps.longitude) ? (
+
+              <div className="we-clock-panel">
+                <div className="we-clock-panelLabel">Check-in source</div>
+                <div className="we-clock-panelMeta">
+                  {openLocText || "A saved check-in location will appear here after you clock in."}
+                </div>
+                {open && hasLatLng(open.checkInLat, open.checkInLng) ? (
                   <a
                     className="we-clock-mapLink"
-                    href={mapUrl(currentGps.latitude, currentGps.longitude)}
+                    href={mapUrl(open.checkInLat, open.checkInLng)}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Map
+                    Open check-in map
                   </a>
                 ) : null}
               </div>
-              {currentGps && hasLatLng(currentGps.latitude, currentGps.longitude) ? (
-                <div className="we-clock-mapPreview">
-                  <a
-                    className="we-clock-mapOpen"
-                    href={mapUrl(currentGps.latitude, currentGps.longitude)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open map
-                  </a>
-                  <img
-                    className="we-clock-mapFrame"
-                    src={mapTileUrl(currentGps.latitude, currentGps.longitude)}
-                    alt="Current GPS map"
-                    loading="lazy"
-                    draggable="false"
-                  />
-                  <span className="we-clock-mapPin" aria-hidden="true" />
-                </div>
-              ) : null}
             </div>
-
           </div>
 
-          {/* ACTIONS */}
-          {!open ? (
-            <div className="we-clock-actions">
-              <label className="we-clock-label">
-                📝 Note (optional)
-                <div className="we-input">
-                  <span className="we-icon" aria-hidden="true">
-                    📝
-                  </span>
-                  <input
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="e.g. Site visit"
-                    disabled={busy}
-                  />
-                </div>
-              </label>
-
-              <div className="we-clock-btnRow">
-                <button className="we-btn" onClick={checkIn} disabled={busy}>
-                  {busy ? (
-                    <span className="we-btn-spin">
-                      <span className="spinner" />
-                      Checking in…
-                    </span>
-                  ) : (
-                    <>✅ Check in</>
-                  )}
-                </button>
-
-                <button className="we-btn-soft" onClick={refresh} disabled={busy}>
-                  🔄 Refresh
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="we-clock-btnRow">
-                <button
-                  className="we-btn danger"
-                  onClick={checkOut}
-                  disabled={busy}
-                >
-                  {busy ? (
-                    <span className="we-btn-spin">
-                      <span className="spinner" />
-                      Checking out…
-                    </span>
-                  ) : (
-                    <>⏹️ Check out</>
-                  )}
-                </button>
-
-                <button className="we-btn-soft" onClick={refresh} disabled={busy}>
-                  🔄 Refresh
-                </button>
-              </div>
-
-              {/* OT field (auto show if OT likely OR manual open) */}
-              {showOtField ? (
-                <label className="we-clock-label">
-                  🧾 OT Project {otRequired ? "(required)" : "(optional)"}
-                  <div className={`we-input ${!otProjectOk ? "invalid" : ""}`}>
-                    <span className="we-icon" aria-hidden="true">
-                      🏗️
-                    </span>
-                    <input
-                      value={otProjectName}
-                      onChange={(e) => setOtProjectName(e.target.value)}
-                      placeholder="e.g. ARTC L5 FCU install"
-                      disabled={busy}
-                    />
-                  </div>
-
-                  {otRequired ? (
-                    <div className={`we-fieldHint ${!otProjectOk ? "warn" : ""}`}>
-                      {otProjectOk
-                        ? "OT likely detected. Please fill this before checkout."
-                        : "Required: please enter OT Project name."}
-                    </div>
-                  ) : (
-                    <div className="we-fieldHint">Optional. Fill only if you are doing OT.</div>
-                  )}
-                </label>
-              ) : (
-                <div style={{ marginBottom: 10 }}>
-                  <button
-                    type="button"
-                    className="we-btn-soft"
-                    onClick={() => setShowOtManual(true)}
-                    disabled={busy}
-                  >
-                    ➕ Add OT project
-                  </button>
-                </div>
-              )}
-
-              {canNoOtCheckout ? (
-                <div className="we-clock-noOt">
-                  <button
-                    type="button"
-                    className="we-btn-soft"
-                    onClick={() => checkOut(true)}
-                    disabled={busy}
-                  >
-                    ⛔ No OT — Check out
-                  </button>
-                  <div className="we-clock-noOtHint">
-                    Use this if you are not claiming OT. Checkout between 17:00-17:29 is stored as 17:00.
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="we-fieldHint" style={{ marginTop: 10 }}>
-                Clock-out policy: 17:00-17:29 records as 17:00, 17:30 and later counts as OT. If still open next day without overnight approval, system auto-closes at 17:00 (remark: Forget Clock out).
-              </div>
-            </>
-          )}
-
+          {success ? <div className="we-success">{success}</div> : null}
           {err ? <div className="we-error">{err}</div> : null}
         </Card>
 
         {/* recent activity (today only) */}
         <Card className="we-glass-card">
           <div className="we-clock-recentHead">
-            <div className="we-clock-recentTitle">📜 Recent activity</div>
+            <div className="we-clock-recentTitle">Recent activity</div>
             <div className="we-clock-recentMeta">
-              Today only • {formatFullDateDots(now)} •{" "}
+              Today only / {formatFullDateDots(now)} /{" "}
               {Math.min(8, recent.length)} records
             </div>
           </div>
@@ -723,24 +750,24 @@ export function ClockScreen({ onAuthError, user }) {
               {recent.map((r) => (
                 <div key={r.id} className="we-clock-item">
                   <div className="we-clock-itemTop">
-                    <div className="we-clock-itemId">🧾 #{r.id}</div>
+                    <div className="we-clock-itemId">Record #{r.id}</div>
                     <div className="we-clock-itemNote">
-                      {r.note ? `📝 ${r.note}` : ""}
+                      {r.note ? r.note : ""}
                     </div>
                   </div>
 
                   <div className="we-clock-itemGrid">
                     <div>
-                      <span className="we-clock-strong">➡️ In:</span>{" "}
+                      <span className="we-clock-strong">In:</span>{" "}
                       {fmtDateTime(r.checkInAt)}
                     </div>
                     <div>
-                      <span className="we-clock-strong">⬅️ Out:</span>{" "}
+                      <span className="we-clock-strong">Out:</span>{" "}
                       {fmtDateTime(r.checkOutAt)}
                     </div>
 
                     <div className="we-clock-locRow">
-                      <span className="we-clock-strong">📍 In loc:</span>{" "}
+                      <span className="we-clock-strong">In loc:</span>{" "}
                       {fmtLocation(
                         r.checkInLat,
                         r.checkInLng,
@@ -757,29 +784,8 @@ export function ClockScreen({ onAuthError, user }) {
                         </a>
                       ) : null}
                     </div>
-                    {hasLatLng(r.checkInLat, r.checkInLng) ? (
-                      <div className="we-clock-mapPreview recent">
-                        <a
-                          className="we-clock-mapOpen"
-                          href={mapUrl(r.checkInLat, r.checkInLng)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open map
-                        </a>
-                        <img
-                          className="we-clock-mapFrame"
-                          src={mapTileUrl(r.checkInLat, r.checkInLng)}
-                          alt={`Check-in map ${r.id}`}
-                          loading="lazy"
-                          draggable="false"
-                        />
-                        <span className="we-clock-mapPin" aria-hidden="true" />
-                      </div>
-                    ) : null}
-
                     <div className="we-clock-locRow">
-                      <span className="we-clock-strong">📍 Out loc:</span>{" "}
+                      <span className="we-clock-strong">Out loc:</span>{" "}
                       {fmtLocation(
                         r.checkOutLat,
                         r.checkOutLng,
@@ -796,26 +802,6 @@ export function ClockScreen({ onAuthError, user }) {
                         </a>
                       ) : null}
                     </div>
-                    {hasLatLng(r.checkOutLat, r.checkOutLng) ? (
-                      <div className="we-clock-mapPreview recent">
-                        <a
-                          className="we-clock-mapOpen"
-                          href={mapUrl(r.checkOutLat, r.checkOutLng)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open map
-                        </a>
-                        <img
-                          className="we-clock-mapFrame"
-                          src={mapTileUrl(r.checkOutLat, r.checkOutLng)}
-                          alt={`Check-out map ${r.id}`}
-                          loading="lazy"
-                          draggable="false"
-                        />
-                        <span className="we-clock-mapPin" aria-hidden="true" />
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               ))}

@@ -627,6 +627,21 @@ export function HistoryScreen({ onAuthError }) {
 
         {err ? <div className="we-h-error">{err}</div> : null}
 
+        <div className="we-h-quickStats">
+          <div className="we-h-quickStat">
+            <div className="we-h-quickLabel">Worked Days</div>
+            <div className="we-h-quickValue">{stats.workingDays}</div>
+          </div>
+          <div className="we-h-quickStat">
+            <div className="we-h-quickLabel">On-Time</div>
+            <div className="we-h-quickValue">{overviewDonuts.onTimePct}%</div>
+          </div>
+          <div className="we-h-quickStat">
+            <div className="we-h-quickLabel">Total OT</div>
+            <div className="we-h-quickValue">{formatHm(stats.overtimeMinutes)}</div>
+          </div>
+        </div>
+
         {/* Date Range */}
         <div className="we-h-glass">
           <div className="we-h-cardHead">

@@ -1,3 +1,6 @@
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
+
 /**
  * Safely retrieves the user's current geolocation.
  * @param {Object} [options] - Configuration options.
@@ -15,11 +18,64 @@ function toLocationPayload(pos) {
   };
 }
 
+function isNativePlatform() {
+  return Capacitor?.isNativePlatform?.() === true;
+}
+
+async function getNativePermissionState() {
+  try {
+    const result = await Geolocation.checkPermissions();
+    const state = result?.location || result?.coarseLocation || "prompt";
+    return String(state || "prompt").toLowerCase();
+  } catch {
+    return "prompt";
+  }
+}
+
+async function getNativePosition({ timeout, maximumAge, enableHighAccuracy }) {
+  const current = await getNativePermissionState();
+  if (current === "denied") {
+    return { ok: false, location: null, code: "DENIED", message: "Location permission is denied." };
+  }
+
+  if (current === "prompt" || current === "prompt-with-rationale") {
+    const requested = await Geolocation.requestPermissions().catch(() => null);
+    const nextState = String(
+      requested?.location || requested?.coarseLocation || current
+    ).toLowerCase();
+    if (nextState === "denied") {
+      return { ok: false, location: null, code: "DENIED", message: "Location permission is denied." };
+    }
+  }
+
+  try {
+    const pos = await Geolocation.getCurrentPosition({
+      timeout,
+      maximumAge,
+      enableHighAccuracy,
+    });
+    return { ok: true, location: toLocationPayload(pos), code: null, message: "" };
+  } catch (e) {
+    const message = String(e?.message || "").toLowerCase();
+    if (message.includes("denied")) {
+      return { ok: false, location: null, code: "DENIED", message: "Location permission is denied." };
+    }
+    if (message.includes("timeout")) {
+      return { ok: false, location: null, code: "TIMEOUT", message: "Location request timed out. Please retry." };
+    }
+    return { ok: false, location: null, code: "FAILED", message: "Failed to capture location." };
+  }
+}
+
 export async function getCurrentLocationDetails({
   timeout = 8000,
   maximumAge = 60_000,
   enableHighAccuracy = true,
 } = {}) {
+  if (isNativePlatform()) {
+    return getNativePosition({ timeout, maximumAge, enableHighAccuracy });
+  }
+
   async function run(highAcc) {
     const pos = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {

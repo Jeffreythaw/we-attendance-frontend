@@ -7,9 +7,16 @@ const REQUIRED_ATTACH_CODES = new Set(["MC", "HL"]);
 const MAX_LEAVE_ATTACHMENT_BYTES = 2_000_000;
 const ALLOWED_LEAVE_ATTACHMENT_EXT = new Set(["pdf", "jpg", "jpeg", "png"]);
 
-export function SettingsScreen({ user }) {
+export function SettingsScreen({
+  user,
+  initialTab,
+  showAccountTab = true,
+  showLeaveTab = true,
+}) {
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
-  const [settingsTab, setSettingsTab] = useState(() => (isAdmin ? "account" : "leave"));
+  const defaultTab =
+    initialTab || (isAdmin ? (showAccountTab ? "account" : "leave") : "leave");
+  const [settingsTab, setSettingsTab] = useState(defaultTab);
 
   const [types, setTypes] = useState([]);
   const [myLeaves, setMyLeaves] = useState([]);
@@ -30,8 +37,12 @@ export function SettingsScreen({ user }) {
   const [rejectingId, setRejectingId] = useState(null);
 
   useEffect(() => {
-    setSettingsTab(isAdmin ? "account" : "leave");
-  }, [isAdmin]);
+    if (initialTab) {
+      setSettingsTab(initialTab);
+      return;
+    }
+    setSettingsTab(isAdmin ? (showAccountTab ? "account" : "leave") : "leave");
+  }, [initialTab, isAdmin, showAccountTab]);
 
   useEffect(() => {
     let active = true;
@@ -214,22 +225,41 @@ export function SettingsScreen({ user }) {
         </div>
       </div>
 
+      <div className="we-s-overview">
+        <div className="we-s-overviewCard">
+          <div className="we-s-overviewLabel">Role</div>
+          <div className="we-s-overviewValue">{user?.role || "—"}</div>
+        </div>
+        <div className="we-s-overviewCard">
+          <div className="we-s-overviewLabel">User</div>
+          <div className="we-s-overviewValue">{user?.username || "—"}</div>
+        </div>
+        <div className="we-s-overviewCard">
+          <div className="we-s-overviewLabel">Mode</div>
+          <div className="we-s-overviewValue">{showLeaveTab && !showAccountTab ? "Leave" : showAccountTab && !showLeaveTab ? "Account" : "Profile"}</div>
+        </div>
+      </div>
+
       <div className="we-glass-card">
         <div className="we-s-tabs">
-          <button
-            type="button"
-            className={`we-s-tab ${settingsTab === "account" ? "is-active" : ""}`}
-            onClick={() => setSettingsTab("account")}
-          >
-            Account
-          </button>
-          <button
-            type="button"
-            className={`we-s-tab ${settingsTab === "leave" ? "is-active" : ""}`}
-            onClick={() => setSettingsTab("leave")}
-          >
-            {isAdmin ? "Leave Approvals" : "Leave"}
-          </button>
+          {showAccountTab ? (
+            <button
+              type="button"
+              className={`we-s-tab ${settingsTab === "account" ? "is-active" : ""}`}
+              onClick={() => setSettingsTab("account")}
+            >
+              Account
+            </button>
+          ) : null}
+          {showLeaveTab ? (
+            <button
+              type="button"
+              className={`we-s-tab ${settingsTab === "leave" ? "is-active" : ""}`}
+              onClick={() => setSettingsTab("leave")}
+            >
+              {isAdmin ? "Leave Approvals" : "Leave"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -452,6 +482,10 @@ const css = `
   color: var(--s-text);
 }
 .we-s-grid{ display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items:start; }
+.we-s-overview{ display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.we-s-overviewCard{ padding:12px; border-radius:16px; background: var(--s-surface-soft); border:1px solid var(--s-border); }
+.we-s-overviewLabel{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; opacity:.72; font-weight:900; }
+.we-s-overviewValue{ margin-top:8px; font-size:15px; font-weight:950; color:var(--s-text); }
 .we-s-kicker{ font-size:12px; opacity:.75; }
 .we-s-title{ font-size:26px; font-weight:950; color:var(--s-text); margin-top:2px; line-height:1.1; }
 .we-s-sub{ margin-top:6px; font-size:12px; color: var(--s-muted); }
@@ -537,6 +571,7 @@ const css = `
 .we-select{ height:var(--we-control-h); border-radius:var(--we-radius-control); border:1px solid var(--s-control-border); background: var(--s-control-bg); color:var(--s-text); padding:0 10px; }
 @media (max-width: 980px){
   .we-s-grid{ grid-template-columns: 1fr; }
+  .we-s-overview{ grid-template-columns: 1fr; }
 }
 @media (max-width: 720px){
   .we-s-form-grid2{ grid-template-columns: 1fr; }

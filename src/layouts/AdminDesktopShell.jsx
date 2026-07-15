@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AdminDashboard from "../screens/AdminDashboard";
 import AdminEmployees from "../pages/AdminEmployees";
 import AdminQuotations from "../screens/AdminQuotations";
+import Payslips from "../screens/Payslips";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import ScheduleCalendarTab from "../screens/ScheduleCalendarTab";
 import AppBackground from "./AppBackground";
@@ -32,6 +33,7 @@ export default function AdminDesktopShell({ user, logout }) {
             <button type="button" className={`we-admin-tab ${tab === "dashboard" ? "is-active" : ""}`} onClick={() => setTab("dashboard")}>🧭 Dashboard</button>
             <button type="button" className={`we-admin-tab ${tab === "employees" ? "is-active" : ""}`} onClick={() => setTab("employees")}>👥 Employees</button>
             <button type="button" className={`we-admin-tab ${tab === "quotations" ? "is-active" : ""}`} onClick={() => setTab("quotations")}>🧾 Quotes</button>
+            <button type="button" className={`we-admin-tab ${tab === "payslips" ? "is-active" : ""}`} onClick={() => setTab("payslips")}>💵 Payslips</button>
             <button type="button" className={`we-admin-tab ${tab === "calendar" ? "is-active" : ""}`} onClick={() => setTab("calendar")}>📅 Calendar</button>
             <button type="button" className={`we-admin-tab ${tab === "settings" ? "is-active" : ""}`} onClick={() => setTab("settings")}>⚙️ Settings</button>
           </div>
@@ -48,6 +50,7 @@ export default function AdminDesktopShell({ user, logout }) {
           {tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} />}
           {tab === "employees" && <AdminEmployees onAuthError={onAuthError} />}
           {tab === "quotations" && <AdminQuotations onAuthError={onAuthError} />}
+          {tab === "payslips" && <Payslips onAuthError={onAuthError} />}
           {tab === "calendar" && <ScheduleCalendarTab user={user} onAuthError={onAuthError} />}
           {tab === "settings" && <SettingsScreen user={user} onLogout={logout} isAdmin />}
         </div>

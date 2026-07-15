@@ -70,4 +70,15 @@ export const attendanceApi = {
     if (employeeId) qs.set("employeeId", String(employeeId));
     return apiFetch(`/api/Reports/payslip?${qs.toString()}`, { method: "GET" });
   },
+
+  getPayslipAllowances({ month }) {
+    return apiFetch(`/api/Reports/payslip-allowances?month=${encodeURIComponent(month)}`, { method: "GET" });
+  },
+
+  savePayslipAllowance({ employeeId, payrollMonth, amount }) {
+    return apiFetch("/api/Reports/payslip-allowances", {
+      method: "PUT",
+      body: { employeeId, payrollMonth, amount },
+    });
+  },
 };

@@ -267,6 +267,45 @@ html.theme-light .we-clock-root {
 }
 
 /* ================================
+   Summary strip
+================================ */
+.we-clock-summaryGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+.we-clock-summaryCard{
+  min-width:0;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb, var(--glass-b) 76%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--glass) 78%, transparent), color-mix(in srgb, var(--glass) 92%, #000 8%)),
+    radial-gradient(circle at top right, rgba(99,102,241,.14), transparent 36%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.we-clock-summaryLabel{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--muted2);
+}
+.we-clock-summaryValue{
+  margin-top:8px;
+  font-size:18px;
+  line-height:1.08;
+  font-weight:950;
+  color:var(--ink);
+}
+.we-clock-summaryMeta{
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.35;
+  color:var(--muted);
+}
+
+/* ================================
    Cards / glass
 ================================ */
 .we-glass-card{
@@ -390,12 +429,82 @@ html.theme-light .we-clock-root {
 .we-clock-statusRow{
   display: block;
 }
+.we-clock-heroCard{
+  display:grid;
+  gap:14px;
+}
 .we-clock-statusText{ min-width: 0; }
 .we-clock-statusTop{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+.we-clock-heroStats,
+.we-clock-detailGrid{
+  display:grid;
+  gap:10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.we-clock-detailGrid{
+  grid-template-columns: 1.5fr 1fr;
+}
+.we-clock-panel{
+  min-width:0;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb, var(--glass-b) 74%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--glass) 78%, transparent), color-mix(in srgb, var(--glass) 92%, #000 8%)),
+    radial-gradient(circle at top right, rgba(99,102,241,.12), transparent 40%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.we-clock-panelWide{
+  grid-column: auto;
+}
+.we-clock-panelLabel{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--muted2);
+}
+.we-clock-panelValue{
+  margin-top:8px;
+  font-size:20px;
+  line-height:1.08;
+  font-weight:950;
+  color:var(--ink);
+}
+.we-clock-panelMeta{
+  margin-top:6px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--muted);
+  word-break: break-word;
+}
+.we-clock-actionBlock{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid color-mix(in srgb, var(--glass-b) 78%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04)),
+    linear-gradient(135deg, rgba(99,102,241,.14), rgba(34,197,94,.08));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.we-clock-actionHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+.we-clock-actionTitle{
+  margin-top:6px;
+  font-size:24px;
+  line-height:1.05;
+  font-weight:950;
+  color:var(--ink);
 }
 .we-clock-statusLabel{
   font-size: 12px;
@@ -453,6 +562,38 @@ html.theme-light .we-clock-root {
 .we-clock-locSub{
   font-size: 12px;
   color: var(--muted);
+}
+.we-clock-featureBand{
+  margin-top:14px;
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding-bottom:2px;
+  scrollbar-width:none;
+}
+.we-clock-featureBand::-webkit-scrollbar{ display:none; }
+.we-clock-featureChip{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:16px;
+  border:1px solid color-mix(in srgb, var(--glass-b) 72%, transparent);
+  background: color-mix(in srgb, var(--glass) 84%, transparent);
+  color:var(--ink);
+  font-size:12px;
+  font-weight:900;
+}
+.we-clock-featureChip .ic{
+  width:20px;
+  height:20px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.14);
 }
 .we-clock-scheduleList{
   margin: 0;
@@ -834,6 +975,33 @@ html.theme-light .we-clock-root {
   color: var(--ink);
   font-size: 16px;
 }
+.we-cal-mobileStats{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+.we-cal-mobileStat{
+  min-width:0;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background: color-mix(in srgb, var(--glass) 76%, transparent);
+}
+.we-cal-mobileLabel{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted2);
+  font-weight:900;
+}
+.we-cal-mobileValue{
+  margin-top:8px;
+  font-size:14px;
+  font-weight:950;
+  color:var(--ink);
+  line-height:1.25;
+}
 .we-cal-filter {
   height: 38px;
   border-radius: 12px;
@@ -879,6 +1047,29 @@ html.theme-light .we-clock-root {
 .we-cal-day.is-selected {
   border-color: rgba(99,102,241,.7);
   box-shadow: 0 0 0 2px rgba(99,102,241,.28);
+}
+
+@media (max-width: 640px){
+  .we-clock-heroStats,
+  .we-clock-detailGrid,
+  .we-clock-summaryGrid{
+    grid-template-columns: 1fr;
+  }
+
+  .we-clock-top{
+    align-items: stretch;
+  }
+
+  .we-clock-statusTop,
+  .we-clock-actionHead,
+  .we-clock-btnRow,
+  .we-clock-recentHead{
+    flex-direction: column;
+  }
+
+  .we-clock-mini.compact{
+    width: 100%;
+  }
 }
 .we-cal-dayTop {
   display: flex;
@@ -932,10 +1123,27 @@ html.theme-light .we-cal-chip[class*="tone-"]{
   color: #14315d;
 }
 
+html.theme-light .we-clock-summaryCard,
+html.theme-light .we-cal-mobileStat,
+html.theme-light .we-clock-featureChip{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(247,250,255,.88));
+  border-color: rgba(27,52,93,.12);
+}
+
+html.theme-light .we-clock-featureChip .ic{
+  background: rgba(79,125,255,.12);
+  border-color: rgba(79,125,255,.14);
+}
+
 /* ================================
    Responsive (small phones)
 ================================ */
 @media (max-width: 420px){
+  .we-clock-summaryGrid,
+  .we-cal-mobileStats{
+    grid-template-columns: 1fr;
+  }
   .we-clock-chip{ padding: 5px 8px; font-size: 11px; }
   .we-clock-chip .ic{ width: 16px; height: 16px; font-size: 11px; }
   .we-clock-wrap{ padding: 0 10px; gap: 10px; }

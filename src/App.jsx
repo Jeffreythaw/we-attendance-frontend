@@ -1,14 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { Login } from "./screens/Login";
 import EmployeeMobileShell from "./layouts/EmployeeMobileShell";
 import AdminDesktopShell from "./layouts/AdminDesktopShell";
 import SupervisorDesktopShell from "./layouts/SupervisorDesktopShell";
 import ThemeProvider from "./theme/ThemeProvider";
+import { Capacitor } from "@capacitor/core";
+
+function useMobileShell() {
+  const [isMobileShell, setIsMobileShell] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Capacitor?.isNativePlatform?.() === true || window.innerWidth <= 900;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const update = () => {
+      setIsMobileShell(Capacitor?.isNativePlatform?.() === true || window.innerWidth <= 900);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return isMobileShell;
+}
 
 function AuthedApp({ user, logout }) {
   const role = (user?.role || "").toLowerCase();
+  const isMobileShell = useMobileShell();
+
   if (role === "admin") return <AdminDesktopShell user={user} logout={logout} />;
+  if (isMobileShell) return <EmployeeMobileShell user={user} logout={logout} />;
   if (role === "supervisor") return <SupervisorDesktopShell user={user} logout={logout} />;
   return <EmployeeMobileShell user={user} logout={logout} />;
 }

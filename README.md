@@ -1,16 +1,65 @@
-# React + Vite
+# WE Attendance Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the WE Attendance system, now packaged for Android with Capacitor.
 
-Currently, two official plugins are available:
+## Web
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+cd /Users/kojeffrey/we-attendance/we-attendance-frontend
+npm install
+npm run dev
+```
 
-## React Compiler
+Development API proxy defaults to `http://localhost:5242`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+To point the dev server at the production API:
 
-## Expanding the ESLint configuration
+```bash
+VITE_DEV_API_TARGET=https://kjapi.gys.com.mm npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Production Web Build
+
+```bash
+npm run build
+```
+
+Production builds use:
+
+```env
+VITE_API_BASE_URL=https://kjapi.gys.com.mm
+```
+
+## Android App
+
+Capacitor Android project location:
+
+`/Users/kojeffrey/we-attendance/we-attendance-frontend/android`
+
+Useful commands:
+
+```bash
+npm run cap:sync
+npm run android:open
+```
+
+Direct Gradle build:
+
+```bash
+cd /Users/kojeffrey/we-attendance/we-attendance-frontend/android
+./gradlew assembleDebug
+```
+
+If Gradle says SDK location is missing, create `android/local.properties`:
+
+```properties
+sdk.dir=/Users/<your-user>/Library/Android/sdk
+```
+
+Then install/build from Android Studio or Gradle.
+
+## Mobile Notes
+
+- Native geolocation uses Capacitor Geolocation on Android.
+- Employee mobile tabs now expose `Clock`, `Schedule`, `Leave`, `History`, and `Settings`.
+- Backend CORS must allow `http://localhost` and `capacitor://localhost` for native app API calls.

@@ -13,7 +13,9 @@ export function Tabs({ tab, setTab, items, variant = "fixed" }) {
               onClick={() => setTab(it.key)}
               className={`we-tab-btn ${active ? "is-active" : ""}`}
               aria-current={active ? "page" : undefined}
+              style={it.accent ? { "--tab-accent": it.accent } : undefined}
             >
+              <span className="we-tab-orb" aria-hidden="true" />
               <span className="we-tab-icon" aria-hidden="true">{it.icon}</span>
               <span className="we-tab-label">{it.label}</span>
             </button>

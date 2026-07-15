@@ -1,4 +1,5 @@
 // src/api/client.js
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 // Prefer explicit VITE_API_BASE_URL, then legacy keys used across environments.
 // Keep "" (same-origin) as final fallback for reverse-proxy deployments.
@@ -24,16 +25,15 @@ function isLikelyLocalHost() {
   return h === "localhost" || h === "127.0.0.1" || h === "::1" || h.endsWith(".local");
 }
 
-function isVercelHost() {
-  if (typeof window === "undefined") return false;
-  const h = String(window.location?.hostname || "").toLowerCase();
-  return h.endsWith(".vercel.app");
+function isNativeAppRuntime() {
+  return Capacitor?.isNativePlatform?.() === true;
 }
 
 const CONFIGURED_BASES = uniqueBases([
   import.meta.env.VITE_API_BASE_URL,
   import.meta.env.VITE_KJ_API_BASE,
   import.meta.env.VITE_API_BASE,
+  isNativeAppRuntime() ? "https://kjapi.gys.com.mm" : "",
 ]);
 
 const sameOriginFallbackAllowed =
@@ -131,6 +131,43 @@ async function requestWithFallback(path, options = {}) {
     const base = API_BASES[i];
     const url = joinUrl(base, path);
     try {
+      if (
+        isNativeAppRuntime() &&
+        /^https?:\/\//i.test(url) &&
+        (body === undefined || typeof body === "string")
+      ) {
+        const nativeRes = await CapacitorHttp.request({
+          url,
+          method,
+          headers,
+          data: body ? JSON.parse(body) : undefined,
+          responseType: "text",
+        });
+        const responseText =
+          typeof nativeRes?.data === "string"
+            ? nativeRes.data
+            : JSON.stringify(nativeRes?.data ?? null);
+        return {
+          ok: nativeRes.status >= 200 && nativeRes.status < 300,
+          status: nativeRes.status,
+          text: async () => responseText,
+          blob: async () =>
+            new Blob([responseText], {
+              type: nativeRes?.headers?.["content-type"] || "text/plain",
+            }),
+          headers: {
+            get(name) {
+              const key = String(name || "").toLowerCase();
+              const all = nativeRes?.headers || {};
+              for (const [k, v] of Object.entries(all)) {
+                if (String(k).toLowerCase() === key) return Array.isArray(v) ? v.join(", ") : String(v);
+              }
+              return "";
+            },
+          },
+        };
+      }
+
       const res = await fetch(url, { method, headers, body });
       if (res.ok) return res;
 
