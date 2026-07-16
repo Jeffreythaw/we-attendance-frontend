@@ -122,14 +122,15 @@ export function Login({ onLogin }) {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   className="we-eye"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label="Toggle password"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -137,14 +138,6 @@ export function Login({ onLogin }) {
             </div>
 
             <div className="we-login-row">
-              <label className="we-check">
-                <input
-                  type="checkbox"
-                  checked={showPassword}
-                  onChange={(e) => setShowPassword(e.target.checked)}
-                />
-                <span>Show Password</span>
-              </label>
               <button
                 type="button"
                 className="we-link"
@@ -1040,6 +1033,7 @@ html.theme-dark .we-login-root .we-login-btn {
     linear-gradient(180deg, #f7faff 0%, var(--login-bg) 62%, #eef3f9 100%) !important;
   color: var(--login-text) !important;
   overflow: hidden auto;
+  color-scheme: light;
 }
 
 html.theme-dark .we-login-root {
@@ -1055,6 +1049,7 @@ html.theme-dark .we-login-root {
     radial-gradient(circle at 12% 4%, rgba(59, 123, 255, .26), transparent 30%),
     radial-gradient(circle at 92% 12%, rgba(36, 102, 232, .18), transparent 24%),
     linear-gradient(180deg, #0d1118 0%, #111827 60%, #0b1017 100%) !important;
+  color-scheme: dark;
 }
 
 .we-login-bg,
@@ -1214,6 +1209,12 @@ html.theme-dark .we-login-root .we-login-input input {
   font-weight: 750 !important;
 }
 
+.we-login-root .we-login-input input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--login-panel) inset !important;
+  -webkit-text-fill-color: var(--login-text) !important;
+  caret-color: var(--login-text);
+}
+
 .we-login-root .we-login-input input::placeholder {
   color: color-mix(in srgb, var(--login-muted) 72%, transparent) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--login-muted) 72%, transparent) !important;
@@ -1229,6 +1230,7 @@ html.theme-dark .we-login-root .we-login-input input {
 
 .we-login-row {
   align-items: center;
+  justify-content: flex-end;
 }
 
 .we-check {
