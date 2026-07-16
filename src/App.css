@@ -579,7 +579,7 @@ html.theme-light :where(
 
 html.theme-light :where(
   .we-admin-head,
-  .we-admin-tabs,
+  .we-admin-page > .we-admin-tabs,
   .we-admin-card,
   .we-a-card,
   .we-a-item,
@@ -829,7 +829,7 @@ html[data-theme] :is(
 
 html[data-theme] :is(
   .we-admin-head,
-  .we-admin-tabs,
+  .we-admin-page > .we-admin-tabs,
   .we-admin-card,
   .we-admin-row,
   .we-modal,
