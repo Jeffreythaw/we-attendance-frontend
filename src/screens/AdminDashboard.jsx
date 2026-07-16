@@ -152,7 +152,42 @@ function finiteNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function AdminDashboard({ onAuthError }) {
+function addIsoDays(iso, amount) {
+  const parts = parseIsoDateInput(iso);
+  if (!parts) return "";
+  const day = new Date(Date.UTC(parts.y, parts.m - 1, parts.d + amount));
+  return `${day.getUTCFullYear()}-${pad2(day.getUTCMonth() + 1)}-${pad2(day.getUTCDate())}`;
+}
+
+function formatLongDate(date = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: SG_TZ,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatShortDay(iso) {
+  const date = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(date);
+}
+
+function formatTimeOnly(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: SG_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+export default function AdminDashboard({ onAuthError, user, onNavigate }) {
   const [summary, setSummary] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -329,6 +364,36 @@ export default function AdminDashboard({ onAuthError }) {
     return out;
   }, [summary]);
 
+  const dashboardActivity = useMemo(() => {
+    return recentActivity
+      .filter((row) => row?.checkInAt)
+      .sort((a, b) => new Date(b.checkInAt).getTime() - new Date(a.checkInAt).getTime());
+  }, [recentActivity]);
+
+  const weeklyAttendance = useMemo(() => {
+    const datesWithActivity = [...new Set(dashboardActivity.map((row) => toDateKey(row.checkInAt)).filter(Boolean))].sort();
+    const lastDate = datesWithActivity.at(-1) || to || localIsoDate(new Date());
+    const byDate = new Map();
+    for (const row of dashboardActivity) {
+      const day = toDateKey(row.checkInAt);
+      const employeeId = Number(row.employeeId);
+      if (!day || !Number.isFinite(employeeId)) continue;
+      if (!byDate.has(day)) byDate.set(day, new Set());
+      byDate.get(day).add(employeeId);
+    }
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = addIsoDays(lastDate, index - 6);
+      const present = byDate.get(date)?.size || 0;
+      return { date, present, rate: employees.length ? Math.round((present / employees.length) * 100) : 0 };
+    });
+  }, [dashboardActivity, employees.length, to]);
+
+  const presentToday = useMemo(() => {
+    const today = localIsoDate(new Date());
+    return new Set(dashboardActivity.filter((row) => toDateKey(row.checkInAt) === today).map((row) => Number(row.employeeId))).size;
+  }, [dashboardActivity]);
+
 
   const employeeInsights = useMemo(() => {
     const rows = Array.isArray(recentActivity) ? recentActivity : [];
@@ -495,43 +560,29 @@ export default function AdminDashboard({ onAuthError }) {
       </div>
 
       <div className="we-admin-wrap we-admin-layout">
-        <div className="we-glass-card we-admin-hero we-ops-hero">
-          <div className="we-ops-heroIntro">
-            <div>
-              <div className="we-ops-eyebrow">Operations control</div>
-              <div className="we-admin-title">Workforce dashboard</div>
-              <div className="we-admin-sub">See attendance health, approval work, and overtime in one place.</div>
-            </div>
-            <div className="we-ops-period">
-              <span>Selected period</span>
-              <strong>{from} → {to}</strong>
-            </div>
+        <div className="we-glass-card we-admin-hero we-ref-header">
+          <div className="we-ref-topline">
+            <span>{formatLongDate()}</span>
+            <div className="we-ref-user"><span className="we-ref-bell" aria-label="Notifications">♧</span><span className="we-ref-avatar">{String(user?.username || "A").slice(0, 1).toUpperCase()}</span><strong>{user?.username || "Admin"}</strong></div>
           </div>
-
-          <div className="we-ops-toolbar">
+          <div className="we-ref-welcome">
+            <div><div className="we-admin-title">Good morning, {user?.username || "Admin"}</div><div className="we-admin-sub">{formatLongDate()}</div></div>
+            <button className="we-btn we-btn--refresh" onClick={() => load({ from, to })} disabled={busy}>{busy ? "Loading…" : "Refresh"}</button>
+          </div>
+          <div className="we-ref-controls">
             <div className="we-admin-filterQuick" aria-label="Quick date range">
               <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This week</button>
               <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This month</button>
               <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last month</button>
             </div>
-            <button className="we-btn we-btn--refresh" onClick={() => load({ from, to })} disabled={busy}>
-              {busy ? "Loading…" : "Refresh data"}
-            </button>
-          </div>
-
-          <div className="we-ops-controls">
-            <div className="we-admin-filterRow">
-              <label className="we-admin-filterLabel">
-                From
-                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} disabled={busy} />
-              </label>
-              <label className="we-admin-filterLabel">
-                To
-                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} />
-              </label>
-              <button className="we-btn-soft we-btn--apply" onClick={() => load({ from, to })} disabled={busy} type="button">Apply range</button>
-            </div>
-
+            <details className="we-ref-range">
+              <summary>{from} → {to}</summary>
+              <div className="we-admin-filterRow">
+                <label className="we-admin-filterLabel">From<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} disabled={busy} /></label>
+                <label className="we-admin-filterLabel">To<input type="date" value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} /></label>
+                <button className="we-btn-soft we-btn--apply" onClick={() => load({ from, to })} disabled={busy} type="button">Apply</button>
+              </div>
+            </details>
             <div className="we-admin-viewSwitch" role="tablist" aria-label="Dashboard sections">
               <button
                 type="button"
@@ -564,55 +615,40 @@ export default function AdminDashboard({ onAuthError }) {
         {err ? <div className="we-error">{err}</div> : null}
 
         {viewMode === "overview" ? (
-        <section className="we-admin-block we-ops-overview">
-          <div className="we-ops-sectionHead">
-            <div>
-              <div className="we-admin-blockTitle">Workforce overview</div>
-              <div className="we-admin-sectionMeta">The essentials for the selected period.</div>
-            </div>
-            <span className="we-ops-liveDot">Live summary</span>
+        <section className="we-admin-block we-ref-overview">
+          <div className="we-ref-metricGrid">
+            <article className="we-ref-metric blue"><span className="we-ref-metricIcon">♧</span><div><div className="we-ref-metricLabel">Present today</div><strong>{presentToday}</strong><small>of {employees.length} employees</small></div></article>
+            <article className="we-ref-metric amber"><span className="we-ref-metricIcon">◷</span><div><div className="we-ref-metricLabel">Attendance rate</div><strong>{insightBreakdown.attendanceRate}%</strong><small>for selected period</small></div></article>
+            <article className="we-ref-metric violet"><span className="we-ref-metricIcon">▣</span><div><div className="we-ref-metricLabel">Pending requests</div><strong>{overnightPending.length + (Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0)}</strong><small>leave and overnight OT</small></div></article>
+            <article className="we-ref-metric green"><span className="we-ref-metricIcon">▤</span><div><div className="we-ref-metricLabel">Overtime</div><strong>{formatHm(insightBreakdown.totalOtMinutes)}</strong><small>{insightBreakdown.overtimeRate}% of worked time</small></div></article>
           </div>
 
-          <div className="we-ops-kpiGrid">
-            <article className="we-ops-kpi success">
-              <div className="we-ops-kpiIcon" aria-hidden="true">✓</div>
-              <div><div className="we-ops-kpiLabel">Attendance</div><div className="we-ops-kpiValue">{insightBreakdown.attendanceRate}%</div><div className="we-ops-kpiHint">Present days in this period</div></div>
-            </article>
-            <article className="we-ops-kpi warning">
-              <div className="we-ops-kpiIcon" aria-hidden="true">↗</div>
-              <div><div className="we-ops-kpiLabel">Overtime</div><div className="we-ops-kpiValue">{formatHm(insightBreakdown.totalOtMinutes)}</div><div className="we-ops-kpiHint">{insightBreakdown.overtimeRate}% of worked time</div></div>
-            </article>
-            <article className="we-ops-kpi danger">
-              <div className="we-ops-kpiIcon" aria-hidden="true">!</div>
-              <div><div className="we-ops-kpiLabel">Absence</div><div className="we-ops-kpiValue">{insightBreakdown.absentRate}%</div><div className="we-ops-kpiHint">Workdays only</div></div>
-            </article>
-            <article className="we-ops-kpi neutral">
-              <div className="we-ops-kpiIcon" aria-hidden="true">♟</div>
-              <div><div className="we-ops-kpiLabel">Active staff</div><div className="we-ops-kpiValue">{employees.length}</div><div className="we-ops-kpiHint">Employees in the system</div></div>
-            </article>
-          </div>
-
-          <div className="we-ops-mainGrid">
-            <section className="we-glass-card we-ops-queue">
-              <div className="we-ops-cardHead"><div><div className="we-admin-sectionTitle">Needs attention</div><div className="we-admin-sectionMeta">Approve time-sensitive items first.</div></div><span className="we-ops-count">{overnightPending.length + (Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0)}</span></div>
-              <div className="we-ops-queueItem"><div><strong>Overnight OT</strong><span>{overnightPending.length} pending request{overnightPending.length === 1 ? "" : "s"}</span></div><button type="button" className="we-btn-soft" onClick={() => setViewMode("reports")}>Review</button></div>
-              <div className="we-ops-queueItem"><div><strong>Leave requests</strong><span>{Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0} awaiting approval</span></div><span className="we-ops-status">Check leave</span></div>
-              <button type="button" className="we-ops-linkBtn" onClick={() => setViewMode("attendance")}>Open attendance board →</button>
+          <div className="we-ref-mainGrid">
+            <section className="we-glass-card we-ref-chartCard">
+              <div className="we-ref-cardHead"><div className="we-admin-sectionTitle">Weekly attendance</div><span>{weeklyAttendance.at(-1)?.date || "—"}</span></div>
+              <div className="we-ref-chartLegend"><span><i className="bar" /> Present</span><span><i className="line" /> Attendance %</span></div>
+              <div className="we-ref-chart" aria-label="Weekly attendance chart">
+                {weeklyAttendance.map((day) => <div className="we-ref-chartDay" key={day.date}><div className="we-ref-chartValue">{day.present || "—"}</div><div className="we-ref-chartPlot"><i style={{ height: `${Math.max(4, day.rate)}%` }} /></div><strong>{day.rate}%</strong><span>{formatShortDay(day.date)}</span></div>)}
+              </div>
             </section>
 
-            <section className="we-glass-card we-ops-health">
-              <div className="we-admin-sectionTitle">Attendance health</div>
-              <div className="we-admin-sectionMeta">A quick read of this period, without opening a report.</div>
-              <div className="we-ops-meter"><div><span>Attendance rate</span><strong>{insightBreakdown.attendanceRate}%</strong></div><i><b style={{ width: `${insightBreakdown.attendanceRate}%` }} /></i></div>
-              <div className="we-ops-meter warning"><div><span>Overtime share</span><strong>{insightBreakdown.overtimeRate}%</strong></div><i><b style={{ width: `${insightBreakdown.overtimeRate}%` }} /></i></div>
-              <div className="we-ops-meter danger"><div><span>Absence rate</span><strong>{insightBreakdown.absentRate}%</strong></div><i><b style={{ width: `${insightBreakdown.absentRate}%` }} /></i></div>
+            <section className="we-glass-card we-ref-actionCard">
+              <div className="we-admin-sectionTitle">Action needed</div>
+              <button type="button" className="we-ref-action" onClick={() => setViewMode("reports")}><span className="amber">▣</span><div><strong>{overnightPending.length} pending overnight approval{overnightPending.length === 1 ? "" : "s"}</strong><small>Review attendance records</small></div><b>›</b></button>
+              <button type="button" className="we-ref-action" onClick={() => onNavigate?.("settings")}><span className="violet">⌁</span><div><strong>{Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0} leave request{Array.isArray(summary?.pendingLeave) && summary.pendingLeave.length === 1 ? "" : "s"}</strong><small>Review leave requests</small></div><b>›</b></button>
+              <button type="button" className="we-ref-action" onClick={() => onNavigate?.("payslips")}><span className="green">▤</span><div><strong>Payslips</strong><small>Open monthly payslip preparation</small></div><b>›</b></button>
             </section>
           </div>
 
-          <div className="we-glass-card we-admin-preapprove we-ops-preapprove">
+          <section className="we-glass-card we-ref-recent">
+            <div className="we-ref-cardHead"><div className="we-admin-sectionTitle">Recent attendance</div><button type="button" onClick={() => setViewMode("attendance")}>View all</button></div>
+            <div className="we-ref-tableWrap"><table><thead><tr><th>Employee</th><th>Clock in</th><th>Clock out</th><th>Status</th><th /></tr></thead><tbody>{dashboardActivity.slice(0, 4).map((row) => { const employee = employeeMap.get(Number(row.employeeId)); const name = row.employeeName || employee?.name || `Employee #${row.employeeId}`; return <tr key={row.id}><td><span className="we-ref-person">{name.slice(0, 1).toUpperCase()}</span><div><strong>{name}</strong><small>{employee?.department || "Employee"}</small></div></td><td>{formatTimeOnly(row.checkInAt)}</td><td>{formatTimeOnly(row.checkOutAt)}</td><td><span className={`we-ref-status ${row.checkOutAt ? "complete" : "open"}`}>{row.checkOutAt ? "Completed" : "Clocked in"}</span></td><td><button type="button" className="we-ref-view" onClick={() => openEdit(row)}>View</button></td></tr>; })}</tbody></table>{dashboardActivity.length === 0 ? <div className="we-admin-empty">No attendance records in this period.</div> : null}</div>
+          </section>
+
+          <details className="we-glass-card we-admin-preapprove we-ref-preapprove">
+            <summary><span className="we-admin-sectionTitle">Overnight pre-approvals</span><span>Create before clock-in</span></summary>
             <div className="we-admin-sectionHead">
               <div>
-                <div className="we-admin-sectionTitle">Quick Overnight Pre-approvals</div>
                 <div className="we-admin-sectionMeta">Set approved overnight work before the employee clocks in.</div>
               </div>
             </div>
@@ -685,7 +721,7 @@ export default function AdminDashboard({ onAuthError }) {
                 })
               )}
             </div>
-          </div>
+          </details>
         </section>
         ) : null}
 

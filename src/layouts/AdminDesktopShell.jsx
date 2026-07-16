@@ -49,7 +49,7 @@ export default function AdminDesktopShell({ user, logout }) {
         </aside>
 
         <div className="we-admin-content">
-          {tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} />}
+          {tab === "dashboard" && <AdminDashboard onAuthError={onAuthError} user={user} onNavigate={setTab} />}
           {tab === "employees" && <AdminEmployees onAuthError={onAuthError} />}
           {tab === "quotations" && <AdminQuotations onAuthError={onAuthError} />}
           {tab === "payslips" && <Payslips onAuthError={onAuthError} />}
