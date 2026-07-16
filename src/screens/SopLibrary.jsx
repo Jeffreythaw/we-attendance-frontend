@@ -131,7 +131,7 @@ export default function SopLibrary({ onAuthError }) {
             <button
               type="button"
               className="we-sop-open"
-              onClick={() => previewDocument(document)}
+              onClick={() => previewDocument(document, uploadLanguage[document.id] || "zh-Hans")}
               disabled={!document.previewAvailable || previewBusy === document.id}
             >
               {previewBusy === document.id ? "Opening…" : document.previewAvailable ? "Preview PDF" : "Unavailable"}
