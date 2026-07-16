@@ -10,6 +10,8 @@ export default function SopLibrary({ onAuthError }) {
   const [documents, setDocuments] = useState([]);
   const [busy, setBusy] = useState(true);
   const [openingId, setOpeningId] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [previewBusy, setPreviewBusy] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -48,6 +50,21 @@ export default function SopLibrary({ onAuthError }) {
     }
   }
 
+  async function previewDocument(sopDocument) {
+    setError("");
+    setPreviewBusy(sopDocument.id);
+    try {
+      const data = await apiFetch(`/api/SopDocuments/${encodeURIComponent(sopDocument.id)}/preview`);
+      setPreview({ title: data?.title || sopDocument.title, content: data?.content || "No readable text was found in this document." });
+    } catch (e) {
+      const message = e?.message || "Could not preview SOP document.";
+      setError(message);
+      if (String(message).includes("401") || String(message).includes("403")) onAuthError?.();
+    } finally {
+      setPreviewBusy("");
+    }
+  }
+
   return (
     <section className="we-sop-root">
       <header className="we-sop-hero">
@@ -75,6 +92,14 @@ export default function SopLibrary({ onAuthError }) {
             <button
               type="button"
               className="we-sop-open"
+              onClick={() => previewDocument(document)}
+              disabled={!document.available || previewBusy === document.id}
+            >
+              {previewBusy === document.id ? "Opening…" : document.available ? "Preview" : "Unavailable"}
+            </button>
+            <button
+              type="button"
+              className="we-sop-open we-sop-download"
               onClick={() => openDocument(document)}
               disabled={!document.available || openingId === document.id}
             >
@@ -83,6 +108,13 @@ export default function SopLibrary({ onAuthError }) {
           </article>
         ))}
       </div>
+
+      {preview ? <div className="we-sop-modal" role="dialog" aria-modal="true" aria-label={`${preview.title} preview`}>
+        <div className="we-sop-preview">
+          <div className="we-sop-previewHead"><div><span>ORIGINAL DOCUMENT · ENGLISH</span><h2>{preview.title}</h2></div><button type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button></div>
+          <pre>{preview.content}</pre>
+        </div>
+      </div> : null}
 
       <style>{css}</style>
     </section>
@@ -100,7 +132,8 @@ const css = `
 .we-sop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
 .we-sop-card{display:grid;gap:10px;min-height:190px;padding:18px;border:1px solid var(--we-border,rgba(255,255,255,.14));border-radius:16px;background:var(--we-surface,rgba(15,23,42,.4));box-shadow:0 9px 24px rgba(8,25,54,.08);}
 .we-sop-cardTop{display:flex;justify-content:space-between;align-items:center;gap:10px;}.we-sop-icon{font-size:24px;}.we-sop-category{padding:5px 8px;border-radius:999px;background:var(--we-surface-2,rgba(255,255,255,.1));border:1px solid var(--we-border,rgba(255,255,255,.14));font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;}
-.we-sop-card h2{margin:2px 0 0;font-size:16px;line-height:1.25;color:var(--we-text,#e5e7eb);}.we-sop-card p{margin:0;font-size:12px;color:var(--we-muted,rgba(226,232,240,.75));}.we-sop-open{align-self:end;width:100%;min-height:38px;border:1px solid var(--we-control-border,rgba(255,255,255,.14));border-radius:11px;background:var(--we-control-bg,rgba(15,23,42,.35));color:var(--we-text,#e5e7eb);font-weight:900;cursor:pointer;}.we-sop-open:hover:not(:disabled){filter:brightness(1.12);}.we-sop-open:disabled{cursor:not-allowed;opacity:.55;}
+.we-sop-card h2{margin:2px 0 0;font-size:16px;line-height:1.25;color:var(--we-text,#e5e7eb);}.we-sop-card p{margin:0;font-size:12px;color:var(--we-muted,rgba(226,232,240,.75));}.we-sop-open{align-self:end;width:100%;min-height:38px;border:1px solid var(--we-control-border,rgba(255,255,255,.14));border-radius:11px;background:var(--we-control-bg,rgba(15,23,42,.35));color:var(--we-text,#e5e7eb);font-weight:900;cursor:pointer;}.we-sop-download{align-self:start;min-height:34px;font-size:11px;}.we-sop-open:hover:not(:disabled){filter:brightness(1.12);}.we-sop-open:disabled{cursor:not-allowed;opacity:.55;}
+.we-sop-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(4,12,26,.6);}.we-sop-preview{width:min(880px,100%);max-height:min(82vh,900px);display:grid;grid-template-rows:auto 1fr;overflow:hidden;border:1px solid var(--we-border);border-radius:16px;background:var(--we-surface);box-shadow:0 24px 70px rgba(0,0,0,.34);}.we-sop-previewHead{display:flex;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--we-border);}.we-sop-previewHead span{font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--we-muted);}.we-sop-previewHead h2{margin:5px 0 0;font-size:20px;color:var(--we-text);}.we-sop-previewHead button{width:32px;height:32px;border:0;border-radius:50%;background:var(--we-surface-2);color:var(--we-text);font-size:24px;line-height:1;cursor:pointer;}.we-sop-preview pre{overflow:auto;margin:0;padding:22px 24px;white-space:pre-wrap;font:14px/1.65 "SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--we-text);}
 .we-sop-empty,.we-sop-error{padding:14px 16px;border-radius:14px;border:1px solid var(--we-border,rgba(255,255,255,.14));background:var(--we-surface,rgba(15,23,42,.4));font-size:13px;}.we-sop-error{color:#fecdd3;border-color:rgba(244,63,94,.28);background:rgba(244,63,94,.12);}
 @media (max-width:1050px){.we-sop-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media (max-width:620px){.we-sop-hero{align-items:flex-start;padding:18px;}.we-sop-grid{grid-template-columns:1fr;}.we-sop-hero h1{font-size:23px;}.we-sop-count{min-width:72px;}.we-sop-card{min-height:170px;}}
