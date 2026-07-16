@@ -628,7 +628,8 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               <div className="we-ref-cardHead"><div className="we-admin-sectionTitle">Weekly attendance</div><span>{weeklyAttendance.at(-1)?.date || "—"}</span></div>
               <div className="we-ref-chartLegend"><span><i className="bar" /> Present</span><span><i className="line" /> Attendance %</span></div>
               <div className="we-ref-chart" aria-label="Weekly attendance chart">
-                {weeklyAttendance.map((day) => <div className="we-ref-chartDay" key={day.date}><div className="we-ref-chartValue">{day.present || "—"}</div><div className="we-ref-chartPlot"><i style={{ height: `${Math.max(4, day.rate)}%` }} /></div><strong>{day.rate}%</strong><span>{formatShortDay(day.date)}</span></div>)}
+                <svg className="we-ref-chartLine" viewBox="0 0 600 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={weeklyAttendance.map((day, index) => `${(index / Math.max(1, weeklyAttendance.length - 1)) * 600},${100 - day.rate}`).join(" ")} /><g>{weeklyAttendance.map((day, index) => <circle key={day.date} cx={(index / Math.max(1, weeklyAttendance.length - 1)) * 600} cy={100 - day.rate} r="3" />)}</g></svg>
+                {weeklyAttendance.map((day) => <div className="we-ref-chartDay" key={day.date}><div className="we-ref-chartValue">{day.present}</div><div className="we-ref-chartPlot"><i style={{ height: `${Math.max(4, day.rate)}%` }} /></div><strong>{day.rate}%</strong><span>{formatShortDay(day.date)}</span></div>)}
               </div>
             </section>
 
@@ -739,7 +740,7 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               recentActivity={recentActivity}
               employeeMap={employeeMap}
               employees={employees}
-              defaultSelectedCount={3}
+              defaultSelectedCount={employees.length || 5}
               onEdit={openEdit}
               embedded
             />

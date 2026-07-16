@@ -255,10 +255,51 @@
 .we-ref-mainGrid { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(350px, 1fr); gap: 18px; }.we-ref-chartCard,.we-ref-actionCard,.we-ref-recent,.we-ref-preapprove { padding: 18px; background: #fff; border-color: #dfe5ee; box-shadow: 0 2px 8px rgba(16,42,86,.03); backdrop-filter: none; }
 .we-ref-cardHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #102b58; }.we-ref-cardHead > span { padding: 7px 10px; border: 1px solid #dbe2ed; border-radius: 7px; color: #536987; font-size: 11px; }.we-ref-cardHead button { border: 0; color: #1763c9; background: transparent; font-size: 12px; font-weight: 900; cursor: pointer; }
 .we-ref-chartLegend { display: flex; gap: 18px; margin: 18px 0 8px; color: #637595; font-size: 11px; }.we-ref-chartLegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 2px; background: #0e3264; }.we-ref-chartLegend i.line { height: 2px; border-radius: 2px; vertical-align: middle; background: #5c9cf8; }
-.we-ref-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; min-height: 220px; padding-top: 12px; border-bottom: 1px solid #dfe5ee; }.we-ref-chartDay { display: grid; grid-template-rows: 18px 1fr 18px 30px; gap: 5px; min-width: 0; text-align: center; }.we-ref-chartValue,.we-ref-chartDay strong { color: #102b58; font-size: 11px; }.we-ref-chartPlot { display: flex; align-items: end; justify-content: center; min-height: 128px; background: repeating-linear-gradient(to bottom, transparent 0 31px, #edf0f5 32px); }.we-ref-chartPlot i { display: block; width: min(32px,70%); border-radius: 3px 3px 0 0; background: linear-gradient(#153968,#0b2b58); }.we-ref-chartDay span { color: #637595; font-size: 10px; line-height: 1.25; }
+.we-ref-chart { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; min-height: 220px; padding-top: 12px; border-bottom: 1px solid #dfe5ee; }.we-ref-chartLine { position:absolute; z-index:2; top:39px; left:7.15%; width:85.7%; height:128px; overflow:visible; pointer-events:none; }.we-ref-chartLine polyline { fill:none; stroke:#5c9cf8; stroke-width:2; vector-effect:non-scaling-stroke; }.we-ref-chartLine circle { fill:#fff; stroke:#5c9cf8; stroke-width:2; vector-effect:non-scaling-stroke; }.we-ref-chartDay { display: grid; grid-template-rows: 18px 1fr 18px 30px; gap: 5px; min-width: 0; text-align: center; }.we-ref-chartValue,.we-ref-chartDay strong { color: #102b58; font-size: 11px; }.we-ref-chartPlot { display: flex; align-items: end; justify-content: center; min-height: 128px; background: repeating-linear-gradient(to bottom, transparent 0 31px, #edf0f5 32px); }.we-ref-chartPlot i { display: block; width: min(32px,70%); border-radius: 3px 3px 0 0; background: linear-gradient(#153968,#0b2b58); }.we-ref-chartDay span { color: #637595; font-size: 10px; line-height: 1.25; }
 .we-ref-actionCard { display: grid; align-content: start; }.we-ref-action { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 17px 0; border: 0; border-top: 1px solid #e4e8ef; background: transparent; color: #102348; text-align: left; cursor: pointer; }.we-ref-action:first-of-type { margin-top: 17px; }.we-ref-action > span { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; }.we-ref-action > span.amber { color:#c98513;background:#fff5df; }.we-ref-action > span.violet { color:#6b56ce;background:#f0edff; }.we-ref-action > span.green { color:#288a51;background:#eaf8ee; }.we-ref-action strong,.we-ref-action small { display:block; }.we-ref-action strong { font-size:13px; }.we-ref-action small { margin-top:4px; color:#637595; font-size:11px; }.we-ref-action b { color:#102b58; font-size:26px; font-weight:400; }
 .we-ref-recent { overflow: hidden; }.we-ref-tableWrap { margin-top: 14px; overflow-x: auto; }.we-ref-recent table { width:100%; min-width:640px; border-collapse:collapse; color:#102b58; font-size:12px; }.we-ref-recent th { padding:10px 12px; border-top:1px solid #dfe5ee; border-bottom:1px solid #dfe5ee; color:#435978; font-weight:800; text-align:left; }.we-ref-recent td { padding:10px 12px; border-bottom:1px solid #e7eaf0; }.we-ref-recent td:first-child { display:flex; align-items:center; gap:10px; }.we-ref-recent td strong,.we-ref-recent td small { display:block; }.we-ref-recent td small { margin-top:2px; color:#637595; font-size:10px; }.we-ref-person { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; color:#1d5bb8; background:#eaf3ff; font-weight:900; }.we-ref-status { display:inline-flex; align-items:center; padding:5px 9px; border-radius:999px; font-size:11px; }.we-ref-status.complete { color:#237b46; background:#eaf8ee; }.we-ref-status.open { color:#b87a13; background:#fff5df; }.we-ref-view { padding:5px 12px; border:1px solid #1a4d95; border-radius:5px; color:#102b58; background:#fff; font-size:11px; font-weight:800; cursor:pointer; }
 .we-ref-preapprove { display:grid; gap:14px; }.we-ref-preapprove summary { display:flex; justify-content:space-between; cursor:pointer; color:#637595; font-size:11px; }.we-ref-preapprove[open] summary { padding-bottom:4px; border-bottom:1px solid #e4e8ef; }
+
+/* The reference layout keeps its own readable palette in both application themes. */
+html.theme-dark .we-admin-shell,
+html.theme-dark .we-admin-content { background: #0f1726; }
+html.theme-dark .we-ref-header,
+html.theme-dark .we-ref-metric,
+html.theme-dark .we-ref-chartCard,
+html.theme-dark .we-ref-actionCard,
+html.theme-dark .we-ref-recent,
+html.theme-dark .we-ref-preapprove { background: #172235; border-color: #2b3952; box-shadow: none; }
+html.theme-dark .we-ref-topline { border-color: #2b3952; color: #e8eef9; }
+html.theme-dark .we-ref-welcome .we-admin-title,
+html.theme-dark .we-ref-metric strong,
+html.theme-dark .we-ref-cardHead,
+html.theme-dark .we-ref-chartValue,
+html.theme-dark .we-ref-chartDay strong,
+html.theme-dark .we-ref-action,
+html.theme-dark .we-ref-action b,
+html.theme-dark .we-ref-recent table { color: #edf3ff; }
+html.theme-dark .we-ref-welcome .we-admin-sub,
+html.theme-dark .we-ref-metric small,
+html.theme-dark .we-ref-cardHead > span,
+html.theme-dark .we-ref-chartLegend,
+html.theme-dark .we-ref-chartDay span,
+html.theme-dark .we-ref-action small,
+html.theme-dark .we-ref-recent td small,
+html.theme-dark .we-ref-preapprove summary { color: #aebbd0; }
+html.theme-dark .we-ref-header .we-admin-viewSwitch,
+html.theme-dark .we-ref-range summary,
+html.theme-dark .we-ref-range[open] .we-admin-filterRow { background: #202e44; border-color: #35445e; }
+html.theme-dark .we-ref-header .we-admin-viewBtn,
+html.theme-dark .we-ref-range { color: #b7c4d8; }
+html.theme-dark .we-ref-chartPlot { background: repeating-linear-gradient(to bottom, transparent 0 31px, #2a3950 32px); }
+html.theme-dark .we-ref-chart { border-color: #2b3952; }
+html.theme-dark .we-ref-chartLine circle { fill: #172235; }
+html.theme-dark .we-ref-action,
+html.theme-dark .we-ref-recent th,
+html.theme-dark .we-ref-recent td { border-color: #2b3952; }
+html.theme-dark .we-ref-recent th { color: #bdc9dc; }
+html.theme-dark .we-ref-view { color: #dce8ff; border-color: #7099dc; background: transparent; }
+html.theme-dark .we-ref-range .we-admin-filterLabel input { color: #edf3ff; background: #172235; border-color: #35445e; }
 
 /* ===== Actions ===== */
 .we-btn {
