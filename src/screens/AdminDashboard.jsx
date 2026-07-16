@@ -152,13 +152,6 @@ function finiteNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function addIsoDays(iso, amount) {
-  const parts = parseIsoDateInput(iso);
-  if (!parts) return "";
-  const day = new Date(Date.UTC(parts.y, parts.m - 1, parts.d + amount));
-  return `${day.getUTCFullYear()}-${pad2(day.getUTCMonth() + 1)}-${pad2(day.getUTCDate())}`;
-}
-
 function formatLongDate(date = new Date()) {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: SG_TZ,
@@ -173,6 +166,19 @@ function formatShortDay(iso) {
   const date = new Date(`${iso}T12:00:00Z`);
   if (Number.isNaN(date.getTime())) return iso;
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(date);
+}
+
+function buildAttendanceSeries(fromIso, toIso, dailyAttendance, employeeCount) {
+  return daysBetweenInclusiveIso(fromIso, toIso).map((date) => {
+    const present = dailyAttendance.get(date) || 0;
+    return {
+      key: date,
+      present,
+      rate: employeeCount ? Math.round((present / employeeCount) * 100) : 0,
+      label: formatShortDay(date),
+      title: date,
+    };
+  });
 }
 
 function formatTimeOnly(value) {
@@ -200,24 +206,31 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
   const [preApproveNote, setPreApproveNote] = useState("");
   const [preApproveBusy, setPreApproveBusy] = useState(false);
   const [viewMode, setViewMode] = useState("overview");
+  const [chartMode, setChartMode] = useState("weekly");
   const { theme } = useTheme();
 
   const mountedRef = useRef(true);
 
   const setThisWeek = () => {
     const r = sgWeekRangeIso(new Date());
+    setChartMode("weekly");
     setFrom(r.fromIso);
     setTo(r.toIso);
+    load({ from: r.fromIso, to: r.toIso });
   };
   const setThisMonth = () => {
     const r = monthRangeIso(new Date());
+    setChartMode("monthly");
     setFrom(r.fromIso);
     setTo(r.toIso);
+    load({ from: r.fromIso, to: r.toIso });
   };
   const setLastMonth = () => {
     const r = prevMonthRangeIso(new Date());
+    setChartMode("monthly");
     setFrom(r.fromIso);
     setTo(r.toIso);
+    load({ from: r.fromIso, to: r.toIso });
   };
 
 
@@ -370,24 +383,20 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
       .sort((a, b) => new Date(b.checkInAt).getTime() - new Date(a.checkInAt).getTime());
   }, [recentActivity]);
 
-  const weeklyAttendance = useMemo(() => {
-    const datesWithActivity = [...new Set(dashboardActivity.map((row) => toDateKey(row.checkInAt)).filter(Boolean))].sort();
-    const lastDate = datesWithActivity.at(-1) || to || localIsoDate(new Date());
-    const byDate = new Map();
-    for (const row of dashboardActivity) {
-      const day = toDateKey(row.checkInAt);
-      const employeeId = Number(row.employeeId);
-      if (!day || !Number.isFinite(employeeId)) continue;
-      if (!byDate.has(day)) byDate.set(day, new Set());
-      byDate.get(day).add(employeeId);
-    }
+  const dailyAttendance = useMemo(() => new Map(
+    (summary?.dailyAttendance || []).map((day) => [String(day.date).slice(0, 10), Number(day.present) || 0])
+  ), [summary]);
 
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = addIsoDays(lastDate, index - 6);
-      const present = byDate.get(date)?.size || 0;
-      return { date, present, rate: employees.length ? Math.round((present / employees.length) * 100) : 0 };
-    });
-  }, [dashboardActivity, employees.length, to]);
+  const weeklyRange = useMemo(() => sgWeekRangeIso(new Date(`${from || localIsoDate()}T12:00:00Z`)), [from]);
+  const monthlyRange = useMemo(() => monthRangeIso(new Date(`${from || localIsoDate()}T12:00:00Z`)), [from]);
+  const weeklyAttendance = useMemo(
+    () => buildAttendanceSeries(weeklyRange.fromIso, weeklyRange.toIso, dailyAttendance, employees.length),
+    [dailyAttendance, employees.length, weeklyRange]
+  );
+  const monthlyAttendance = useMemo(
+    () => buildAttendanceSeries(monthlyRange.fromIso, monthlyRange.toIso, dailyAttendance, employees.length),
+    [dailyAttendance, employees.length, monthlyRange]
+  );
 
   const presentToday = useMemo(() => {
     const today = localIsoDate(new Date());
@@ -537,6 +546,26 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
     };
   }, [employeeInsights, employees.length]);
 
+  const employeeAttendance = useMemo(() => {
+    const presentByEmployee = new Map((summary?.attendanceByEmployee || []).map((row) => [Number(row.employeeId), Number(row.present) || 0]));
+    return employeeInsights.map((employee) => {
+      const present = presentByEmployee.get(Number(employee.id)) ?? employee.presentDays;
+      return {
+        key: `employee-${employee.id}`,
+        present,
+        rate: Math.round((present / Math.max(1, employee.totalDays)) * 100),
+        label: employee.name.split(/\s+/)[0],
+        title: employee.name,
+      };
+    });
+  }, [employeeInsights, summary]);
+
+  const chart = chartMode === "monthly"
+    ? { title: "Monthly attendance", range: `${monthlyRange.fromIso} → ${monthlyRange.toIso}`, data: monthlyAttendance, presentLabel: "Present" }
+    : chartMode === "employee"
+      ? { title: "Attendance by employee", range: `${from} → ${to}`, data: employeeAttendance, presentLabel: "Present days" }
+      : { title: "Weekly attendance", range: `${weeklyRange.fromIso} → ${weeklyRange.toIso}`, data: weeklyAttendance, presentLabel: "Present" };
+
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -625,11 +654,13 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
 
           <div className="we-ref-mainGrid">
             <section className="we-glass-card we-ref-chartCard">
-              <div className="we-ref-cardHead"><div className="we-admin-sectionTitle">Weekly attendance</div><span>{weeklyAttendance.at(-1)?.date || "—"}</span></div>
-              <div className="we-ref-chartLegend"><span><i className="bar" /> Present</span><span><i className="line" /> Attendance %</span></div>
-              <div className="we-ref-chart" aria-label="Weekly attendance chart">
-                <svg className="we-ref-chartLine" viewBox="0 0 600 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={weeklyAttendance.map((day, index) => `${(index / Math.max(1, weeklyAttendance.length - 1)) * 600},${100 - day.rate}`).join(" ")} /><g>{weeklyAttendance.map((day, index) => <circle key={day.date} cx={(index / Math.max(1, weeklyAttendance.length - 1)) * 600} cy={100 - day.rate} r="3" />)}</g></svg>
-                {weeklyAttendance.map((day) => <div className="we-ref-chartDay" key={day.date}><div className="we-ref-chartValue">{day.present}</div><div className="we-ref-chartPlot"><i style={{ height: `${Math.max(4, day.rate)}%` }} /></div><strong>{day.rate}%</strong><span>{formatShortDay(day.date)}</span></div>)}
+              <div className="we-ref-cardHead we-ref-chartHead"><div><div className="we-admin-sectionTitle">{chart.title}</div><small>{chart.range}</small></div><div className="we-ref-chartModes" role="group" aria-label="Attendance chart view"><button type="button" className={chartMode === "weekly" ? "active" : ""} aria-pressed={chartMode === "weekly"} onClick={setThisWeek}>Weekly</button><button type="button" className={chartMode === "monthly" ? "active" : ""} aria-pressed={chartMode === "monthly"} onClick={setThisMonth}>Monthly</button><button type="button" className={chartMode === "employee" ? "active" : ""} aria-pressed={chartMode === "employee"} onClick={() => setChartMode("employee")}>By employee</button></div></div>
+              <div className="we-ref-chartLegend"><span><i className="bar" /> {chart.presentLabel}</span><span><i className="line" /> Attendance %</span></div>
+              <div className="we-ref-chartScroll">
+              <div className="we-ref-chart" aria-label={`${chart.title} chart`} style={{ "--chart-columns": Math.max(1, chart.data.length) }}>
+                <svg className="we-ref-chartLine" viewBox="0 0 600 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={chart.data.map((item, index) => `${(index / Math.max(1, chart.data.length - 1)) * 600},${100 - item.rate}`).join(" ")} /><g>{chart.data.map((item, index) => <circle key={item.key} cx={(index / Math.max(1, chart.data.length - 1)) * 600} cy={100 - item.rate} r="3" />)}</g></svg>
+                {chart.data.map((item) => <div className="we-ref-chartDay" key={item.key} title={item.title}><div className="we-ref-chartValue">{item.present}</div><div className="we-ref-chartPlot"><i style={{ height: `${Math.max(4, item.rate)}%` }} /></div><strong>{item.rate}%</strong><span>{item.label}</span></div>)}
+              </div>
               </div>
             </section>
 
