@@ -9,7 +9,7 @@
 .we-admin-refresh{ width:auto; }
 
 /* Tabs */
-.we-admin-tabs{ display:flex; gap:8px; flex-wrap: wrap; padding:6px; border-radius:14px; background: var(--we-surface-2); border:1px solid var(--we-border); }
+.we-admin-page > .we-admin-tabs{ display:flex; gap:8px; flex-wrap: wrap; padding:6px; border-radius:14px; background: var(--we-surface-2); border:1px solid var(--we-border); }
 .we-tab{
   border:1px solid var(--we-border);
   background: var(--we-surface-2);
