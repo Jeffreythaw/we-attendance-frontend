@@ -405,7 +405,6 @@ export default function AdminDashboard({ onAuthError }) {
       }
     }
 
-    const palette = ["#22c55e", "#38bdf8", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6", "#eab308"];
     const orderedEmployees = [...employees].sort((a, b) => {
       const an = String(a?.name || "");
       const bn = String(b?.name || "");
@@ -414,7 +413,7 @@ export default function AdminDashboard({ onAuthError }) {
       return Number(a?.id || 0) - Number(b?.id || 0);
     });
 
-    return orderedEmployees.map((e, idx) => {
+    return orderedEmployees.map((e) => {
       const empId = Number(e.id);
       const stat = statsByEmp.get(empId) || null;
 
@@ -446,7 +445,6 @@ export default function AdminDashboard({ onAuthError }) {
         overnightOtMinutes,
         totalDays,
         expectedWorkdays,
-        color: palette[idx % palette.length],
       };
     });
   }, [employees, recentActivity, from, to, summary]);
@@ -460,58 +458,16 @@ export default function AdminDashboard({ onAuthError }) {
 
     const totalWorked = employeeInsights.reduce((a, x) => a + (x.totalWorkedMinutes || 0), 0);
     const totalOt = employeeInsights.reduce((a, x) => a + (x.employeeOtMinutes || 0), 0);
-    const otPctById = new Map();
-
-    const attendanceSegments = employeeInsights.map((x) => ({
-      color: x.color,
-      value: (x.presentDays / attendanceDenom) * 100,
-    }));
-    const otTimeSegments = employeeInsights.map((x) => {
-      const share = totalOt > 0 ? (x.employeeOtMinutes / totalOt) * 100 : 0;
-      return { color: x.color, value: share };
-    });
-    const absentSegments = employeeInsights.map((x) => ({
-      color: x.color,
-      value: (x.absentDays / absenceDenom) * 100,
-    }));
-    const otSegments = employeeInsights.map((x) => {
-      const value = totalWorked > 0 ? (x.employeeOtMinutes / totalWorked) * 100 : 0;
-      const otShare = totalOt > 0 ? Math.round((x.employeeOtMinutes / totalOt) * 100) : 0;
-      otPctById.set(x.id, otShare);
-      return { color: x.color, value };
-    });
-
-    const attendanceRate = Math.max(0, Math.min(100, Math.round(attendanceSegments.reduce((a, x) => a + x.value, 0))));
-    const otTimeRate = Math.max(0, Math.min(100, Math.round(otTimeSegments.reduce((a, x) => a + x.value, 0))));
-    const absentRate = Math.max(0, Math.min(100, Math.round(absentSegments.reduce((a, x) => a + x.value, 0))));
+    const presentDays = employeeInsights.reduce((total, employee) => total + (employee.presentDays || 0), 0);
+    const absentDays = employeeInsights.reduce((total, employee) => total + (employee.absentDays || 0), 0);
+    const attendanceRate = Math.max(0, Math.min(100, Math.round((presentDays / attendanceDenom) * 100)));
+    const absentRate = Math.max(0, Math.min(100, Math.round((absentDays / absenceDenom) * 100)));
     const overtimeRate = totalWorked > 0 ? Math.max(0, Math.min(100, Math.round((totalOt / totalWorked) * 100))) : 0;
-
-    const buildRing = (segments, fallbackColor = "#22c55e") => {
-      const valid = segments.filter((x) => x.value > 0.02);
-      if (valid.length === 0) return "conic-gradient(rgba(226,232,240,.14) 0 100%)";
-      const total = valid.reduce((a, x) => a + x.value, 0);
-      let cursor = 0;
-      const parts = [];
-      for (const s of valid) {
-        const pct = (s.value / total) * Math.min(100, total);
-        const fromPct = cursor;
-        cursor += pct;
-        parts.push(`${s.color || fallbackColor} ${fromPct.toFixed(2)}% ${cursor.toFixed(2)}%`);
-      }
-      parts.push(`rgba(226,232,240,.14) ${cursor.toFixed(2)}% 100%`);
-      return `conic-gradient(${parts.join(", ")})`;
-    };
 
     return {
       attendanceRate,
-      otTimeRate,
       absentRate,
       overtimeRate,
-      attendanceRing: buildRing(attendanceSegments, "#22c55e"),
-      otTimeRing: buildRing(otTimeSegments, "#f59e0b"),
-      absentRing: buildRing(absentSegments, "#ef4444"),
-      overtimeRing: buildRing(otSegments, "#f97316"),
-      otPctById,
       totalOtMinutes: totalOt,
     };
   }, [employeeInsights, employees.length]);
@@ -539,74 +495,41 @@ export default function AdminDashboard({ onAuthError }) {
       </div>
 
       <div className="we-admin-wrap we-admin-layout">
-        <div className="we-glass-card we-admin-hero">
-          <div className="we-admin-heroTop">
-            <div className="we-admin-head">
-              <div>
-                <div className="we-admin-kicker">Admin overview</div>
-                <div className="we-admin-title">Dashboard</div>
-                <div className="we-admin-sub">
-                  Activities • hours • leave • sessions
-                </div>
-              </div>
-
-              <button className="we-btn we-btn--refresh" onClick={() => load({ from, to })} disabled={busy}>
-                {busy ? "Loading…" : "Refresh"}
-              </button>
+        <div className="we-glass-card we-admin-hero we-ops-hero">
+          <div className="we-ops-heroIntro">
+            <div>
+              <div className="we-ops-eyebrow">Operations control</div>
+              <div className="we-admin-title">Workforce dashboard</div>
+              <div className="we-admin-sub">See attendance health, approval work, and overtime in one place.</div>
             </div>
-
-            <div className="we-admin-heroStats">
-              <div className="we-admin-heroStat">
-                <span className="k">Range</span>
-                <span className="v">{from} → {to}</span>
-              </div>
-              <div className="we-admin-heroStat">
-                <span className="k">Staff</span>
-                <span className="v">{employees.length}</span>
-              </div>
-              <div className="we-admin-heroStat">
-                <span className="k">OT</span>
-                <span className="v">{formatHm(insightBreakdown.totalOtMinutes)}</span>
-              </div>
+            <div className="we-ops-period">
+              <span>Selected period</span>
+              <strong>{from} → {to}</strong>
             </div>
           </div>
 
-          <div className="we-admin-heroControls">
+          <div className="we-ops-toolbar">
+            <div className="we-admin-filterQuick" aria-label="Quick date range">
+              <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This week</button>
+              <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This month</button>
+              <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last month</button>
+            </div>
+            <button className="we-btn we-btn--refresh" onClick={() => load({ from, to })} disabled={busy}>
+              {busy ? "Loading…" : "Refresh data"}
+            </button>
+          </div>
+
+          <div className="we-ops-controls">
             <div className="we-admin-filterRow">
               <label className="we-admin-filterLabel">
                 From
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  disabled={busy}
-                />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} disabled={busy} />
               </label>
-
               <label className="we-admin-filterLabel">
                 To
-                <input
-                  type="date"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  disabled={busy}
-                />
+                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} />
               </label>
-
-              <button
-                className="we-btn-soft we-btn--apply"
-                onClick={() => load({ from, to })}
-                disabled={busy}
-                type="button"
-              >
-                Apply
-              </button>
-            </div>
-
-            <div className="we-admin-filterQuick">
-              <button className="we-btn-chip" type="button" onClick={setThisWeek} disabled={busy}>This Week</button>
-              <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This Month</button>
-              <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last Month</button>
+              <button className="we-btn-soft we-btn--apply" onClick={() => load({ from, to })} disabled={busy} type="button">Apply range</button>
             </div>
 
             <div className="we-admin-viewSwitch" role="tablist" aria-label="Dashboard sections">
@@ -641,65 +564,56 @@ export default function AdminDashboard({ onAuthError }) {
         {err ? <div className="we-error">{err}</div> : null}
 
         {viewMode === "overview" ? (
-        <section className="we-admin-block">
-          <div className="we-admin-blockHead">
-            <div className="we-admin-blockTitle">Overview</div>
-            <div className="we-admin-sectionMeta">High-level attendance health and quick controls</div>
+        <section className="we-admin-block we-ops-overview">
+          <div className="we-ops-sectionHead">
+            <div>
+              <div className="we-admin-blockTitle">Workforce overview</div>
+              <div className="we-admin-sectionMeta">The essentials for the selected period.</div>
+            </div>
+            <span className="we-ops-liveDot">Live summary</span>
           </div>
 
-          <div className="we-admin-kpiRow">
-            <div className="we-admin-kpiCard">
-              <div className="we-admin-kpiLabel">Attendance Rate</div>
-              <div className="we-admin-kpiValue">{insightBreakdown.attendanceRate}%</div>
-              <div className="we-admin-kpiHint">Present days across selected range</div>
-            </div>
-            <div className="we-admin-kpiCard">
-              <div className="we-admin-kpiLabel">Total OT</div>
-              <div className="we-admin-kpiValue">{formatHm(insightBreakdown.totalOtMinutes)}</div>
-              <div className="we-admin-kpiHint">Normal + Sat + Sun/PH + Overnight</div>
-            </div>
-            <div className="we-admin-kpiCard">
-              <div className="we-admin-kpiLabel">Absence Rate</div>
-              <div className="we-admin-kpiValue">{insightBreakdown.absentRate}%</div>
-              <div className="we-admin-kpiHint">Workdays only</div>
-            </div>
-            <div className="we-admin-kpiCard">
-              <div className="we-admin-kpiLabel">Active Staff</div>
-              <div className="we-admin-kpiValue">{employees.length}</div>
-              <div className="we-admin-kpiHint">{from} → {to}</div>
-            </div>
+          <div className="we-ops-kpiGrid">
+            <article className="we-ops-kpi success">
+              <div className="we-ops-kpiIcon" aria-hidden="true">✓</div>
+              <div><div className="we-ops-kpiLabel">Attendance</div><div className="we-ops-kpiValue">{insightBreakdown.attendanceRate}%</div><div className="we-ops-kpiHint">Present days in this period</div></div>
+            </article>
+            <article className="we-ops-kpi warning">
+              <div className="we-ops-kpiIcon" aria-hidden="true">↗</div>
+              <div><div className="we-ops-kpiLabel">Overtime</div><div className="we-ops-kpiValue">{formatHm(insightBreakdown.totalOtMinutes)}</div><div className="we-ops-kpiHint">{insightBreakdown.overtimeRate}% of worked time</div></div>
+            </article>
+            <article className="we-ops-kpi danger">
+              <div className="we-ops-kpiIcon" aria-hidden="true">!</div>
+              <div><div className="we-ops-kpiLabel">Absence</div><div className="we-ops-kpiValue">{insightBreakdown.absentRate}%</div><div className="we-ops-kpiHint">Workdays only</div></div>
+            </article>
+            <article className="we-ops-kpi neutral">
+              <div className="we-ops-kpiIcon" aria-hidden="true">♟</div>
+              <div><div className="we-ops-kpiLabel">Active staff</div><div className="we-ops-kpiValue">{employees.length}</div><div className="we-ops-kpiHint">Employees in the system</div></div>
+            </article>
           </div>
 
-          <div className="we-admin-insightRow">
-            <div className="we-glass-card we-admin-charts we-admin-insightCard">
-              <div className="we-admin-chartTitle">Attendance vs Absence</div>
-              <div className="we-admin-donutWrap">
-                <div className="we-admin-donut" style={{ background: insightBreakdown.attendanceRing }} />
-                <div className="we-admin-donutCenter">
-                  <div className="v">{insightBreakdown.attendanceRate}%</div>
-                  <div className="k">Attendance</div>
-                </div>
-              </div>
-              <div className="we-admin-donutNote">Clean summary view for selected date range.</div>
-            </div>
-            <div className="we-glass-card we-admin-charts we-admin-insightCard">
-              <div className="we-admin-chartTitle">Overtime Share</div>
-              <div className="we-admin-donutWrap">
-                <div className="we-admin-donut warn" style={{ background: insightBreakdown.otTimeRing }} />
-                <div className="we-admin-donutCenter">
-                  <div className="v">{insightBreakdown.overtimeRate}%</div>
-                  <div className="k">OT Ratio</div>
-                </div>
-              </div>
-              <div className="we-admin-donutNote">OT minutes relative to worked minutes.</div>
-            </div>
+          <div className="we-ops-mainGrid">
+            <section className="we-glass-card we-ops-queue">
+              <div className="we-ops-cardHead"><div><div className="we-admin-sectionTitle">Needs attention</div><div className="we-admin-sectionMeta">Approve time-sensitive items first.</div></div><span className="we-ops-count">{overnightPending.length + (Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0)}</span></div>
+              <div className="we-ops-queueItem"><div><strong>Overnight OT</strong><span>{overnightPending.length} pending request{overnightPending.length === 1 ? "" : "s"}</span></div><button type="button" className="we-btn-soft" onClick={() => setViewMode("reports")}>Review</button></div>
+              <div className="we-ops-queueItem"><div><strong>Leave requests</strong><span>{Array.isArray(summary?.pendingLeave) ? summary.pendingLeave.length : 0} awaiting approval</span></div><span className="we-ops-status">Check leave</span></div>
+              <button type="button" className="we-ops-linkBtn" onClick={() => setViewMode("attendance")}>Open attendance board →</button>
+            </section>
+
+            <section className="we-glass-card we-ops-health">
+              <div className="we-admin-sectionTitle">Attendance health</div>
+              <div className="we-admin-sectionMeta">A quick read of this period, without opening a report.</div>
+              <div className="we-ops-meter"><div><span>Attendance rate</span><strong>{insightBreakdown.attendanceRate}%</strong></div><i><b style={{ width: `${insightBreakdown.attendanceRate}%` }} /></i></div>
+              <div className="we-ops-meter warning"><div><span>Overtime share</span><strong>{insightBreakdown.overtimeRate}%</strong></div><i><b style={{ width: `${insightBreakdown.overtimeRate}%` }} /></i></div>
+              <div className="we-ops-meter danger"><div><span>Absence rate</span><strong>{insightBreakdown.absentRate}%</strong></div><i><b style={{ width: `${insightBreakdown.absentRate}%` }} /></i></div>
+            </section>
           </div>
 
-          <div className="we-glass-card we-admin-preapprove">
+          <div className="we-glass-card we-admin-preapprove we-ops-preapprove">
             <div className="we-admin-sectionHead">
               <div>
                 <div className="we-admin-sectionTitle">Quick Overnight Pre-approvals</div>
-                <div className="we-admin-sectionMeta">Create approvals without leaving overview</div>
+                <div className="we-admin-sectionMeta">Set approved overnight work before the employee clocks in.</div>
               </div>
             </div>
 
