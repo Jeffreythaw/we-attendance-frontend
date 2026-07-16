@@ -157,7 +157,7 @@ export default function SopLibrary({ onAuthError }) {
       {preview ? <div className="we-sop-modal" role="dialog" aria-modal="true" aria-label={`${preview.title} preview`}>
         <div className="we-sop-preview">
           <div className="we-sop-previewHead"><div><span>SOP DOCUMENT</span><h2>{preview.title}</h2></div><div className="we-sop-previewActions"><label>Language<select value={preview.language} onChange={(event) => previewDocument(preview, event.target.value)} disabled={previewBusy === preview.id}>{LANGUAGES.filter((language) => preview.availableLanguages.includes(language.code)).map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}</select></label><a href={preview.url} target="_blank" rel="noreferrer">Open PDF</a><button type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button></div></div>
-          <iframe className="we-sop-pdf" src={`${preview.url}#toolbar=1&navpanes=0`} title={`${preview.title} PDF preview`} />
+          <iframe className="we-sop-pdf" src={`${preview.url}#zoom=page-width&toolbar=1&navpanes=0`} title={`${preview.title} PDF preview`} />
         </div>
       </div> : null}
 
