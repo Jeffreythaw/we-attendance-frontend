@@ -39,6 +39,16 @@ export const attendanceApi = {
     });
   },
 
+  requestOvernight(expectedCheckOutAt, otProjectName) {
+    return apiFetch("/api/Attendance/overnight/request", {
+      method: "POST",
+      body: {
+        expectedCheckOutAt,
+        otProjectName: (otProjectName || "").trim(),
+      },
+    });
+  },
+
   adminGetLog(id) {
     return apiFetch(`/api/Attendance/log/${encodeURIComponent(id)}`, { method: "GET" });
   },

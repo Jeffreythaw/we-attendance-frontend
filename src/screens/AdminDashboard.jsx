@@ -807,7 +807,7 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               <span className="we-admin-sectionTitle">Overnight OT approvals</span>
               <span className="we-admin-pill warn">{overnightPending.length} pending</span>
             </summary>
-            <div className="we-admin-sectionMeta">Pending overnight requests (no approval - auto-close at 17:00 next day)</div>
+            <div className="we-admin-sectionMeta">Approve expected overnight work before the employee checks out.</div>
 
             {overnightPending.length === 0 ? (
               <div className="we-admin-empty">No pending overnight requests.</div>
@@ -822,7 +822,7 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
                         <div>
                           <div className="we-overnight-name">{name}</div>
                           <div className="we-overnight-sub">
-                            In: {fmtDateTime(row.checkInAt)} • Requested out: {fmtDateTime(row.requestedCheckOutAt)}
+                            In: {fmtDateTime(row.checkInAt)} • Expected out: {fmtDateTime(row.requestedCheckOutAt)}
                           </div>
                         </div>
                         <span className="we-admin-pill warn">Pending</span>

@@ -22,6 +22,32 @@ function localIsoDate(d = new Date()) {
   }).format(d);
 }
 
+function nextDayDateTime(dateKey) {
+  const [year, month, day] = String(dateKey || "").split("-").map(Number);
+  if (!year || !month || !day) return "";
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextKey = [
+    next.getUTCFullYear(),
+    String(next.getUTCMonth() + 1).padStart(2, "0"),
+    String(next.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+  return `${nextKey}T01:30`;
+}
+
+function sgDateTimeInput(value) {
+  const d = parseApiDate(value);
+  if (!d) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: SG_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return `${localIsoDate(d)}T${hour}:${minute}`;
+}
+
 function formatFullDateDots(d = new Date()) {
   const weekday = new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(
     d
@@ -68,6 +94,8 @@ export function ClockScreen({ onAuthError, user }) {
   const [otProjectName, setOtProjectName] = useState("");
   const [holidaySet, setHolidaySet] = useState(() => new Set()); // Set<YYYY-MM-DD>
   const [showOtManual, setShowOtManual] = useState(false);
+  const [showOvernightRequest, setShowOvernightRequest] = useState(false);
+  const [expectedCheckOutAt, setExpectedCheckOutAt] = useState("");
   const [viewTab, setViewTab] = useState("clock");
 
   // ✅ Live clock
@@ -94,6 +122,11 @@ export function ClockScreen({ onAuthError, user }) {
     const d = parseApiDate(open?.checkInAt ?? open?.CheckInAt);
     return d ? localIsoDate(d) : "";
   }, [open]);
+  const overnightDateKey = nextDayDateTime(openCheckInKey).slice(0, 10);
+  const overnightPending = Boolean(
+    open?.overnightRequiresApproval && !open?.overnightApproved
+  );
+  const overnightApproved = Boolean(open?.overnightApproved);
 
   // ✅ Load holidays for current year (used to detect OT)
   useEffect(() => {
@@ -221,6 +254,8 @@ export function ClockScreen({ onAuthError, user }) {
     try {
       const o = await attendanceApi.open();
       setOpen(o);
+      if (o?.requestedOtProjectName) setOtProjectName(o.requestedOtProjectName);
+      if (o?.requestedCheckOutAt) setExpectedCheckOutAt(sgDateTimeInput(o.requestedCheckOutAt));
 
       const data = await attendanceApi.me();
       const rows = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
@@ -292,6 +327,8 @@ export function ClockScreen({ onAuthError, user }) {
       setNote("");
       setOtProjectName("");
       setShowOtManual(false);
+      setShowOvernightRequest(false);
+      setExpectedCheckOutAt("");
 
       await refresh();
       setSuccess("Check-in saved successfully.");
@@ -338,6 +375,8 @@ export function ClockScreen({ onAuthError, user }) {
 
       setOtProjectName("");
       setShowOtManual(false);
+      setShowOvernightRequest(false);
+      setExpectedCheckOutAt("");
 
       await refresh();
       setSuccess("Check-out saved successfully.");
@@ -348,7 +387,7 @@ export function ClockScreen({ onAuthError, user }) {
         return onAuthError?.();
 
       // Overnight approval (backend returns 409)
-      if (String(msg).includes("409")) {
+      if (Number(e?.status) === 409) {
         setErr("Overnight checkout pending admin approval.");
         await refresh();
         return;
@@ -361,6 +400,42 @@ export function ClockScreen({ onAuthError, user }) {
         return;
       }
 
+      setErr(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openOvernightRequest() {
+    setShowOtManual(true);
+    setShowOvernightRequest(true);
+    setExpectedCheckOutAt((current) => current || nextDayDateTime(openCheckInKey));
+  }
+
+  async function requestOvernight() {
+    const project = (otProjectName || "").trim();
+    if (!project) {
+      setErr("Please enter the OT Project name.");
+      setShowOtManual(true);
+      return;
+    }
+    if (!expectedCheckOutAt) {
+      setErr("Please enter the expected checkout time.");
+      return;
+    }
+
+    setBusy(true);
+    setErr("");
+    setSuccess("");
+    try {
+      await attendanceApi.requestOvernight(`${expectedCheckOutAt}:00+08:00`, project);
+      await refresh();
+      setShowOvernightRequest(false);
+      setSuccess("Overnight OT request sent for admin approval.");
+    } catch (e) {
+      const msg = e?.message || "Failed to request overnight OT";
+      if (Number(e?.status) === 401 || Number(e?.status) === 403)
+        return onAuthError?.();
       setErr(msg);
     } finally {
       setBusy(false);
@@ -643,7 +718,7 @@ export function ClockScreen({ onAuthError, user }) {
                           value={otProjectName}
                           onChange={(e) => setOtProjectName(e.target.value)}
                           placeholder="e.g. ARTC L5 FCU install"
-                          disabled={busy}
+                          disabled={busy || overnightPending || overnightApproved}
                         />
                       </div>
 
@@ -657,7 +732,7 @@ export function ClockScreen({ onAuthError, user }) {
                         <div className="we-fieldHint">Optional. Fill only if you are doing OT.</div>
                       )}
                     </label>
-                  ) : (
+                  ) : !overnightPending && !overnightApproved ? (
                     <div style={{ marginBottom: 10 }}>
                       <button
                         type="button"
@@ -666,6 +741,56 @@ export function ClockScreen({ onAuthError, user }) {
                         disabled={busy}
                       >
                         Add OT project
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {overnightPending ? (
+                    <div className="we-clock-noOt">
+                      <div className="we-fieldHint">
+                        Overnight OT request pending. Expected checkout: {fmtDateTime(open.requestedCheckOutAt)}
+                      </div>
+                    </div>
+                  ) : overnightApproved ? (
+                    <div className="we-clock-noOt">
+                      <div className="we-fieldHint">
+                        Overnight OT approved. Expected checkout: {fmtDateTime(open.requestedCheckOutAt)}
+                      </div>
+                    </div>
+                  ) : showOvernightRequest ? (
+                    <div className="we-clock-noOt">
+                      <label className="we-clock-label">
+                        Expected checkout (next day)
+                        <div className="we-input">
+                          <span className="we-icon" aria-hidden="true">OUT</span>
+                          <input
+                            type="datetime-local"
+                            value={expectedCheckOutAt}
+                            min={`${overnightDateKey}T00:00`}
+                            max={`${overnightDateKey}T23:59`}
+                            onChange={(e) => setExpectedCheckOutAt(e.target.value)}
+                            disabled={busy}
+                          />
+                        </div>
+                      </label>
+                      <div className="we-clock-actions">
+                        <button type="button" className="we-btn" onClick={requestOvernight} disabled={busy}>
+                          {busy ? "Sending request…" : "Send Overnight OT Request"}
+                        </button>
+                        <button
+                          type="button"
+                          className="we-btn-soft"
+                          onClick={() => setShowOvernightRequest(false)}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="we-clock-noOt">
+                      <button type="button" className="we-btn-soft" onClick={openOvernightRequest} disabled={busy}>
+                        Request Overnight OT
                       </button>
                     </div>
                   )}
