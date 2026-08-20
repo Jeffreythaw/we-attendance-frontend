@@ -90,6 +90,10 @@ export function ClockScreen({ onAuthError, user }) {
 
   // ✅ Today-only key
   const todayKey = useMemo(() => localIsoDate(now), [now]);
+  const openCheckInKey = useMemo(() => {
+    const d = parseApiDate(open?.checkInAt ?? open?.CheckInAt);
+    return d ? localIsoDate(d) : "";
+  }, [open]);
 
   // ✅ Load holidays for current year (used to detect OT)
   useEffect(() => {
@@ -138,10 +142,12 @@ export function ClockScreen({ onAuthError, user }) {
   }, [now]);
 
   // ✅ OT detection (time OR sunday OR holiday)
-  const otLikely = useMemo(() => isAfterShiftEnd || isSunday || isHoliday, [
+  const otLikely = useMemo(() => isAfterShiftEnd || isSunday || isHoliday || (openCheckInKey && openCheckInKey !== todayKey), [
     isAfterShiftEnd,
     isSunday,
     isHoliday,
+    openCheckInKey,
+    todayKey,
   ]);
 
   // ✅ OT required only when user is currently OPEN (checked in)
