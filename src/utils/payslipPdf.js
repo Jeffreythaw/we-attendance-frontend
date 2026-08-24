@@ -98,6 +98,7 @@ export async function downloadPayslipPdf({ from, to, employeeId, staffName }) {
   const employeeDetails = [
     ["Employee ID", employeeCode || String(employeeId)],
     ["Name", String(payslip.staffName || staffName || "—").toUpperCase()],
+    ["FIN", String(payslip.finNo || "—").toUpperCase()],
     ["Role", String(payslip.department || "EMPLOYEE").toUpperCase()],
     ["Foreign Worker", "Y"],
     ["Sector", String(payslip.department || "—")],
