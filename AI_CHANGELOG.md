@@ -318,15 +318,17 @@
   - `npm run build`: pass
   - Backend build/tests: pass
 
-### 2026-08-28 18:35 (Asia/Singapore)
+### 2026-08-28 21:50 (Asia/Singapore)
 - Objective:
-  - Verify frontend impact after server IP migration to `124.155.204.199`.
+  - Verify frontend impact and complete repo updates after server IP migration to `124.155.204.199`.
 - Files changed:
   - `AI_CHANGELOG.md`
 - Findings:
   - Frontend has no hardcoded server or SQL IPs; web/Android API calls use `https://kjapi.gys.com.mm` via env or native fallback in `src/api/client.js`.
-  - Backend SQL host migration (`124.155.205.4` → `124.155.204.199`) was already merged in `we-attendance-backend` PR #1.
-  - Remaining IIS publish target update handled in backend branch `cursor/update-iis-deploy-ip-46ee`.
+  - `we-attendance-backend` SQL host migration (`124.155.205.4` → `124.155.204.199`) merged in PR #1; IIS deploy target merged in PR #2.
+  - `training-portal` `.env.example` MSSQL server updated in PR #3.
+  - `LetsServiceAPI` IIS publish profile updated in PR #1.
+  - No `mcp.json` / SQL MCP config is committed in these repos; update local Cursor MCP server host manually if used.
 - Validation:
   - `npm run lint`: pass
   - `npm run build`: pass
