@@ -318,6 +318,21 @@
   - `npm run build`: pass
   - Backend build/tests: pass
 
+### 2026-08-28 18:35 (Asia/Singapore)
+- Objective:
+  - Verify frontend impact after server IP migration to `124.155.204.199`.
+- Files changed:
+  - `AI_CHANGELOG.md`
+- Findings:
+  - Frontend has no hardcoded server or SQL IPs; web/Android API calls use `https://kjapi.gys.com.mm` via env or native fallback in `src/api/client.js`.
+  - Backend SQL host migration (`124.155.205.4` → `124.155.204.199`) was already merged in `we-attendance-backend` PR #1.
+  - Remaining IIS publish target update handled in backend branch `cursor/update-iis-deploy-ip-46ee`.
+- Validation:
+  - `npm run lint`: pass
+  - `npm run build`: pass
+- Security notes:
+  - No auth, routing, or API client behavior changes.
+
 ### 2026-03-08 03:12 (Asia/Singapore)
 - Objective:
   - Allow assigning one daily schedule to multiple workers at once.
