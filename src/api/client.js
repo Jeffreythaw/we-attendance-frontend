@@ -123,6 +123,33 @@ function toError(text, status) {
   return err;
 }
 
+function wrapNativeHttpResponse(nativeRes) {
+  const responseText =
+    typeof nativeRes?.data === "string"
+      ? nativeRes.data
+      : JSON.stringify(nativeRes?.data ?? null);
+
+  return {
+    ok: Number(nativeRes?.status) >= 200 && Number(nativeRes?.status) < 300,
+    status: Number(nativeRes?.status) || 0,
+    text: async () => responseText,
+    blob: async () =>
+      new Blob([responseText], {
+        type: nativeRes?.headers?.["content-type"] || "text/plain",
+      }),
+    headers: {
+      get(name) {
+        const key = String(name || "").toLowerCase();
+        const all = nativeRes?.headers || {};
+        for (const [k, v] of Object.entries(all)) {
+          if (String(k).toLowerCase() === key) return Array.isArray(v) ? v.join(", ") : String(v);
+        }
+        return "";
+      },
+    },
+  };
+}
+
 async function requestWithFallback(path, options = {}) {
   const { method = "GET", headers, body } = options;
   let lastError = null;
@@ -131,6 +158,7 @@ async function requestWithFallback(path, options = {}) {
     const base = API_BASES[i];
     const url = joinUrl(base, path);
     try {
+      let res;
       if (
         isNativeAppRuntime() &&
         /^https?:\/\//i.test(url) &&
@@ -143,36 +171,16 @@ async function requestWithFallback(path, options = {}) {
           data: body ? JSON.parse(body) : undefined,
           responseType: "text",
         });
-        const responseText =
-          typeof nativeRes?.data === "string"
-            ? nativeRes.data
-            : JSON.stringify(nativeRes?.data ?? null);
-        return {
-          ok: nativeRes.status >= 200 && nativeRes.status < 300,
-          status: nativeRes.status,
-          text: async () => responseText,
-          blob: async () =>
-            new Blob([responseText], {
-              type: nativeRes?.headers?.["content-type"] || "text/plain",
-            }),
-          headers: {
-            get(name) {
-              const key = String(name || "").toLowerCase();
-              const all = nativeRes?.headers || {};
-              for (const [k, v] of Object.entries(all)) {
-                if (String(k).toLowerCase() === key) return Array.isArray(v) ? v.join(", ") : String(v);
-              }
-              return "";
-            },
-          },
-        };
+        res = wrapNativeHttpResponse(nativeRes);
+      } else {
+        res = await fetch(url, { method, headers, body });
       }
 
-      const res = await fetch(url, { method, headers, body });
+      // CapacitorHttp previously returned non-OK responses without throwing.
+      // That made check-out look successful on Android while nothing was saved.
       if (res.ok) return res;
 
       const text = await res.text().catch(() => "");
-
       const err = toError(text, res.status);
       const canTryNext =
         i < API_BASES.length - 1 &&
@@ -197,6 +205,19 @@ async function requestWithFallback(path, options = {}) {
   throw lastError || new Error("Request failed");
 }
 
+async function readOkJson(res) {
+  const text = await res.text();
+  if (!res.ok) throw toError(text, res.status);
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    const err = new Error(text || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+}
+
 export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
   const headers = {};
   const hasBody = body !== undefined;
@@ -213,9 +234,8 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
     headers,
     body: hasBody ? JSON.stringify(body) : undefined,
   });
-  const text = await res.text();
 
-  return text ? JSON.parse(text) : null;
+  return readOkJson(res);
 }
 
 
@@ -232,9 +252,8 @@ export async function apiFetchForm(path, { method = "POST", formData, auth = tru
     headers,
     body: formData,
   });
-  const text = await res.text();
 
-  return text ? JSON.parse(text) : null;
+  return readOkJson(res);
 }
 
 /* =========================================================
@@ -251,6 +270,7 @@ export async function apiFetchText(path, { method = "GET", auth = true } = {}) {
 
   const res = await requestWithFallback(path, { method, headers });
   const text = await res.text();
+  if (!res.ok) throw toError(text, res.status);
 
   return text || "";
 }
@@ -264,6 +284,10 @@ export async function apiFetchBlob(path, { method = "GET", auth = true } = {}) {
   }
 
   const res = await requestWithFallback(path, { method, headers });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw toError(text, res.status);
+  }
 
   const blob = await res.blob();
   const contentDisposition = res.headers.get("content-disposition") || "";

@@ -253,7 +253,7 @@ export function ClockScreen({ onAuthError, user }) {
     refreshCurrentGps({ silent: true });
     try {
       const o = await attendanceApi.open();
-      setOpen(o);
+      setOpen(o && typeof o === "object" ? o : null);
       if (o?.requestedOtProjectName) setOtProjectName(o.requestedOtProjectName);
       if (o?.requestedCheckOutAt) setExpectedCheckOutAt(sgDateTimeInput(o.requestedCheckOutAt));
 
@@ -286,7 +286,7 @@ export function ClockScreen({ onAuthError, user }) {
       setRecent(todayRows.slice(0, 8));
     } catch (e) {
       const msg = e?.message || "Failed to load";
-      if (String(msg).includes("401") || String(msg).includes("403"))
+      if (Number(e?.status) === 401 || Number(e?.status) === 403 || String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
       setErr(msg);
     }
@@ -295,6 +295,35 @@ export function ClockScreen({ onAuthError, user }) {
   useEffect(() => {
     refresh();
     refreshCurrentGps({ silent: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-load open session when the app returns from background.
+  // Without this, a stale "not checked in" UI after resume can hide Check Out,
+  // and staff think they must log out/in again before attendance saves.
+  useEffect(() => {
+    let lastRefreshAt = 0;
+
+    function maybeRefreshOpenSession() {
+      const nowMs = Date.now();
+      if (nowMs - lastRefreshAt < 2_000) return;
+      lastRefreshAt = nowMs;
+      refresh();
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") maybeRefreshOpenSession();
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", maybeRefreshOpenSession);
+    window.addEventListener("pageshow", maybeRefreshOpenSession);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", maybeRefreshOpenSession);
+      window.removeEventListener("pageshow", maybeRefreshOpenSession);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -334,7 +363,7 @@ export function ClockScreen({ onAuthError, user }) {
       setSuccess("Check-in saved successfully.");
     } catch (e) {
       const msg = e?.message || "Check-in failed";
-      if (String(msg).includes("401") || String(msg).includes("403"))
+      if (Number(e?.status) === 401 || Number(e?.status) === 403 || String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
       setErr(msg);
     } finally {
@@ -383,7 +412,7 @@ export function ClockScreen({ onAuthError, user }) {
     } catch (e) {
       const msg = e?.message || "Check-out failed";
 
-      if (String(msg).includes("401") || String(msg).includes("403"))
+      if (Number(e?.status) === 401 || Number(e?.status) === 403 || String(msg).includes("401") || String(msg).includes("403"))
         return onAuthError?.();
 
       // Overnight approval (backend returns 409)
