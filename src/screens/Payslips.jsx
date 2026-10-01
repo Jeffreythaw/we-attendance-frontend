@@ -192,7 +192,7 @@ export default function Payslips({ onAuthError }) {
                 <div className="we-payslip-paperHead">
                   <div>
                     <div className="we-payslip-company">{preview.companyName || "WE ENGINEERING PTE. LTD."}</div>
-                    <div className="we-payslip-muted">WCEGA TOWER, 21 BUKIT BATOK CRESCENT, #29-81, SINGAPORE 658060</div>
+                    <div className="we-payslip-muted">WCEGA TOWER, 21 BUKIT BATOK CRESCENT, #29-81, SINGAPORE 658065</div>
                   </div>
                   <div className="we-payslip-title">PAYSLIP<br /><span>{monthLabel(month).toUpperCase()}</span></div>
                 </div>
