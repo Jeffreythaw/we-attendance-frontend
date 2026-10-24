@@ -1,8 +1,20 @@
 import { apiFetch } from "./client";
 
+function normalizeOpenSession(payload) {
+  // Backend returns null when there is no open check-in.
+  // Guard against non-object payloads so a failed/partial response cannot
+  // leave the clock screen stuck in a fake checked-in or checked-out state.
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const id = payload.id ?? payload.Id;
+  const checkInAt = payload.checkInAt ?? payload.CheckInAt;
+  if (id == null && checkInAt == null) return null;
+  return payload;
+}
+
 export const attendanceApi = {
-  open() {
-    return apiFetch("/api/Attendance/open", { method: "GET" });
+  async open() {
+    const payload = await apiFetch("/api/Attendance/open", { method: "GET" });
+    return normalizeOpenSession(payload);
   },
 
   me() {

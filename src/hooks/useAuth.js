@@ -70,6 +70,9 @@ function buildUserFromJwt(token) {
     payload.username ||
     payload.unique_name ||
     payload.name ||
+    payload[
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+    ] ||
     payload.sub ||
     "";
 
@@ -83,7 +86,6 @@ function buildUserFromJwt(token) {
     payload.employeeId ||
     payload.EmployeeId ||
     payload["employeeId"] ||
-    payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
     null;
 
   const finalRole = Array.isArray(role) ? role[0] : role;
@@ -95,19 +97,33 @@ function buildUserFromJwt(token) {
   };
 }
 
+function isTokenExpired(token) {
+  const payload = decodeJwt(token);
+  if (!payload?.exp) return false;
+  // Small skew so we don't keep a token that expires mid-checkout.
+  return Number(payload.exp) * 1000 <= Date.now() + 30_000;
+}
+
 export function useAuth() {
   const [user, setUser] = useState(() => {
+    const tokenValue = getToken();
+    if (!tokenValue || isTokenExpired(tokenValue)) {
+      setToken(null);
+      lsSet(USER_KEY, null);
+      return null;
+    }
+
     const s = lsGet(USER_KEY);
-    if (!s) return null;
+    if (!s) return buildUserFromJwt(tokenValue);
     try {
       return JSON.parse(s);
     } catch {
-      return null;
+      return buildUserFromJwt(tokenValue);
     }
   });
 
   const token = getToken();
-  const isAuthed = !!token && !!user;
+  const isAuthed = !!token && !!user && !isTokenExpired(token);
 
   async function login(username, password) {
     const data = await loginApi(username, password);
