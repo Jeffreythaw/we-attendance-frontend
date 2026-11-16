@@ -779,6 +779,7 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
 
           <div className="we-glass-card we-admin-attPanel">
             <RecentActivity
+              key={`ra-${from}-${to}`}
               recentActivity={recentActivity}
               employees={employees}
               allDepartments={allDepartments}
@@ -786,7 +787,8 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               holidaySet={holidayIsoSet}
               busy={busy}
               onEdit={openEdit}
-              onlyTodayByDefault={true}
+              // When reviewing a past month (e.g. June), do not hide OT behind "Today only".
+              onlyTodayByDefault={!(from && to) || (from <= localIsoDate() && to >= localIsoDate())}
               embedded
             />
           </div>

@@ -182,11 +182,12 @@ function deriveOtMinutesByPolicy(row, holidaySet = null) {
     inWall.getUTCDate(),
     17, 0, 0, 0
   ));
+  // OT eligible from 17:30; 17:00-17:29 snaps to 17:00 with no OT (matches backend policy).
   const otStart = new Date(Date.UTC(
     inWall.getUTCFullYear(),
     inWall.getUTCMonth(),
     inWall.getUTCDate(),
-    17, 0, 0, 0
+    17, 30, 0, 0
   ));
 
   const effectiveOut = outWall >= fivePm && outWall < otStart ? fivePm : outWall;

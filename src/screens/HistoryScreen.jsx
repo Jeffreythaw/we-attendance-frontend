@@ -197,6 +197,12 @@ function backendMetricsFromRow(r) {
     ? pickReportOtMinutes(r)
     : asMinutes(r?.otMinutes);
 
+  // If report split buckets are empty but total/stored OT exists, keep the total visible.
+  const bucketSum = monFriOtMins + satOtMins + sunPhOtMins + overnightOtMins;
+  if (otMins > 0 && bucketSum <= 0) {
+    monFriOtMins = otMins;
+  }
+
   return { workedMins, otMins, monFriOtMins, satOtMins, sunPhOtMins, overnightOtMins };
 }
 
@@ -251,11 +257,23 @@ export function HistoryScreen({ onAuthError }) {
   const [holidaySets, setHolidaySets] = useState(() => new Map());
   const loadedYearsRef = useRef(new Set());
 
+  // ✅ Range selected in SG calendar days
+  const rangeSelected = useMemo(() => {
+    if (!fromIso || !toIso) return { fromIso: null, toIso: null };
+    if (fromIso > toIso) return { fromIso: toIso, toIso: fromIso };
+    return { fromIso, toIso };
+  }, [fromIso, toIso]);
+
   const refresh = useCallback(async () => {
     setErr("");
     setBusy(true);
     try {
-      const data = await attendanceApi.me();
+      // Pass the selected month/range so older months (e.g. June) are not cut off
+      // by the default recent-200 window on /api/Attendance/me.
+      const data = await attendanceApi.me({
+        from: rangeSelected.fromIso || undefined,
+        to: rangeSelected.toIso || undefined,
+      });
       const list = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
 
       list.sort((a, b) => {
@@ -274,18 +292,11 @@ export function HistoryScreen({ onAuthError }) {
     } finally {
       setBusy(false);
     }
-  }, [onAuthError]);
+  }, [onAuthError, rangeSelected.fromIso, rangeSelected.toIso]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  // ✅ Range selected in SG calendar days
-  const rangeSelected = useMemo(() => {
-    if (!fromIso || !toIso) return { fromIso: null, toIso: null };
-    if (fromIso > toIso) return { fromIso: toIso, toIso: fromIso };
-    return { fromIso, toIso };
-  }, [fromIso, toIso]);
 
   // ✅ Filter rows by SG day range using UTC milliseconds
   const rowsInRange = useMemo(() => {
@@ -934,7 +945,7 @@ export function HistoryScreen({ onAuthError }) {
                 const monFriOt = asMinutes(mm.monFriOtMins);
                 const satOt = asMinutes(mm.satOtMins);
                 const sunPhOt = asMinutes(mm.sunPhOtMins + mm.overnightOtMins);
-                const ot = r.checkOutAt ? monFriOt + satOt + sunPhOt : 0;
+                const ot = r.checkOutAt ? asMinutes(mm.otMins) : 0;
                 const otSplit = r.checkOutAt
                   ? `Mon-Fri ${formatHm(monFriOt)} | Sat ${formatHm(satOt)} | Sun/PH ${formatHm(sunPhOt)}`
                   : "—";
