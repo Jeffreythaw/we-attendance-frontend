@@ -604,14 +604,6 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               <button className="we-btn-chip" type="button" onClick={setThisMonth} disabled={busy}>This month</button>
               <button className="we-btn-chip ghost" type="button" onClick={setLastMonth} disabled={busy}>Last month</button>
             </div>
-            <details className="we-ref-range">
-              <summary>{from} → {to}</summary>
-              <div className="we-admin-filterRow">
-                <label className="we-admin-filterLabel">From<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} disabled={busy} /></label>
-                <label className="we-admin-filterLabel">To<input type="date" value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} /></label>
-                <button className="we-btn-soft we-btn--apply" onClick={() => load({ from, to })} disabled={busy} type="button">Apply</button>
-              </div>
-            </details>
             <div className="we-admin-viewSwitch" role="tablist" aria-label="Dashboard sections">
               <button
                 type="button"
@@ -637,6 +629,14 @@ export default function AdminDashboard({ onAuthError, user, onNavigate }) {
               >
                 Reports
               </button>
+            </div>
+          </div>
+          <div className="we-ref-dateRow" aria-label="Custom date range">
+            <span className="we-ref-dateRangeText">{from} → {to}</span>
+            <div className="we-admin-filterRow">
+              <label className="we-admin-filterLabel">From<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} disabled={busy} /></label>
+              <label className="we-admin-filterLabel">To<input type="date" value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} /></label>
+              <button className="we-btn-soft we-btn--apply" onClick={() => load({ from, to })} disabled={busy} type="button">Apply</button>
             </div>
           </div>
         </div>
