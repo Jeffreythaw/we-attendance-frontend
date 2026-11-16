@@ -5,8 +5,12 @@ export const attendanceApi = {
     return apiFetch("/api/Attendance/open", { method: "GET" });
   },
 
-  me() {
-    return apiFetch("/api/Attendance/me", { method: "GET" });
+  me({ from, to } = {}) {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    const query = qs.toString();
+    return apiFetch(query ? `/api/Attendance/me?${query}` : "/api/Attendance/me", { method: "GET" });
   },
 
   // ✅ holidays by year: GET /api/Holidays?year=2026

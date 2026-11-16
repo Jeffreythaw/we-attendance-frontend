@@ -189,10 +189,12 @@ function backendMetricsFromRow(r) {
     ? pickReportWorkedMinutes(r)
     : Math.max(0, asMinutes(r?.regularMinutes) + asMinutes(r?.otMinutes));
 
-  let monFriOtMins = hasReport ? asMinutes(r?.reportMonFriOtMinutes) : 0;
-  let satOtMins = hasReport ? asMinutes(r?.reportSatOtMinutes) : 0;
-  let sunPhOtMins = hasReport ? asMinutes(r?.reportSunPhOtMinutes) : 0;
-  let overnightOtMins = hasReport ? asMinutes(r?.reportOvernightOtMinutes) : 0;
+  const monFriOtMins = hasReport ? asMinutes(r?.reportMonFriOtMinutes) : 0;
+  const satOtMins = hasReport ? asMinutes(r?.reportSatOtMinutes) : 0;
+  const sunPhOtMins = hasReport ? asMinutes(r?.reportSunPhOtMinutes) : 0;
+  const overnightOtMins = hasReport ? asMinutes(r?.reportOvernightOtMinutes) : 0;
+  // Keep total OT visible from report/stored minutes without inventing a bucket
+  // when split fields are missing (e.g. older June rows).
   const otMins = hasReport
     ? pickReportOtMinutes(r)
     : asMinutes(r?.otMinutes);
@@ -251,11 +253,23 @@ export function HistoryScreen({ onAuthError }) {
   const [holidaySets, setHolidaySets] = useState(() => new Map());
   const loadedYearsRef = useRef(new Set());
 
+  // ✅ Range selected in SG calendar days
+  const rangeSelected = useMemo(() => {
+    if (!fromIso || !toIso) return { fromIso: null, toIso: null };
+    if (fromIso > toIso) return { fromIso: toIso, toIso: fromIso };
+    return { fromIso, toIso };
+  }, [fromIso, toIso]);
+
   const refresh = useCallback(async () => {
     setErr("");
     setBusy(true);
     try {
-      const data = await attendanceApi.me();
+      // Pass the selected month/range so older months (e.g. June) are not cut off
+      // by the default recent-200 window on /api/Attendance/me.
+      const data = await attendanceApi.me({
+        from: rangeSelected.fromIso || undefined,
+        to: rangeSelected.toIso || undefined,
+      });
       const list = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
 
       list.sort((a, b) => {
@@ -274,18 +288,11 @@ export function HistoryScreen({ onAuthError }) {
     } finally {
       setBusy(false);
     }
-  }, [onAuthError]);
+  }, [onAuthError, rangeSelected.fromIso, rangeSelected.toIso]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  // ✅ Range selected in SG calendar days
-  const rangeSelected = useMemo(() => {
-    if (!fromIso || !toIso) return { fromIso: null, toIso: null };
-    if (fromIso > toIso) return { fromIso: toIso, toIso: fromIso };
-    return { fromIso, toIso };
-  }, [fromIso, toIso]);
 
   // ✅ Filter rows by SG day range using UTC milliseconds
   const rowsInRange = useMemo(() => {
@@ -477,11 +484,13 @@ export function HistoryScreen({ onAuthError }) {
     const coveragePct =
       stats.expectedWorkdays > 0 ? Math.round((stats.workingDays / stats.expectedWorkdays) * 100) : 0;
 
+    // Only split known buckets; unclassified total OT stays out of Mon-Sat vs Sun/PH %.
+    const classifiedOt = stats.overtimeWorkMinutes + stats.overtimeOffMinutes;
     const otWorkPct =
-      stats.overtimeMinutes > 0
-        ? Math.round((stats.overtimeWorkMinutes / stats.overtimeMinutes) * 100)
+      classifiedOt > 0
+        ? Math.round((stats.overtimeWorkMinutes / classifiedOt) * 100)
         : 0;
-    const otOffPct = stats.overtimeMinutes > 0 ? Math.max(0, 100 - otWorkPct) : 0;
+    const otOffPct = classifiedOt > 0 ? Math.max(0, 100 - otWorkPct) : 0;
 
     return {
       onTimePct,
@@ -934,10 +943,15 @@ export function HistoryScreen({ onAuthError }) {
                 const monFriOt = asMinutes(mm.monFriOtMins);
                 const satOt = asMinutes(mm.satOtMins);
                 const sunPhOt = asMinutes(mm.sunPhOtMins + mm.overnightOtMins);
-                const ot = r.checkOutAt ? monFriOt + satOt + sunPhOt : 0;
-                const otSplit = r.checkOutAt
-                  ? `Mon-Fri ${formatHm(monFriOt)} | Sat ${formatHm(satOt)} | Sun/PH ${formatHm(sunPhOt)}`
-                  : "—";
+                const ot = r.checkOutAt ? asMinutes(mm.otMins) : 0;
+                const classifiedOt = monFriOt + satOt + sunPhOt;
+                const otSplit = !r.checkOutAt
+                  ? "—"
+                  : classifiedOt > 0
+                    ? `Mon-Fri ${formatHm(monFriOt)} | Sat ${formatHm(satOt)} | Sun/PH ${formatHm(sunPhOt)}`
+                    : ot > 0
+                      ? `Total ${formatHm(ot)}`
+                      : "—";
 
                 return (
                   <div key={r.id} className="we-h-item">

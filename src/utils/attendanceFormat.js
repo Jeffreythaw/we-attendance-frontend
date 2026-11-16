@@ -32,8 +32,11 @@ export function hasReportMetrics(row) {
 export function pickReportOtMinutes(row) {
   if (!row) return 0;
 
-  const reportOt = Number(row?.reportOtMinutes ?? row?.ReportOtMinutes);
-  if (Number.isFinite(reportOt)) return asMinutes(reportOt);
+  const reportOtRaw = row?.reportOtMinutes ?? row?.ReportOtMinutes;
+  const reportOt = Number(reportOtRaw);
+  if (reportOtRaw != null && reportOtRaw !== "" && Number.isFinite(reportOt) && reportOt > 0) {
+    return asMinutes(reportOt);
+  }
 
   const split = Number(row?.reportMonFriOtMinutes ?? row?.ReportMonFriOtMinutes ?? 0)
     + Number(row?.reportSatOtMinutes ?? row?.ReportSatOtMinutes ?? 0)
@@ -41,6 +44,8 @@ export function pickReportOtMinutes(row) {
     + Number(row?.reportOvernightOtMinutes ?? row?.ReportOvernightOtMinutes ?? 0);
   if (Number.isFinite(split) && split > 0) return asMinutes(split);
 
+  // Fall back to stored OT when report fields are present-but-zero or missing,
+  // so older months still show OT after policy/report field rollouts.
   return asMinutes(row?.otMinutes ?? row?.OtMinutes ?? row?.otMins ?? row?.overtimeMinutes ?? row?.overtimeMins ?? row?.totalOtMinutes ?? row?.ot);
 }
 
